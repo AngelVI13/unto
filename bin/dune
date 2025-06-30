@@ -1,0 +1,4 @@
+(executable
+ (public_name unto)
+ (name main)
+ (libraries unto core ezcurl uri))
