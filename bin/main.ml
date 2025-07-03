@@ -10,7 +10,9 @@ let command_obtain_access_token auth_client =
          (optional_with_default "new_tokens.json" Filename_unix.arg_type)
          ~doc:"Filename where to store the obtained tokens"
      in
-     fun () -> Unto.Auth.obtain_access_token auth_client auth_code filename)
+     fun () ->
+       Or_error.ok_exn
+         (Unto.Auth.obtain_access_token auth_client auth_code filename))
 
 let command_pull_activities auth_client =
   let _ = auth_client in
@@ -25,8 +27,11 @@ let command_pull_activities auth_client =
          ~doc:"Filename where to read access and refresh tokens from"
      in
      fun () ->
-       let token = Unto.Auth.access_token auth_client auth_filename in
-       Unto.Strava.pull_activities token n)
+       let auth =
+         Or_error.ok_exn
+           (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
+       in
+       Unto.Strava.pull_activities auth.access_token n)
 
 let command auth_client =
   Command.group ~summary:"CLI utility to download data from strava"

@@ -16,7 +16,7 @@ module Auth = struct
     expires_in : int;
     refresh_token : string;
   }
-  [@@deriving yojson]
+  [@@deriving yojson] [@@yojson.allow_extra_fields]
 
   let empty () =
     {
@@ -46,17 +46,32 @@ let request_access_token auth_client auth_code =
   in
   let res = Ezcurl.post ~params ~url () in
   let out = match res with Ok c -> c.body | Error (_, s) -> failwith s in
-  Yojson.Safe.from_string out
+  out
+
+let validate_token_resp resp =
+  let json = Yojson.Safe.from_string resp in
+  match Yojson.Safe.Util.member "access_token" json with
+  | `Null ->
+      Or_error.error_s
+        [%message "Did not receive access token from strava" (resp : string)]
+  | exception Yojson.Safe.Util.Type_error (err_msg, _) ->
+      Or_error.error_s
+        [%message
+          "Did not receive valid json from strava"
+            (err_msg : string)
+            (resp : string)]
+  | token_member ->
+      let token = Yojson.Safe.Util.to_string token_member in
+      printf "Successfully obtained access_token=%s\n%s\n" token resp;
+      Ok json
 
 let obtain_access_token auth_client auth_code filename =
-  let json = request_access_token auth_client auth_code in
-  (* TODO: verify if this returns correct data
-      In case of error response the data looks like this:
-      {"message":"Bad Request","errors":[{"resource":"AuthorizationCode","field":"code","code":"invalid"}]}
-  *)
-  printf "Successfully obtained access_token\n%s\n" (Yojson.Safe.to_string json);
+  let open Or_error.Let_syntax in
+  let resp = request_access_token auth_client auth_code in
+  let%bind json = validate_token_resp resp in
   Yojson.Safe.to_file filename json;
-  printf "Saved data to file %s\n" filename
+  printf "Saved data to file %s\n" filename;
+  Ok ()
 
 let refresh_token auth_client refresh_token =
   let url = "https://www.strava.com/oauth/token" in
@@ -69,39 +84,11 @@ let refresh_token auth_client refresh_token =
   in
   let res = Ezcurl.post ~params ~url () in
   let out = match res with Ok c -> c.body | Error (_, s) -> failwith s in
-  Yojson.Safe.from_string out
+  out
 
-let load_and_refresh_tokens auth_client filename =
+let load_token_file filename =
   match Sys_unix.file_exists filename with
-  | `Yes ->
-      let contents = Yojson.Safe.from_file filename in
-      let auth =
-        try Auth.t_of_yojson contents
-        with _ ->
-          failwith (sprintf "failed to serialize token file to Auth.t")
-      in
-      let now = Time_ns.now () in
-      (* convert from ns to s *)
-      let now_since_epoch = Time_ns.to_int_ns_since_epoch now / 1000_000_000 in
-      let auth =
-        if Int.(auth.expires_at < now_since_epoch) then (
-          printf "ACCESS_TOKEN expired -> refreshing it\n";
-          let json = refresh_token auth_client auth.refresh_token in
-          printf "Response from Strava:\n%s\n" (Yojson.Safe.to_string json);
-          let auth =
-            try Auth.t_of_yojson json
-            with _ ->
-              failwith (sprintf "failed to serialize new tokens json to Auth.t")
-          in
-          Yojson.Safe.to_file filename json;
-          printf "Saved new ACCESS_TOKEN to file: %s\n" filename;
-          auth)
-        else (
-          printf "ACCESS_TOKEN still valid\n";
-          auth)
-      in
-
-      Ok auth
+  | `Yes -> Or_error.try_with (fun () -> Yojson.Safe.from_file filename)
   | _ ->
       let url =
         "https://www.strava.com/oauth/authorize?client_id=21710&response_type=code&redirect_uri=http://localhost/exchange_token&approval_prompt=force&scope=read_all,activity:read_all"
@@ -115,7 +102,33 @@ let load_and_refresh_tokens auth_client filename =
         \ ./bin/main.exe obtain-access-token --auth-code AUTH_CODE\n";
       Or_error.error_s [%message "Missing tokens"]
 
-let access_token auth_client auth_filename =
-  match load_and_refresh_tokens auth_client auth_filename with
-  | Ok auth -> auth.access_token
-  | Error s -> failwith (Error.to_string_hum s)
+let load_and_refresh_tokens auth_client filename =
+  let open Or_error.Let_syntax in
+  let%bind contents =
+    Or_error.try_with (fun () -> Yojson.Safe.from_file filename)
+  in
+  let%bind auth = Or_error.try_with (fun () -> Auth.t_of_yojson contents) in
+
+  let now_since_epoch =
+    (* convert it from ns to s *)
+    (Time_ns.now () |> Time_ns.to_int_ns_since_epoch) / 1000_000_000
+  in
+  printf "%d -- %d : %b\n" auth.expires_at now_since_epoch
+    Int.(auth.expires_at < now_since_epoch);
+  match Int.(auth.expires_at < now_since_epoch) with
+  | false ->
+      printf "ACCESS_TOKEN still valid\n";
+      Ok auth
+  | true ->
+      printf "ACCESS_TOKEN expired -> refreshing it\n";
+      let resp = refresh_token auth_client auth.refresh_token in
+      let%bind json = validate_token_resp resp in
+      let%bind auth = Or_error.try_with (fun () -> Auth.t_of_yojson json) in
+      Yojson.Safe.to_file filename json;
+      printf "Saved new ACCESS_TOKEN to file: %s\n" filename;
+      Ok auth
+
+(* let access_token auth_client auth_filename = *)
+(**)
+(*   | Ok auth -> auth.access_token *)
+(*   | Error s -> failwith (Error.to_string_hum s) *)
