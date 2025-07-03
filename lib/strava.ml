@@ -1,11 +1,14 @@
 open Core
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
-(* TODO: To get an auth_code, paste this URL to your browser, authorize the app
-   and copy the auth_code from the redirected url *)
-(* https://www.strava.com/oauth/authorize?client_id=21710&response_type=code&redirect_uri=http://localhost/exchange_token&approval_prompt=force&scope=read_all *)
+(* TODO: use https://github.com/mmottl/sqlite3-ocaml for sqlite storage *)
+(* some examples can be found here: https://github.com/patoline/patoline/blob/75fd8c928efc68d0aaa400d3a699a0e668c26c5f/permap/permap.ml#L43 *)
 
-(* TODO: json serialize the data *)
+(* TODO: 1. define the strava API I'm using (with only the needed fields) *)
+(* TODO: 2. Insert data to databases on every request if the data is not already there *)
+(* TODO: 3. Visualize the data in a web ui *)
+(* TODO: 4. Analyze the data *)
+
 module Stream = struct
   type 'a t = {
     type_ : string; [@key "type"]
@@ -67,8 +70,12 @@ let _athlete_info token =
   let out = match res with Ok c -> c.body | Error (_, s) -> s in
   out
 
-let _list_activities token =
-  let url = "https://www.strava.com/api/v3/athlete/activities" in
+let list_activities token n =
+  let url = Uri.of_string "https://www.strava.com/api/v3/athlete/activities" in
+  let url = Uri.add_query_param url ("page", [ "1" ]) in
+  let url = Uri.add_query_param url ("per_page", [ Int.to_string n ]) in
+  let url = Uri.to_string url in
+
   let headers = [ ("Authorization", sprintf "Bearer %s" token) ] in
   let res = Ezcurl.get ~headers ~url () in
   let out = match res with Ok c -> c.body | Error (_, s) -> s in
@@ -104,35 +111,9 @@ let get_streams token activity_id =
   let out = match res with Ok c -> c.body | Error (_, s) -> s in
   out
 
-(* TODO: load these from .env file *)
-let _obtain_access_token auth_code =
-  let url = "https://www.strava.com/oauth/token" in
-  let params =
-    [
-      Curl.CURLFORM_CONTENT ("client_id", "21710", Curl.DEFAULT);
-      Curl.CURLFORM_CONTENT
-        ( "client_secret",
-          "dec7bc0ead05b83433646ff57298da78272ddaa7",
-          Curl.DEFAULT );
-      Curl.CURLFORM_CONTENT ("code", auth_code, Curl.DEFAULT);
-      Curl.CURLFORM_CONTENT ("grant_type", "authorization_code", Curl.DEFAULT);
-    ]
-  in
-  let res = Ezcurl.post ~params ~url () in
-  let out = match res with Ok c -> c.body | Error (_, s) -> s in
-  out
-
-(* TODO: make a AHK script that does the 2FA *)
-(* let auth_code = "a298cebcec3a1bc04c9719ba18c9c00e6166c2ad" in *)
-(* let out = obtain_access_token auth_code in *)
-(* let token = "5873bbbc433d6d8a886e96c69d3629358ff3afbf" in *)
-(* let out = athlete_info token in *)
-(* print_endline out; *)
-(* let out = list_activities token in *)
-(* print_endline out *)
-(* let activity_id = 14883225124 in *)
-(* let out = get_streams token activity_id in *)
-(* print_endline out *)
+let pull_activities token num_activities =
+  let activities = list_activities token num_activities in
+  print_endline activities
 
 let%expect_test "serialize example streams object" =
   let streams = Streams.example () in

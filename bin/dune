@@ -1,4 +1,5 @@
 (executable
  (public_name unto)
  (name main)
- (libraries unto core ezcurl uri))
+ (preprocess (pps ppx_let))
+ (libraries unto core core_unix.command_unix core_unix.filename_unix dotenv))
