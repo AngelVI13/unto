@@ -70,6 +70,98 @@ let _athlete_info token =
   let out = match res with Ok c -> c.body | Error (_, s) -> s in
   out
 
+type sportType =
+  | AlpineSki
+  | BackcountrySki
+  | Badminton
+  | Canoeing
+  | Crossfit
+  | EBikeRide
+  | Elliptical
+  | EMountainBikeRide
+  | Golf
+  | GravelRide
+  | Handcycle
+  | HighIntensityIntervalTraining
+  | Hike
+  | IceSkate
+  | InlineSkate
+  | Kayaking
+  | Kitesurf
+  | MountainBikeRide
+  | NordicSki
+  | Pickleball
+  | Pilates
+  | Racquetball
+  | Ride
+  | RockClimbing
+  | RollerSki
+  | Rowing
+  | Run
+  | Sail
+  | Skateboard
+  | Snowboard
+  | Snowshoe
+  | Soccer
+  | Squash
+  | StairStepper
+  | StandUpPaddling
+  | Surfing
+  | Swim
+  | TableTennis
+  | Tennis
+  | TrailRun
+  | Velomobile
+  | VirtualRide
+  | VirtualRow
+  | VirtualRun
+  | Walk
+  | WeightTraining
+  | Wheelchair
+  | Windsurf
+  | Workout
+  | Yoga
+[@@deriving yojson]
+
+module PolylineMap = struct
+  type t = { id : string; summary_polyline : string } [@@deriving yojson]
+end
+
+(* TODO: do i need to take their activity summary or i can just calculate it myself based on the raw data? *)
+(* this might be prefferable cause their activity object might be
+   hard to parse because some fields are only present under
+   certain conditions *)
+module Activity = struct
+  type t = {
+    name : string;
+    distance : float;
+    moving_time : int;
+    elapsed_time : int;
+    total_elevation_gain : float;
+    sport_type : sportType;
+    id : int;
+    start_date_local : string;
+    timezone : string;
+    map : PolylineMap.t;
+    start_latlng : float * float;
+    end_latlng : float * float;
+    average_speed : float;
+    max_speed : float;
+    average_cadence : float;
+    average_temp : int;
+    has_heartrate : bool;
+    (* TODO: the following 2 are not pressend if has_heartrate is false *)
+    (* handle that*)
+    average_heartrate : float;
+    max_heartrate : float;
+  }
+  [@@deriving yojson]
+end
+
+module Activities = struct
+  type t = Activity.t list [@@deriving yojson]
+end
+
 let list_activities token n =
   let url = Uri.of_string "https://www.strava.com/api/v3/athlete/activities" in
   let url = Uri.add_query_param url ("page", [ "1" ]) in

@@ -36,7 +36,7 @@ let auth_params (auth_client : AuthClient.t) =
   ]
 
 let request_access_token auth_client auth_code =
-  let url = "https://www.strava.com/oauth/token" in
+  let url = "https://www.strava.com/api/v3/oauth/token" in
   let params =
     auth_params auth_client
     @ [
@@ -74,7 +74,7 @@ let obtain_access_token auth_client auth_code filename =
   Ok ()
 
 let refresh_token auth_client refresh_token =
-  let url = "https://www.strava.com/oauth/token" in
+  let url = "https://www.strava.com/api/v3/oauth/token" in
   let params =
     auth_params auth_client
     @ [
@@ -127,8 +127,3 @@ let load_and_refresh_tokens auth_client filename =
       Yojson.Safe.to_file filename json;
       printf "Saved new ACCESS_TOKEN to file: %s\n" filename;
       Ok auth
-
-(* let access_token auth_client auth_filename = *)
-(**)
-(*   | Ok auth -> auth.access_token *)
-(*   | Error s -> failwith (Error.to_string_hum s) *)
