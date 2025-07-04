@@ -113,8 +113,6 @@ let load_and_refresh_tokens auth_client filename =
     (* convert it from ns to s *)
     (Time_ns.now () |> Time_ns.to_int_ns_since_epoch) / 1000_000_000
   in
-  printf "%d -- %d : %b\n" auth.expires_at now_since_epoch
-    Int.(auth.expires_at < now_since_epoch);
   match Int.(auth.expires_at < now_since_epoch) with
   | false ->
       printf "ACCESS_TOKEN still valid\n";
