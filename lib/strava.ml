@@ -9,70 +9,6 @@ open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 (* TODO: 3. Visualize the data in a web ui *)
 (* TODO: 4. Analyze the data *)
 
-module Stream = struct
-  type 'a t = {
-    type_ : string; [@key "type"]
-    data : 'a list;
-    series_type : string;
-    original_size : int;
-    resolution : string;
-  }
-  [@@deriving show { with_path = false }, yojson]
-
-  let int_example () =
-    {
-      type_ = "int_example";
-      data = [ 1; 2; 3; 4; 5 ];
-      series_type = "distance";
-      original_size = 5;
-      resolution = "high";
-    }
-
-  let float_example () =
-    {
-      type_ = "float_example";
-      data = [ 1.0; 2.1; 3.2; 4.3; 5.4 ];
-      series_type = "distance";
-      original_size = 5;
-      resolution = "high";
-    }
-end
-
-type streamType =
-  | IntStream of int Stream.t
-  | IntOptStream of int option Stream.t
-  | FloatStream of float Stream.t
-  | TupleStream of float list Stream.t
-[@@deriving show { with_path = false }, yojson_of]
-
-let streamType_of_yojson (json : Yojson.Safe.t) : streamType =
-  match Yojson.Safe.Util.member "data" json with
-  (* this matches lists that have null and int into an IntOptStream *)
-  | `List l
-    when List.exists ~f:(Poly.( = ) `Null) l
-         && List.exists l ~f:(function `Int _ -> true | _ -> false) ->
-      IntOptStream (Stream.t_of_yojson [%of_yojson: int option] json)
-  | `List (`Int _ :: _) -> IntStream (Stream.t_of_yojson [%of_yojson: int] json)
-  | `List (`Float _ :: _) ->
-      FloatStream (Stream.t_of_yojson [%of_yojson: float] json)
-  | `List (`List (`Float _ :: [ `Float _ ]) :: _) ->
-      TupleStream (Stream.t_of_yojson [%of_yojson: float list] json)
-  | _ -> failwith "unsupported"
-
-module Streams = struct
-  type t = streamType list [@@deriving show { with_path = false }, yojson]
-
-  let example () =
-    [ IntStream (Stream.int_example ()); FloatStream (Stream.float_example ()) ]
-end
-
-let _athlete_info token =
-  let url = "https://www.strava.com/api/v3/athlete" in
-  let headers = [ ("Authorization", sprintf "Bearer %s" token) ] in
-  let res = Ezcurl.get ~headers ~url () in
-  let out = match res with Ok c -> c.body | Error (_, s) -> s in
-  out
-
 type sportType =
   | AlpineSki
   | BackcountrySki
@@ -125,6 +61,143 @@ type sportType =
   | Workout
   | Yoga
 [@@deriving yojson, show { with_path = false }]
+
+module ActivityStats = struct
+  type t = {
+    moving_time : int;
+    elapsed_time : int;
+    distance : float option;
+    total_elevation_gain : float option;
+    elev_high : float option;
+    elev_low : float option;
+    start_latlng : (float * float) option;
+    end_latlng : (float * float) option;
+    average_speed : float option;
+    max_speed : float option;
+    average_cadence : float option;
+    average_temp : int option;
+    average_heartrate : float option;
+    max_heartrate : float option;
+  }
+  [@@deriving show { with_path = false }]
+end
+
+module Activity = struct
+  type t = {
+    id : string;
+    athlete_id : string;
+    name : string;
+    sport_type : sportType;
+    start_date : string;
+    timezone : string;
+    map_id : string;
+    map_summary_polyline : string;
+    (* NOTE: these are calculated from the data streams of the
+       activity and not taken from strava directly *)
+    stats : ActivityStats.t;
+  }
+  [@@deriving show { with_path = false }]
+end
+
+module Stream = struct
+  type 'a t = {
+    type_ : string; [@key "type"]
+    data : 'a list;
+    series_type : string;
+    original_size : int;
+    resolution : string;
+  }
+  [@@deriving show { with_path = false }, yojson]
+
+  let int_example () =
+    {
+      type_ = "int_example";
+      data = [ 1; 2; 3; 4; 5 ];
+      series_type = "distance";
+      original_size = 5;
+      resolution = "high";
+    }
+
+  let float_example () =
+    {
+      type_ = "float_example";
+      data = [ 1.0; 2.1; 3.2; 4.3; 5.4 ];
+      series_type = "distance";
+      original_size = 5;
+      resolution = "high";
+    }
+end
+
+type streamType =
+  | IntStream of int Stream.t
+  | IntOptStream of int option Stream.t
+  | FloatStream of float Stream.t
+  | TupleStream of float list Stream.t
+[@@deriving show { with_path = false }, yojson_of]
+
+let streamType_of_yojson (json : Yojson.Safe.t) : streamType =
+  match Yojson.Safe.Util.member "data" json with
+  (* this matches lists that have null and int into an IntOptStream *)
+  | `List l
+    when List.exists ~f:(Yojson.Safe.equal `Null) l
+         && List.exists l ~f:(function `Int _ -> true | _ -> false) ->
+      IntOptStream (Stream.t_of_yojson [%of_yojson: int option] json)
+  | `List (`Int _ :: _) -> IntStream (Stream.t_of_yojson [%of_yojson: int] json)
+  | `List (`Float _ :: _) ->
+      FloatStream (Stream.t_of_yojson [%of_yojson: float] json)
+  | `List (`List (`Float _ :: [ `Float _ ]) :: _) ->
+      TupleStream (Stream.t_of_yojson [%of_yojson: float list] json)
+  | _ -> failwith "unsupported"
+
+module Streams = struct
+  type t = streamType list [@@deriving show { with_path = false }, yojson]
+
+  let stats (streams : t) : ActivityStats.t =
+    let time =
+      List.find_exn
+        ~f:(fun stream ->
+          match stream with
+          | IntStream s -> String.(s.type_ = "time")
+          | _ -> false)
+        streams
+    in
+
+    let elapsed_time =
+      match time with
+      (* i think we subtract 1 because the time points start from 0 *)
+      | IntStream s -> List.last_exn s.data - 1
+      | _ -> assert false
+    in
+    let moving_time =
+      match time with
+      (* TODO: don't know why strava removes 2 from the number  *)
+      | IntStream s -> List.length s.data - 2
+      | _ -> assert false
+    in
+    {
+      moving_time;
+      elapsed_time;
+      distance = None;
+      total_elevation_gain = None;
+      elev_high = None;
+      elev_low = None;
+      start_latlng = None;
+      end_latlng = None;
+      average_speed = None;
+      max_speed = None;
+      average_cadence = None;
+      average_temp = None;
+      average_heartrate = None;
+      max_heartrate = None;
+    }
+end
+
+let _athlete_info token =
+  let url = "https://www.strava.com/api/v3/athlete" in
+  let headers = [ ("Authorization", sprintf "Bearer %s" token) ] in
+  let res = Ezcurl.get ~headers ~url () in
+  let out = match res with Ok c -> c.body | Error (_, s) -> s in
+  out
 
 module StravaPolylineMap = struct
   type t = { id : string; summary_polyline : string }
@@ -213,17 +286,6 @@ let pull_streams token activity_id =
   Yojson.Safe.to_file filename json;
   printf "Saved streams to file %s\n" filename;
   Ok ()
-
-let%expect_test "serialize example streams object" =
-  let streams = Streams.example () in
-  let json_steams = Streams.yojson_of_t streams in
-  let json_obj = Yojson.Safe.to_basic json_steams in
-  printf "%s" (Yojson.Safe.to_string json_steams);
-  [%expect
-    {| [["IntStream",{"type":"int_example","data":[1,2,3,4,5],"series_type":"distance","original_size":5,"resolution":"high"}],["FloatStream",{"type":"float_example","data":[1.0,2.1,3.2,4.3,5.4],"series_type":"distance","original_size":5,"resolution":"high"}]] |}];
-  printf "%s" (Yojson.Basic.to_string json_obj);
-  [%expect
-    {| [["IntStream",{"type":"int_example","data":[1,2,3,4,5],"series_type":"distance","original_size":5,"resolution":"high"}],["FloatStream",{"type":"float_example","data":[1.0,2.1,3.2,4.3,5.4],"series_type":"distance","original_size":5,"resolution":"high"}]] |}]
 
 let%expect_test "deserialize get_stream.json" =
   let json =
@@ -326,3 +388,20 @@ let%expect_test "deserialize activity" =
          };
        gear_id = "g272465" }
       ] |}]
+
+let%expect_test "process_streams" =
+  let json =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/streams_14995177737.json"
+  in
+  let streams = Streams.t_of_yojson json in
+  let stats = Streams.stats streams in
+  printf "%s" (ActivityStats.show stats);
+  (* "moving_time": 4887, *)
+  (* "elapsed_time": 5561, *)
+  [%expect {|
+    { moving_time = 4887; elapsed_time = 5561; distance = None;
+      total_elevation_gain = None; elev_high = None; elev_low = None;
+      start_latlng = None; end_latlng = None; average_speed = None;
+      max_speed = None; average_cadence = None; average_temp = None;
+      average_heartrate = None; max_heartrate = None } |}]
