@@ -80,6 +80,24 @@ module ActivityStats = struct
     max_heartrate : float option;
   }
   [@@deriving show { with_path = false }]
+
+  let empty () =
+    {
+      moving_time = 0;
+      elapsed_time = 0;
+      distance = None;
+      total_elevation_gain = None;
+      elev_high = None;
+      elev_low = None;
+      start_latlng = None;
+      end_latlng = None;
+      average_speed = None;
+      max_speed = None;
+      average_cadence = None;
+      average_temp = None;
+      average_heartrate = None;
+      max_heartrate = None;
+    }
 end
 
 module Activity = struct
@@ -108,88 +126,73 @@ module Stream = struct
     resolution : string;
   }
   [@@deriving show { with_path = false }, yojson]
-
-  let int_example () =
-    {
-      type_ = "int_example";
-      data = [ 1; 2; 3; 4; 5 ];
-      series_type = "distance";
-      original_size = 5;
-      resolution = "high";
-    }
-
-  let float_example () =
-    {
-      type_ = "float_example";
-      data = [ 1.0; 2.1; 3.2; 4.3; 5.4 ];
-      series_type = "distance";
-      original_size = 5;
-      resolution = "high";
-    }
 end
 
-type streamType =
-  | IntStream of int Stream.t
-  | IntOptStream of int option Stream.t
-  | FloatStream of float Stream.t
-  | TupleStream of float list Stream.t
-[@@deriving show { with_path = false }, yojson_of]
+module StreamType = struct
+  type t =
+    | TimeStream of int Stream.t
+    | DistanceStream of float Stream.t
+    | LatLngStream of float list Stream.t
+    | AltitudeStream of float Stream.t
+    | VelocityStream of float Stream.t
+    | HeartRateStream of int Stream.t
+    | CadenceStream of int Stream.t
+    | WattsStream of int option Stream.t
+    | TempStream of int Stream.t
+    | GradeStream of float Stream.t
+  [@@deriving show { with_path = false }, yojson_of]
 
-let streamType_of_yojson (json : Yojson.Safe.t) : streamType =
-  match Yojson.Safe.Util.member "data" json with
-  (* this matches lists that have null and int into an IntOptStream *)
-  | `List l
-    when List.exists ~f:(Yojson.Safe.equal `Null) l
-         && List.exists l ~f:(function `Int _ -> true | _ -> false) ->
-      IntOptStream (Stream.t_of_yojson [%of_yojson: int option] json)
-  | `List (`Int _ :: _) -> IntStream (Stream.t_of_yojson [%of_yojson: int] json)
-  | `List (`Float _ :: _) ->
-      FloatStream (Stream.t_of_yojson [%of_yojson: float] json)
-  | `List (`List (`Float _ :: [ `Float _ ]) :: _) ->
-      TupleStream (Stream.t_of_yojson [%of_yojson: float list] json)
-  | _ -> failwith "unsupported"
+  let t_of_yojson (json : Yojson.Safe.t) : t =
+    let open Yojson.Safe.Util in
+    let stream_type = Yojson.Safe.Util.member "type" json |> to_string in
+    match stream_type with
+    | "time" -> TimeStream (Stream.t_of_yojson [%of_yojson: int] json)
+    | "distance" -> DistanceStream (Stream.t_of_yojson [%of_yojson: float] json)
+    | "latlng" ->
+        LatLngStream (Stream.t_of_yojson [%of_yojson: float list] json)
+    | "altitude" -> AltitudeStream (Stream.t_of_yojson [%of_yojson: float] json)
+    | "velocity_smooth" ->
+        VelocityStream (Stream.t_of_yojson [%of_yojson: float] json)
+    | "heartrate" -> HeartRateStream (Stream.t_of_yojson [%of_yojson: int] json)
+    | "cadence" -> CadenceStream (Stream.t_of_yojson [%of_yojson: int] json)
+    | "watts" -> WattsStream (Stream.t_of_yojson [%of_yojson: int option] json)
+    | "temp" -> TempStream (Stream.t_of_yojson [%of_yojson: int] json)
+    | "grade_smooth" ->
+        GradeStream (Stream.t_of_yojson [%of_yojson: float] json)
+    | _ -> failwith "unsupported"
+
+  let stats_of_t (stats : ActivityStats.t) (stream : t) : ActivityStats.t =
+    match stream with
+    | TimeStream s ->
+        let elapsed_time = List.last_exn s.data - 1 in
+        let moving_time = List.length s.data - 2 in
+        { stats with elapsed_time; moving_time }
+    | DistanceStream s ->
+        let distance = Some (List.last_exn s.data) in
+        { stats with distance }
+    | LatLngStream s ->
+        let start = List.hd_exn s.data in
+        let start_latlng = Some (List.nth_exn start 0, List.nth_exn start 1) in
+        let end_ = List.last_exn s.data in
+        let end_latlng = Some (List.nth_exn end_ 0, List.nth_exn end_ 1) in
+        { stats with start_latlng; end_latlng }
+    | _ -> stats
+  (* total_elevation_gain = None; *)
+  (* elev_high = None; *)
+  (* elev_low = None; *)
+  (* average_speed = None; *)
+  (* max_speed = None; *)
+  (* average_cadence = None; *)
+  (* average_temp = None; *)
+  (* average_heartrate = None; *)
+  (* max_heartrate = None; *)
+end
 
 module Streams = struct
-  type t = streamType list [@@deriving show { with_path = false }, yojson]
+  type t = StreamType.t list [@@deriving show { with_path = false }, yojson]
 
   let stats (streams : t) : ActivityStats.t =
-    let time =
-      List.find_exn
-        ~f:(fun stream ->
-          match stream with
-          | IntStream s -> String.(s.type_ = "time")
-          | _ -> false)
-        streams
-    in
-
-    let elapsed_time =
-      match time with
-      (* i think we subtract 1 because the time points start from 0 *)
-      | IntStream s -> List.last_exn s.data - 1
-      | _ -> assert false
-    in
-    let moving_time =
-      match time with
-      (* TODO: don't know why strava removes 2 from the number  *)
-      | IntStream s -> List.length s.data - 2
-      | _ -> assert false
-    in
-    {
-      moving_time;
-      elapsed_time;
-      distance = None;
-      total_elevation_gain = None;
-      elev_high = None;
-      elev_low = None;
-      start_latlng = None;
-      end_latlng = None;
-      average_speed = None;
-      max_speed = None;
-      average_cadence = None;
-      average_temp = None;
-      average_heartrate = None;
-      max_heartrate = None;
-    }
+    List.fold ~init:(ActivityStats.empty ()) ~f:StreamType.stats_of_t streams
 end
 
 let _athlete_info token =
@@ -276,6 +279,8 @@ let pull_activities token num_activities =
   let activities = list_activities token num_activities in
   print_endline activities
 
+(* TODO: also pull_lap_times for the activities *)
+
 (* TODO: try with should raise a specific error otherwise i can't figure out what went wrong *)
 let pull_streams token activity_id =
   let open Or_error.Let_syntax in
@@ -296,19 +301,19 @@ let%expect_test "deserialize get_stream.json" =
   printf "%s" (Streams.show streams);
   [%expect
     {|
-    [(IntStream
+    [(TimeStream
         { type_ = "time";
           data =
           [0; 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19;
             20];
           series_type = "distance"; original_size = 21; resolution = "high" });
-      (FloatStream
+      (DistanceStream
          { type_ = "distance";
            data =
            [0.; 2.8; 5.5; 8.3; 11.; 13.8; 16.5; 19.3; 22.; 27.; 32.; 36.; 39.;
              42.; 45.; 48.; 51.; 54.; 57.; 60.; 64.];
            series_type = "distance"; original_size = 21; resolution = "high" });
-      (TupleStream
+      (LatLngStream
          { type_ = "latlng";
            data =
            [[54.70304; 25.317412]; [54.703055; 25.317374];
@@ -322,32 +327,32 @@ let%expect_test "deserialize get_stream.json" =
              [54.703245; 25.316665]; [54.703255; 25.31662];
              [54.703265; 25.316572]; [54.703273; 25.316523]];
            series_type = "distance"; original_size = 21; resolution = "high" });
-      (FloatStream
+      (AltitudeStream
          { type_ = "altitude";
            data =
            [115.2; 115.2; 115.2; 115.2; 115.2; 115.2; 115.2; 115.2; 115.2; 114.6;
              114.2; 114.; 113.8; 113.8; 113.4; 113.4; 113.2; 113.2; 112.8; 112.8;
              112.6];
            series_type = "distance"; original_size = 21; resolution = "high" });
-      (FloatStream
+      (VelocityStream
          { type_ = "velocity_smooth";
            data =
            [0.; 0.; 2.75; 2.75; 2.75; 2.75; 2.75; 2.75; 2.75; 3.2; 3.65; 3.9;
              3.95; 4.; 3.6; 3.2; 3.; 3.; 3.; 3.; 3.2];
            series_type = "distance"; original_size = 21; resolution = "high" });
-      (IntStream
+      (HeartRateStream
          { type_ = "heartrate";
            data =
            [80; 79; 78; 77; 77; 75; 75; 75; 76; 78; 80; 80; 82; 84; 87; 89; 91;
              95; 97; 99; 100];
            series_type = "distance"; original_size = 21; resolution = "high" });
-      (IntStream
+      (CadenceStream
          { type_ = "cadence";
            data =
            [84; 84; 84; 84; 84; 84; 84; 84; 84; 85; 86; 86; 86; 85; 84; 83; 82;
              82; 82; 82; 82];
            series_type = "distance"; original_size = 21; resolution = "high" });
-      (IntOptStream
+      (WattsStream
          { type_ = "watts";
            data =
            [None; None; None; None; None; None; None; None; (Some 283);
@@ -355,13 +360,13 @@ let%expect_test "deserialize get_stream.json" =
              (Some 219); (Some 220); (Some 201); (Some 209); (Some 193);
              (Some 200); (Some 198)];
            series_type = "distance"; original_size = 21; resolution = "high" });
-      (IntStream
+      (TempStream
          { type_ = "temp";
            data =
            [29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29;
              29; 29; 29; 29];
            series_type = "distance"; original_size = 21; resolution = "high" });
-      (FloatStream
+      (GradeStream
          { type_ = "grade_smooth";
            data =
            [0.; 0.; 0.; 0.; 0.; 0.; 0.; -4.5; -6.5; -7.2; -8.2; -5.3; -6.2; -5.;
@@ -397,11 +402,11 @@ let%expect_test "process_streams" =
   let streams = Streams.t_of_yojson json in
   let stats = Streams.stats streams in
   printf "%s" (ActivityStats.show stats);
-  (* "moving_time": 4887, *)
-  (* "elapsed_time": 5561, *)
-  [%expect {|
-    { moving_time = 4887; elapsed_time = 5561; distance = None;
+  [%expect
+    {|
+    { moving_time = 4887; elapsed_time = 5561; distance = (Some 11033.);
       total_elevation_gain = None; elev_high = None; elev_low = None;
-      start_latlng = None; end_latlng = None; average_speed = None;
+      start_latlng = (Some (54.755563, 25.37736));
+      end_latlng = (Some (54.755553, 25.377283)); average_speed = None;
       max_speed = None; average_cadence = None; average_temp = None;
       average_heartrate = None; max_heartrate = None } |}]
