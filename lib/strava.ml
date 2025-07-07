@@ -67,7 +67,8 @@ module ActivityStats = struct
     moving_time : int;
     elapsed_time : int;
     distance : float option;
-    total_elevation_gain : float option;
+    elev_gain : float option;
+    elev_loss : float option;
     elev_high : float option;
     elev_low : float option;
     start_latlng : (float * float) option;
@@ -86,7 +87,8 @@ module ActivityStats = struct
       moving_time = 0;
       elapsed_time = 0;
       distance = None;
-      total_elevation_gain = None;
+      elev_gain = None;
+      elev_loss = None;
       elev_high = None;
       elev_low = None;
       start_latlng = None;
@@ -176,10 +178,73 @@ module StreamType = struct
         let end_ = List.last_exn s.data in
         let end_latlng = Some (List.nth_exn end_ 0, List.nth_exn end_ 1) in
         { stats with start_latlng; end_latlng }
+    | AltitudeStream s ->
+        let module Elev = struct
+          type t = {
+            high : float option;
+            low : float option;
+            gain : float option;
+            loss : float option;
+          }
+
+          let empty () = { high = None; low = None; gain = None; loss = None }
+        end in
+        printf "\n";
+        let elev_stats =
+          List.foldi ~init:(Elev.empty ())
+            ~f:(fun i stats v ->
+              let high, low =
+                match (stats.high, stats.low) with
+                | None, None -> (Some v, Some v)
+                | Some high, Some low ->
+                    let new_high = if Float.(v > high) then v else high in
+                    let new_low = if Float.(v < low) then v else low in
+
+                    (Some new_high, Some new_low)
+                | _ -> assert false
+              in
+
+              let gain, loss =
+                (* TODO: how do they calculate the gain/loss ??? *)
+                (* if we consider all the points then it is 231  *)
+                (* if we downsample by 2 then it's 112.6 *)
+                (* strava and suunto say its ~99 *)
+                (* NOTE: some info on smoothing: *)
+                (* https://stackoverflow.com/questions/69668424/how-to-smooth-elevation-gain-from-gps-points *)
+                (* NOTE: some more smoothing info *)
+                (* https://github.com/Sibyx/phpGPX/discussions/55 *)
+                if i % 2 <> 0 then (stats.gain, stats.loss)
+                else
+                  match (stats.gain, stats.loss) with
+                  | None, None -> (Some 0.0, Some 0.0)
+                  | Some gain, Some loss -> (
+                      let prev_elev = List.nth_exn s.data (i - 1) in
+                      let open Float in
+                      let diff =
+                        Float.round_significant ~significant_digits:1
+                          (v - prev_elev)
+                      in
+                      if Float.(abs diff > 0.0) then
+                        printf "i %d gain %f loss %f diff %f\n" i gain loss diff
+                      else ();
+                      match diff with
+                      | _ when diff < 0.0 -> (Some gain, Some (loss + abs diff))
+                      | _ when diff > 0.0 -> (Some (gain + diff), Some loss)
+                      | _ -> (Some gain, Some loss))
+                  | _ -> assert false
+              in
+              { high; low; gain; loss })
+            s.data
+        in
+        {
+          stats with
+          elev_high = elev_stats.high;
+          elev_low = elev_stats.low;
+          elev_gain = elev_stats.gain;
+          elev_loss = elev_stats.loss;
+        }
     | _ -> stats
   (* total_elevation_gain = None; *)
-  (* elev_high = None; *)
-  (* elev_low = None; *)
   (* average_speed = None; *)
   (* max_speed = None; *)
   (* average_cadence = None; *)
@@ -405,8 +470,8 @@ let%expect_test "process_streams" =
   [%expect
     {|
     { moving_time = 4887; elapsed_time = 5561; distance = (Some 11033.);
-      total_elevation_gain = None; elev_high = None; elev_low = None;
-      start_latlng = (Some (54.755563, 25.37736));
+      total_elevation_gain = None; elev_high = (Some 141.);
+      elev_low = (Some 110.); start_latlng = (Some (54.755563, 25.37736));
       end_latlng = (Some (54.755553, 25.377283)); average_speed = None;
       max_speed = None; average_cadence = None; average_temp = None;
       average_heartrate = None; max_heartrate = None } |}]
