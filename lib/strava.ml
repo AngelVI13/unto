@@ -9,6 +9,24 @@ open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 (* TODO: 3. Visualize the data in a web ui *)
 (* TODO: 4. Analyze the data *)
 
+(* Exponential Moving Average *)
+(* NOTE: The smoothing works as follows: each data point is represented as %X
+   of it's value and 100-%X of the previous value. For example, if we have alfa
+   of 0.2 then the value of the Z-th element is 20% of Data[Z] and 80% of Data[Z-1] *)
+(* TODO: this looks good but maybe I can achieve the same with List.map or fold so it's more obvious *)
+let exponential_moving_average alpha data =
+  let open Float in
+  match data with
+  | [] -> []
+  | hd :: tl ->
+      let rec aux prev acc = function
+        | [] -> List.rev acc
+        | x :: xs ->
+            let ema = (alpha * x) + ((1.0 - alpha) * prev) in
+            aux ema (ema :: acc) xs
+      in
+      aux hd [ hd ] tl
+
 type sportType =
   | AlpineSki
   | BackcountrySki
@@ -179,70 +197,36 @@ module StreamType = struct
         let end_latlng = Some (List.nth_exn end_ 0, List.nth_exn end_ 1) in
         { stats with start_latlng; end_latlng }
     | AltitudeStream s ->
-        let module Elev = struct
-          type t = {
-            high : float option;
-            low : float option;
-            gain : float option;
-            loss : float option;
-          }
+        let elev_high, elev_low =
+          List.fold ~init:(None, None)
+            ~f:(fun (high, low) v ->
+              match (high, low) with
+              | None, None -> (Some v, Some v)
+              | Some high, Some low ->
+                  let new_high = if Float.(v > high) then v else high in
+                  let new_low = if Float.(v < low) then v else low in
 
-          let empty () = { high = None; low = None; gain = None; loss = None }
-        end in
-        printf "\n";
-        let elev_stats =
-          List.foldi ~init:(Elev.empty ())
-            ~f:(fun i stats v ->
-              let high, low =
-                match (stats.high, stats.low) with
-                | None, None -> (Some v, Some v)
-                | Some high, Some low ->
-                    let new_high = if Float.(v > high) then v else high in
-                    let new_low = if Float.(v < low) then v else low in
-
-                    (Some new_high, Some new_low)
-                | _ -> assert false
-              in
-
-              let gain, loss =
-                (* TODO: how do they calculate the gain/loss ??? *)
-                (* if we consider all the points then it is 231  *)
-                (* if we downsample by 2 then it's 112.6 *)
-                (* strava and suunto say its ~99 *)
-                (* NOTE: some info on smoothing: *)
-                (* https://stackoverflow.com/questions/69668424/how-to-smooth-elevation-gain-from-gps-points *)
-                (* NOTE: some more smoothing info *)
-                (* https://github.com/Sibyx/phpGPX/discussions/55 *)
-                if i % 2 <> 0 then (stats.gain, stats.loss)
-                else
-                  match (stats.gain, stats.loss) with
-                  | None, None -> (Some 0.0, Some 0.0)
-                  | Some gain, Some loss -> (
-                      let prev_elev = List.nth_exn s.data (i - 1) in
-                      let open Float in
-                      let diff =
-                        Float.round_significant ~significant_digits:1
-                          (v - prev_elev)
-                      in
-                      if Float.(abs diff > 0.0) then
-                        printf "i %d gain %f loss %f diff %f\n" i gain loss diff
-                      else ();
-                      match diff with
-                      | _ when diff < 0.0 -> (Some gain, Some (loss + abs diff))
-                      | _ when diff > 0.0 -> (Some (gain + diff), Some loss)
-                      | _ -> (Some gain, Some loss))
-                  | _ -> assert false
-              in
-              { high; low; gain; loss })
+                  (Some new_high, Some new_low)
+              | _ -> assert false)
             s.data
         in
-        {
-          stats with
-          elev_high = elev_stats.high;
-          elev_low = elev_stats.low;
-          elev_gain = elev_stats.gain;
-          elev_loss = elev_stats.loss;
-        }
+        let smoothed = exponential_moving_average 0.5 s.data in
+        let elev_gain, elev_loss =
+          List.foldi ~init:(0.0, 0.0)
+            ~f:(fun i (gain, loss) v ->
+              if i = 0 then (gain, loss)
+              else
+                let prev_elev = List.nth_exn s.data (i - 1) in
+                let open Float in
+                let diff = v - prev_elev in
+                match diff with
+                | _ when diff < 0.0 -> (gain, loss + abs diff)
+                | _ when diff > 0.0 -> (gain + diff, loss)
+                | _ -> (gain, loss))
+            smoothed
+        in
+        let elev_gain, elev_loss = (Some elev_gain, Some elev_loss) in
+        { stats with elev_high; elev_low; elev_gain; elev_loss }
     | _ -> stats
   (* total_elevation_gain = None; *)
   (* average_speed = None; *)
@@ -252,6 +236,84 @@ module StreamType = struct
   (* average_heartrate = None; *)
   (* max_heartrate = None; *)
 end
+
+(* NOTE: this was translated from this:
+  https://github.com/gpxstudio/gpx.studio/blob/a9ea0e223d925f964c274deb4d558d88f1246f3c/gpx/src/gpx.ts#L1901
+  *)
+let distance (coord1 : float list) (coord2 : float list) =
+  let open Float in
+  let earth_radius = 6371008.8 in
+  let rad = pi / 180.0 in
+  let lat1 = List.nth_exn coord1 0 in
+  let lat1 = lat1 * rad in
+  let lat2 = List.nth_exn coord2 0 in
+  let lat2 = lat2 * rad in
+  let lon1 = List.nth_exn coord1 1 in
+  let lon2 = List.nth_exn coord2 1 in
+  let a =
+    (sin lat1 * sin lat2) + (cos lat1 * cos lat2 * cos ((lon2 - lon1) * rad))
+  in
+  let max_meters = earth_radius * acos (min a 1.0) in
+  max_meters
+
+(* let distance_window_smoothing (elev_data : float list) (distance_window : int) : *)
+(*     float list = *)
+(* let module Accumulator = struct *)
+(*   type t = { *)
+(*     start : int; *)
+(*     end_ : int; *)
+(*     accumulated : float; *)
+(*     result : float list; *)
+(*   } *)
+(**)
+(*   let empty () = { start = 0; end_ = 0; accumulated = 0.0; result = [] } *)
+(* end in *)
+(* List.foldi ~init:(Accumulator.empty ()) ~f:(fun i acc v -> acc) elev_data *)
+
+(* TODO: implement and test these for elevation smoothing *)
+(* function distanceWindowSmoothing( *)
+(*     points: TrackPoint[], *)
+(*     distanceWindow: number, *)
+(*     accumulate: (index: number) => number, *)
+(*     compute: (accumulated: number, start: number, end: number) => number, *)
+(*     remove?: (index: number) => number *)
+(* ): number[] { *)
+(*     let result = []; *)
+(**)
+(*     let start = 0, *)
+(*         end = 0, *)
+(*         accumulated = 0; *)
+(*     for (var i = 0; i < points.length; i++) { *)
+(*         while ( *)
+(*             start + 1 < i && *)
+(*             distance(points[start].getCoordinates(), points[i].getCoordinates()) > distanceWindow *)
+(*         ) { *)
+(*             if (remove) { *)
+(*                 accumulated -= remove(start); *)
+(*             } else { *)
+(*                 accumulated -= accumulate(start); *)
+(*             } *)
+(*             start++; *)
+(*         } *)
+(*         while ( *)
+(*             end < points.length && *)
+(*             distance(points[i].getCoordinates(), points[end].getCoordinates()) <= distanceWindow *)
+(*         ) { *)
+(*             accumulated += accumulate(end); *)
+(*             end++; *)
+(*         } *)
+(*         result[i] = compute(accumulated, start, end - 1); *)
+(*     } *)
+(**)
+(*     return result; *)
+(* } *)
+
+(* let smoothed = distanceWindowSmoothing( *)
+(*             points, *)
+(*             100, *)
+(*             (index) => points[index].ele ?? 0, *)
+(*             (accumulated, start, end) => accumulated / (end - start + 1) *)
+(*         ); *)
 
 module Streams = struct
   type t = StreamType.t list [@@deriving show { with_path = false }, yojson]
@@ -470,8 +532,48 @@ let%expect_test "process_streams" =
   [%expect
     {|
     { moving_time = 4887; elapsed_time = 5561; distance = (Some 11033.);
-      total_elevation_gain = None; elev_high = (Some 141.);
-      elev_low = (Some 110.); start_latlng = (Some (54.755563, 25.37736));
+      elev_gain = (Some 231.2); elev_loss = (Some 226.8);
+      elev_high = (Some 141.); elev_low = (Some 110.);
+      start_latlng = (Some (54.755563, 25.37736));
       end_latlng = (Some (54.755553, 25.377283)); average_speed = None;
       max_speed = None; average_cadence = None; average_temp = None;
       average_heartrate = None; max_heartrate = None } |}]
+
+let%expect_test "distance by coords" =
+  let coord1 = [ 54.755563; 25.37736 ] in
+  let coord2 = [ 54.755523; 25.377214 ] in
+  let distance = distance coord1 coord2 in
+  printf "%f" distance;
+  [%expect {|
+    10.370148 |}]
+
+let%expect_test "altitude smoothing" =
+  let data =
+    [
+      115.2;
+      115.2;
+      115.2;
+      115.2;
+      115.2;
+      115.2;
+      115.2;
+      115.2;
+      115.2;
+      114.6;
+      114.2;
+      114.0;
+      113.8;
+      113.8;
+      113.4;
+      113.4;
+      113.2;
+      113.2;
+      112.8;
+      112.8;
+      112.6;
+    ]
+  in
+  let ema = exponential_moving_average 0.2 data in
+  List.iter ~f:(printf "%.2f ") ema;
+  [%expect
+    {| 115.20 115.20 115.20 115.20 115.20 115.20 115.20 115.20 115.20 115.08 114.90 114.72 114.54 114.39 114.19 114.03 113.87 113.73 113.55 113.40 113.24 |}]
