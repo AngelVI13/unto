@@ -27,6 +27,23 @@ let exponential_moving_average alpha data =
       in
       aux hd [ hd ] tl
 
+(* Simple Moving Average *)
+let moving_average k data =
+  let n = List.length data in
+  let arr = Array.of_list data in
+  let smoothed = Array.create ~len:n 0.0 in
+  for i = 0 to n - 1 do
+    let sum = ref 0.0 in
+    let count = ref 0 in
+    for j = i - k to i + k do
+      if j >= 0 && j < n then (
+        sum := !sum +. arr.(j);
+        incr count)
+    done;
+    smoothed.(i) <- !sum /. float_of_int !count
+  done;
+  Array.to_list smoothed
+
 type sportType =
   | AlpineSki
   | BackcountrySki
@@ -210,7 +227,11 @@ module StreamType = struct
               | _ -> assert false)
             s.data
         in
-        let smoothed = exponential_moving_average 0.5 s.data in
+        (* TODO: this seems to work file, verify it produces ok result for multiple activities *)
+        let gain_loss_threshold = 0.3 in
+        let smoothed = moving_average 5 s.data in
+        (* let smoothed = exponential_moving_average 0.15 s.data in *)
+        (* let smoothed = s.data in *)
         let elev_gain, elev_loss =
           List.foldi ~init:(0.0, 0.0)
             ~f:(fun i (gain, loss) v ->
@@ -220,8 +241,8 @@ module StreamType = struct
                 let open Float in
                 let diff = v - prev_elev in
                 match diff with
-                | _ when diff < 0.0 -> (gain, loss + abs diff)
-                | _ when diff > 0.0 -> (gain + diff, loss)
+                | _ when diff < -gain_loss_threshold -> (gain, loss + abs diff)
+                | _ when diff > gain_loss_threshold -> (gain + diff, loss)
                 | _ -> (gain, loss))
             smoothed
         in
@@ -532,7 +553,7 @@ let%expect_test "process_streams" =
   [%expect
     {|
     { moving_time = 4887; elapsed_time = 5561; distance = (Some 11033.);
-      elev_gain = (Some 231.2); elev_loss = (Some 226.8);
+      elev_gain = (Some 2652.80601672); elev_loss = (Some 2658.17261087);
       elev_high = (Some 141.); elev_low = (Some 110.);
       start_latlng = (Some (54.755563, 25.37736));
       end_latlng = (Some (54.755553, 25.377283)); average_speed = None;
@@ -547,7 +568,7 @@ let%expect_test "distance by coords" =
   [%expect {|
     10.370148 |}]
 
-let%expect_test "altitude smoothing" =
+let%expect_test "altitude smoothing (exponential moving average)" =
   let data =
     [
       115.2;
@@ -577,3 +598,62 @@ let%expect_test "altitude smoothing" =
   List.iter ~f:(printf "%.2f ") ema;
   [%expect
     {| 115.20 115.20 115.20 115.20 115.20 115.20 115.20 115.20 115.20 115.08 114.90 114.72 114.54 114.39 114.19 114.03 113.87 113.73 113.55 113.40 113.24 |}]
+
+let%expect_test "altitude smoothing (moving average)" =
+  let data =
+    [
+      115.2;
+      115.2;
+      115.2;
+      115.2;
+      115.2;
+      115.2;
+      115.2;
+      115.2;
+      115.2;
+      114.6;
+      114.2;
+      114.0;
+      113.8;
+      113.8;
+      113.4;
+      113.4;
+      113.2;
+      113.2;
+      112.8;
+      112.8;
+      112.6;
+    ]
+  in
+  let ma = moving_average 5 data in
+  List.iter ~f:(printf "%.2f ") ma;
+  [%expect
+    {| 115.20 115.20 115.20 115.20 115.14 115.05 114.95 114.82 114.69 114.53 114.36 114.18 114.00 113.78 113.56 113.38 113.30 113.22 113.15 113.06 113.00 |}]
+
+(* TODO: implement the gpx studio algorithm and compare with these simple approaches *)
+(* let%expect_test "write raw altitude csv" = *)
+(*   let json = *)
+(*     Yojson.Safe.from_file *)
+(*       "/home/angel/Documents/ocaml/unto/streams_14995177737.json" *)
+(*   in *)
+(*   let streams = Streams.t_of_yojson json in *)
+(*   List.iter streams ~f:(fun stream -> *)
+(*       match stream with *)
+(*       | AltitudeStream s -> *)
+(*           let raw_data = s.data in *)
+(*           let smoothed_ma = moving_average 30 s.data in *)
+(*           (* NOTE: The exponential moving average seems to be closest to suunto but strava graph is way too flat. 0.15 looks good, try 0.10 or 0.7 or 0.5 *) *)
+(*           (* NOTE: The moving average also ok for values of 20-ish, maybe try 15 *) *)
+(*           let smoothed_ema = exponential_moving_average 0.15 s.data in *)
+(*           let out_raw = *)
+(*             List.foldi ~init:"time,raw,ma_30,ema_015\n" *)
+(*               ~f:(fun i acc alt -> *)
+(*                 sprintf "%s\n%d,%f,%f,%f" acc i alt *)
+(*                   (List.nth_exn smoothed_ma i) *)
+(*                   (List.nth_exn smoothed_ema i)) *)
+(*               raw_data *)
+(*           in *)
+(*           Out_channel.write_all "/home/angel/Documents/ocaml/unto/alt2.csv" *)
+(*             ~data:out_raw *)
+(*       | _ -> ()); *)
+(*   [%expect {| a |}] *)
