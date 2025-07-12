@@ -1,4 +1,5 @@
 open Core
+open Elevation
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 (* TODO: use https://github.com/mmottl/sqlite3-ocaml for sqlite storage *)
@@ -8,41 +9,6 @@ open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 (* TODO: 2. Insert data to databases on every request if the data is not already there *)
 (* TODO: 3. Visualize the data in a web ui *)
 (* TODO: 4. Analyze the data *)
-
-(* Exponential Moving Average *)
-(* NOTE: The smoothing works as follows: each data point is represented as %X
-   of it's value and 100-%X of the previous value. For example, if we have alfa
-   of 0.2 then the value of the Z-th element is 20% of Data[Z] and 80% of Data[Z-1] *)
-(* TODO: this looks good but maybe I can achieve the same with List.map or fold so it's more obvious *)
-let exponential_moving_average alpha data =
-  let open Float in
-  match data with
-  | [] -> []
-  | hd :: tl ->
-      let rec aux prev acc = function
-        | [] -> List.rev acc
-        | x :: xs ->
-            let ema = (alpha * x) + ((1.0 - alpha) * prev) in
-            aux ema (ema :: acc) xs
-      in
-      aux hd [ hd ] tl
-
-(* Simple Moving Average *)
-let moving_average k data =
-  let n = List.length data in
-  let arr = Array.of_list data in
-  let smoothed = Array.create ~len:n 0.0 in
-  for i = 0 to n - 1 do
-    let sum = ref 0.0 in
-    let count = ref 0 in
-    for j = i - k to i + k do
-      if j >= 0 && j < n then (
-        sum := !sum +. arr.(j);
-        incr count)
-    done;
-    smoothed.(i) <- !sum /. float_of_int !count
-  done;
-  Array.to_list smoothed
 
 type sportType =
   | AlpineSki
@@ -214,40 +180,20 @@ module StreamType = struct
         let end_latlng = Some (List.nth_exn end_ 0, List.nth_exn end_ 1) in
         { stats with start_latlng; end_latlng }
     | AltitudeStream s ->
-        let elev_high, elev_low =
-          List.fold ~init:(None, None)
-            ~f:(fun (high, low) v ->
-              match (high, low) with
-              | None, None -> (Some v, Some v)
-              | Some high, Some low ->
-                  let new_high = if Float.(v > high) then v else high in
-                  let new_low = if Float.(v < low) then v else low in
-
-                  (Some new_high, Some new_low)
-              | _ -> assert false)
-            s.data
+        (* let smoothed = Utils.exponential_moving_average 0.20 s.data in *)
+        let smoothing_window = 5 in
+        let smoothed = Utils.moving_average smoothing_window s.data in
+        let compute_fn = ElevResult.compute smoothed in
+        let results =
+          List.foldi ~init:(ElevResult.empty ()) ~f:compute_fn smoothed
         in
-        (* TODO: this seems to work file, verify it produces ok result for multiple activities *)
-        let gain_loss_threshold = 0.3 in
-        let smoothed = moving_average 5 s.data in
-        (* let smoothed = exponential_moving_average 0.15 s.data in *)
-        (* let smoothed = s.data in *)
-        let elev_gain, elev_loss =
-          List.foldi ~init:(0.0, 0.0)
-            ~f:(fun i (gain, loss) v ->
-              if i = 0 then (gain, loss)
-              else
-                let prev_elev = List.nth_exn s.data (i - 1) in
-                let open Float in
-                let diff = v - prev_elev in
-                match diff with
-                | _ when diff < -gain_loss_threshold -> (gain, loss + abs diff)
-                | _ when diff > gain_loss_threshold -> (gain + diff, loss)
-                | _ -> (gain, loss))
-            smoothed
-        in
-        let elev_gain, elev_loss = (Some elev_gain, Some elev_loss) in
-        { stats with elev_high; elev_low; elev_gain; elev_loss }
+        {
+          stats with
+          elev_high = results.elev_high;
+          elev_low = results.elev_low;
+          elev_gain = results.elev_gain;
+          elev_loss = results.elev_loss;
+        }
     | _ -> stats
   (* total_elevation_gain = None; *)
   (* average_speed = None; *)
@@ -276,65 +222,6 @@ let distance (coord1 : float list) (coord2 : float list) =
   in
   let max_meters = earth_radius * acos (min a 1.0) in
   max_meters
-
-(* let distance_window_smoothing (elev_data : float list) (distance_window : int) : *)
-(*     float list = *)
-(* let module Accumulator = struct *)
-(*   type t = { *)
-(*     start : int; *)
-(*     end_ : int; *)
-(*     accumulated : float; *)
-(*     result : float list; *)
-(*   } *)
-(**)
-(*   let empty () = { start = 0; end_ = 0; accumulated = 0.0; result = [] } *)
-(* end in *)
-(* List.foldi ~init:(Accumulator.empty ()) ~f:(fun i acc v -> acc) elev_data *)
-
-(* TODO: implement and test these for elevation smoothing *)
-(* function distanceWindowSmoothing( *)
-(*     points: TrackPoint[], *)
-(*     distanceWindow: number, *)
-(*     accumulate: (index: number) => number, *)
-(*     compute: (accumulated: number, start: number, end: number) => number, *)
-(*     remove?: (index: number) => number *)
-(* ): number[] { *)
-(*     let result = []; *)
-(**)
-(*     let start = 0, *)
-(*         end = 0, *)
-(*         accumulated = 0; *)
-(*     for (var i = 0; i < points.length; i++) { *)
-(*         while ( *)
-(*             start + 1 < i && *)
-(*             distance(points[start].getCoordinates(), points[i].getCoordinates()) > distanceWindow *)
-(*         ) { *)
-(*             if (remove) { *)
-(*                 accumulated -= remove(start); *)
-(*             } else { *)
-(*                 accumulated -= accumulate(start); *)
-(*             } *)
-(*             start++; *)
-(*         } *)
-(*         while ( *)
-(*             end < points.length && *)
-(*             distance(points[i].getCoordinates(), points[end].getCoordinates()) <= distanceWindow *)
-(*         ) { *)
-(*             accumulated += accumulate(end); *)
-(*             end++; *)
-(*         } *)
-(*         result[i] = compute(accumulated, start, end - 1); *)
-(*     } *)
-(**)
-(*     return result; *)
-(* } *)
-
-(* let smoothed = distanceWindowSmoothing( *)
-(*             points, *)
-(*             100, *)
-(*             (index) => points[index].ele ?? 0, *)
-(*             (accumulated, start, end) => accumulated / (end - start + 1) *)
-(*         ); *)
 
 module Streams = struct
   type t = StreamType.t list [@@deriving show { with_path = false }, yojson]
@@ -553,8 +440,8 @@ let%expect_test "process_streams" =
   [%expect
     {|
     { moving_time = 4887; elapsed_time = 5561; distance = (Some 11033.);
-      elev_gain = (Some 2652.80601672); elev_loss = (Some 2658.17261087);
-      elev_high = (Some 141.); elev_low = (Some 110.);
+      elev_gain = (Some 102.6); elev_loss = (Some 96.0363636364);
+      elev_high = (Some 140.927272727); elev_low = (Some 110.054545455);
       start_latlng = (Some (54.755563, 25.37736));
       end_latlng = (Some (54.755553, 25.377283)); average_speed = None;
       max_speed = None; average_cadence = None; average_temp = None;
@@ -594,7 +481,7 @@ let%expect_test "altitude smoothing (exponential moving average)" =
       112.6;
     ]
   in
-  let ema = exponential_moving_average 0.2 data in
+  let ema = Utils.exponential_moving_average 0.2 data in
   List.iter ~f:(printf "%.2f ") ema;
   [%expect
     {| 115.20 115.20 115.20 115.20 115.20 115.20 115.20 115.20 115.20 115.08 114.90 114.72 114.54 114.39 114.19 114.03 113.87 113.73 113.55 113.40 113.24 |}]
@@ -625,7 +512,7 @@ let%expect_test "altitude smoothing (moving average)" =
       112.6;
     ]
   in
-  let ma = moving_average 5 data in
+  let ma = Utils.moving_average 5 data in
   List.iter ~f:(printf "%.2f ") ma;
   [%expect
     {| 115.20 115.20 115.20 115.20 115.14 115.05 114.95 114.82 114.69 114.53 114.36 114.18 114.00 113.78 113.56 113.38 113.30 113.22 113.15 113.06 113.00 |}]
@@ -641,10 +528,10 @@ let%expect_test "altitude smoothing (moving average)" =
 (*       match stream with *)
 (*       | AltitudeStream s -> *)
 (*           let raw_data = s.data in *)
-(*           let smoothed_ma = moving_average 30 s.data in *)
+(*           let smoothed_ma = Utils.moving_average 5 s.data in *)
 (*           (* NOTE: The exponential moving average seems to be closest to suunto but strava graph is way too flat. 0.15 looks good, try 0.10 or 0.7 or 0.5 *) *)
 (*           (* NOTE: The moving average also ok for values of 20-ish, maybe try 15 *) *)
-(*           let smoothed_ema = exponential_moving_average 0.15 s.data in *)
+(*           let smoothed_ema = Utils.exponential_moving_average 0.20 s.data in *)
 (*           let out_raw = *)
 (*             List.foldi ~init:"time,raw,ma_30,ema_015\n" *)
 (*               ~f:(fun i acc alt -> *)
@@ -653,7 +540,7 @@ let%expect_test "altitude smoothing (moving average)" =
 (*                   (List.nth_exn smoothed_ema i)) *)
 (*               raw_data *)
 (*           in *)
-(*           Out_channel.write_all "/home/angel/Documents/ocaml/unto/alt2.csv" *)
+(*           Out_channel.write_all "/home/angel/Documents/ocaml/unto/alt4.csv" *)
 (*             ~data:out_raw *)
 (*       | _ -> ()); *)
 (*   [%expect {| a |}] *)
