@@ -194,8 +194,14 @@ module StreamType = struct
           elev_gain = results.elev_gain;
           elev_loss = results.elev_loss;
         }
+    | VelocityStream s ->
+        (* TODO: check if this is correct *)
+        let average_speed = List.sum (module Float) ~f:Fn.id s.data in
+        let average_speed =
+          Some (average_speed /. Float.of_int (List.length s.data))
+        in
+        { stats with average_speed }
     | _ -> stats
-  (* total_elevation_gain = None; *)
   (* average_speed = None; *)
   (* max_speed = None; *)
   (* average_cadence = None; *)
