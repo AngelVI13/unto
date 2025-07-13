@@ -458,7 +458,7 @@ let%expect_test "process_streams" =
       start_latlng = (Some (54.755563, 25.37736));
       end_latlng = (Some (54.755553, 25.377283)); average_speed = (Some 2.258);
       max_speed = (Some 5.); average_cadence = None; average_temp = None;
-      average_heartrate = None; max_heartrate = None } |}]
+      average_heartrate = (Some 169); max_heartrate = (Some 185) } |}]
 
 let%expect_test "distance by coords" =
   let coord1 = [ 54.755563; 25.37736 ] in
