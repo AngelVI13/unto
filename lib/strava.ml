@@ -76,10 +76,10 @@ module ActivityStats = struct
     end_latlng : (float * float) option;
     average_speed : float option;
     max_speed : float option;
-    average_cadence : float option;
+    average_cadence : int option;
     average_temp : int option;
-    average_heartrate : float option;
-    max_heartrate : float option;
+    average_heartrate : int option;
+    max_heartrate : int option;
   }
   [@@deriving show { with_path = false }]
 
@@ -171,8 +171,13 @@ module StreamType = struct
         let moving_time = List.length s.data - 2 in
         { stats with elapsed_time; moving_time }
     | DistanceStream s ->
-        let distance = Some (List.last_exn s.data) in
-        { stats with distance }
+        let distance = List.last_exn s.data in
+        let average_speed = distance /. Float.of_int (List.length s.data - 2) in
+        let average_speed =
+          Float.round_decimal ~decimal_digits:3 average_speed
+        in
+        let distance, average_speed = (Some distance, Some average_speed) in
+        { stats with distance; average_speed }
     | LatLngStream s ->
         let start = List.hd_exn s.data in
         let start_latlng = Some (List.nth_exn start 0, List.nth_exn start 1) in
@@ -182,7 +187,9 @@ module StreamType = struct
     | AltitudeStream s ->
         (* let smoothed = Utils.exponential_moving_average 0.20 s.data in *)
         let smoothing_window = 5 in
-        let smoothed = Utils.moving_average smoothing_window s.data in
+        let smoothed =
+          Utils.moving_average (module Utils.FloatOps) smoothing_window s.data
+        in
         let compute_fn = ElevResult.compute smoothed in
         let results =
           List.foldi ~init:(ElevResult.empty ()) ~f:compute_fn smoothed
@@ -195,19 +202,19 @@ module StreamType = struct
           elev_loss = results.elev_loss;
         }
     | VelocityStream s ->
-        (* TODO: check if this is correct *)
-        let average_speed = List.sum (module Float) ~f:Fn.id s.data in
-        let average_speed =
-          Some (average_speed /. Float.of_int (List.length s.data))
-        in
-        { stats with average_speed }
+        let max_speed = List.max_elt ~compare:Float.compare s.data in
+        { stats with max_speed }
+    | HeartRateStream s ->
+        let data = List.drop s.data 1 in
+        let data = Utils.moving_average (module Utils.IntOps) 5 data in
+        let heartrate_sum = List.sum (module Int) ~f:Fn.id data in
+        let average_heartrate = Some (heartrate_sum / List.length data) in
+
+        let max_heartrate = List.max_elt ~compare:Int.compare data in
+        { stats with average_heartrate; max_heartrate }
     | _ -> stats
-  (* average_speed = None; *)
-  (* max_speed = None; *)
   (* average_cadence = None; *)
   (* average_temp = None; *)
-  (* average_heartrate = None; *)
-  (* max_heartrate = None; *)
 end
 
 (* NOTE: this was translated from this:
@@ -449,8 +456,8 @@ let%expect_test "process_streams" =
       elev_gain = (Some 102.6); elev_loss = (Some 96.0363636364);
       elev_high = (Some 140.927272727); elev_low = (Some 110.054545455);
       start_latlng = (Some (54.755563, 25.37736));
-      end_latlng = (Some (54.755553, 25.377283)); average_speed = None;
-      max_speed = None; average_cadence = None; average_temp = None;
+      end_latlng = (Some (54.755553, 25.377283)); average_speed = (Some 2.258);
+      max_speed = (Some 5.); average_cadence = None; average_temp = None;
       average_heartrate = None; max_heartrate = None } |}]
 
 let%expect_test "distance by coords" =
@@ -518,7 +525,7 @@ let%expect_test "altitude smoothing (moving average)" =
       112.6;
     ]
   in
-  let ma = Utils.moving_average 5 data in
+  let ma = Utils.moving_average (module Utils.FloatOps) 5 data in
   List.iter ~f:(printf "%.2f ") ma;
   [%expect
     {| 115.20 115.20 115.20 115.20 115.14 115.05 114.95 114.82 114.69 114.53 114.36 114.18 114.00 113.78 113.56 113.38 113.30 113.22 113.15 113.06 113.00 |}]
@@ -547,6 +554,26 @@ let%expect_test "altitude smoothing (moving average)" =
 (*               raw_data *)
 (*           in *)
 (*           Out_channel.write_all "/home/angel/Documents/ocaml/unto/alt4.csv" *)
+(*             ~data:out_raw *)
+(*       | _ -> ()); *)
+(*   [%expect {| a |}] *)
+
+(* let%expect_test "write velocity csv" = *)
+(*   let json = *)
+(*     Yojson.Safe.from_file *)
+(*       "/home/angel/Documents/ocaml/unto/streams_14995177737.json" *)
+(*   in *)
+(*   let streams = Streams.t_of_yojson json in *)
+(*   List.iter streams ~f:(fun stream -> *)
+(*       match stream with *)
+(*       | VelocityStream s -> *)
+(*           let raw_data = s.data in *)
+(*           let out_raw = *)
+(*             List.foldi ~init:"time,velocity\n" *)
+(*               ~f:(fun i acc vel -> sprintf "%s%d,%f\n" acc i vel) *)
+(*               raw_data *)
+(*           in *)
+(*           Out_channel.write_all "/home/angel/Documents/ocaml/unto/vel.csv" *)
 (*             ~data:out_raw *)
 (*       | _ -> ()); *)
 (*   [%expect {| a |}] *)
