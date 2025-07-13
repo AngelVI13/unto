@@ -77,6 +77,7 @@ module ActivityStats = struct
     average_speed : float option;
     max_speed : float option;
     average_cadence : int option;
+    max_cadence : int option;
     average_temp : int option;
     average_heartrate : int option;
     max_heartrate : int option;
@@ -97,6 +98,7 @@ module ActivityStats = struct
       average_speed = None;
       max_speed = None;
       average_cadence = None;
+      max_cadence = None;
       average_temp = None;
       average_heartrate = None;
       max_heartrate = None;
@@ -205,16 +207,22 @@ module StreamType = struct
         let max_speed = List.max_elt ~compare:Float.compare s.data in
         { stats with max_speed }
     | HeartRateStream s ->
-        let data = List.drop s.data 1 in
-        let data = Utils.moving_average (module Utils.IntOps) 5 data in
-        let heartrate_sum = List.sum (module Int) ~f:Fn.id data in
-        let average_heartrate = Some (heartrate_sum / List.length data) in
-
+        let data = s.data in
+        let average_heartrate = Utils.average data in
         let max_heartrate = List.max_elt ~compare:Int.compare data in
         { stats with average_heartrate; max_heartrate }
+    | CadenceStream s ->
+        let data = s.data in
+        let data = List.filter data ~f:(fun cad -> cad > 0) in
+        let average_cadence = Utils.average data in
+
+        let max_cadence = List.max_elt ~compare:Int.compare data in
+        { stats with average_cadence; max_cadence }
+    | TempStream s ->
+        let data = s.data in
+        let average_temp = Utils.average data in
+        { stats with average_temp }
     | _ -> stats
-  (* average_cadence = None; *)
-  (* average_temp = None; *)
 end
 
 (* NOTE: this was translated from this:
@@ -457,8 +465,9 @@ let%expect_test "process_streams" =
       elev_high = (Some 140.927272727); elev_low = (Some 110.054545455);
       start_latlng = (Some (54.755563, 25.37736));
       end_latlng = (Some (54.755553, 25.377283)); average_speed = (Some 2.258);
-      max_speed = (Some 5.); average_cadence = None; average_temp = None;
-      average_heartrate = (Some 169); max_heartrate = (Some 185) } |}]
+      max_speed = (Some 5.); average_cadence = (Some 75);
+      max_cadence = (Some 99); average_temp = (Some 32);
+      average_heartrate = (Some 169); max_heartrate = (Some 186) } |}]
 
 let%expect_test "distance by coords" =
   let coord1 = [ 54.755563; 25.37736 ] in

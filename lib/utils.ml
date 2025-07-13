@@ -56,3 +56,9 @@ let moving_average (type a) (module N : NUMERIC with type t = a) k data =
     smoothed.(i) <- N.div !sum !count
   done;
   Array.to_list smoothed
+
+let average data =
+  let sum = Float.of_int @@ List.sum (module Int) ~f:Fn.id data in
+
+  let avg = sum /. Float.of_int (List.length data) in
+  avg |> Float.round_nearest |> Int.of_float |> Some
