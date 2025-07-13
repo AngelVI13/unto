@@ -81,6 +81,10 @@ module ActivityStats = struct
     average_temp : int option;
     average_heartrate : int option;
     max_heartrate : int option;
+    average_power : int option;
+    max_power : int option;
+    max_uphill_grade : float option;
+    max_downhill_grade : float option;
   }
   [@@deriving show { with_path = false }]
 
@@ -102,6 +106,10 @@ module ActivityStats = struct
       average_temp = None;
       average_heartrate = None;
       max_heartrate = None;
+      average_power = None;
+      max_power = None;
+      max_uphill_grade = None;
+      max_downhill_grade = None;
     }
 end
 
@@ -222,8 +230,24 @@ module StreamType = struct
         let data = s.data in
         let average_temp = Utils.average data in
         { stats with average_temp }
+    | WattsStream s ->
+        (* NOTE: the the example activity im using doesn't have power data -> test this code *)
+        let data = s.data in
+        let data = List.filter ~f:Option.is_some data in
+        let data = List.map ~f:(fun power -> Option.value_exn power) data in
+        let average_power = Utils.average data in
+        let max_power = List.max_elt ~compare:Int.compare data in
+        { stats with average_power; max_power }
+    (* TODO: calculate grade and power data stats *)
+    (* average_power : int option; *)
+    (* max_power : int option; *)
+    (* max_uphill_grade : float option; *)
+    (* max_downhill_grade : float option; *)
     | _ -> stats
 end
+
+(* NOTE: here is a m/s to min/km converter:  *)
+(* https://www.unitjuggler.com/convert-speed-from-ms-to-minkm.html?val=2.257 *)
 
 (* NOTE: this was translated from this:
   https://github.com/gpxstudio/gpx.studio/blob/a9ea0e223d925f964c274deb4d558d88f1246f3c/gpx/src/gpx.ts#L1901
@@ -467,7 +491,9 @@ let%expect_test "process_streams" =
       end_latlng = (Some (54.755553, 25.377283)); average_speed = (Some 2.258);
       max_speed = (Some 5.); average_cadence = (Some 75);
       max_cadence = (Some 99); average_temp = (Some 32);
-      average_heartrate = (Some 169); max_heartrate = (Some 186) } |}]
+      average_heartrate = (Some 169); max_heartrate = (Some 186);
+      average_power = None; max_power = None; max_uphill_grade = None;
+      max_downhill_grade = None } |}]
 
 let%expect_test "distance by coords" =
   let coord1 = [ 54.755563; 25.37736 ] in
