@@ -1,6 +1,8 @@
 open Core
+open Import
 open Elevation
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
+open Or_error.Let_syntax
 
 (* TODO: use https://github.com/mmottl/sqlite3-ocaml for sqlite storage *)
 (* some examples can be found here: https://github.com/patoline/patoline/blob/75fd8c928efc68d0aaa400d3a699a0e668c26c5f/permap/permap.ml#L43 *)
@@ -83,10 +85,8 @@ module ActivityStats = struct
     max_heartrate : int option;
     average_power : int option;
     max_power : int option;
-    max_uphill_grade : float option;
-    max_downhill_grade : float option;
   }
-  [@@deriving show { with_path = false }]
+  [@@deriving show { with_path = false }, yojson]
 
   let empty () =
     {
@@ -108,8 +108,6 @@ module ActivityStats = struct
       max_heartrate = None;
       average_power = None;
       max_power = None;
-      max_uphill_grade = None;
-      max_downhill_grade = None;
     }
 end
 
@@ -200,17 +198,41 @@ module StreamType = struct
         let smoothed =
           Utils.moving_average (module Utils.FloatOps) smoothing_window s.data
         in
-        let compute_fn = ElevResult.compute smoothed in
-        let results =
-          List.foldi ~init:(ElevResult.empty ()) ~f:compute_fn smoothed
+        let smoothed =
+          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
         in
-        {
-          stats with
-          elev_high = results.elev_high;
-          elev_low = results.elev_low;
-          elev_gain = results.elev_gain;
-          elev_loss = results.elev_loss;
-        }
+        let smoothed =
+          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
+        in
+        let smoothed =
+          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
+        in
+        let smoothed =
+          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
+        in
+        let smoothed =
+          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
+        in
+        let smoothed =
+          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
+        in
+        let smoothed =
+          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
+        in
+
+        let smoothed = List.map ~f:Int.of_float smoothed in
+        let compute_fn = ElevResultInt.compute smoothed in
+        let results =
+          List.foldi ~init:(ElevResultInt.empty ()) ~f:compute_fn smoothed
+        in
+
+        let elev_high, elev_low, elev_gain, elev_loss =
+          ( Some (Float.of_int @@ Option.value_exn results.elev_high),
+            Some (Float.of_int @@ Option.value_exn results.elev_low),
+            Some (Float.of_int @@ Option.value_exn results.elev_gain),
+            Some (Float.of_int @@ Option.value_exn results.elev_loss) )
+        in
+        { stats with elev_high; elev_low; elev_gain; elev_loss }
     | VelocityStream s ->
         let max_speed = List.max_elt ~compare:Float.compare s.data in
         { stats with max_speed }
@@ -238,12 +260,7 @@ module StreamType = struct
         let average_power = Utils.average data in
         let max_power = List.max_elt ~compare:Int.compare data in
         { stats with average_power; max_power }
-    (* TODO: calculate grade and power data stats *)
-    (* average_power : int option; *)
-    (* max_power : int option; *)
-    (* max_uphill_grade : float option; *)
-    (* max_downhill_grade : float option; *)
-    | _ -> stats
+    | GradeStream _ -> stats
 end
 
 (* NOTE: here is a m/s to min/km converter:  *)
@@ -361,15 +378,38 @@ let pull_activities token num_activities =
 
 (* TODO: also pull_lap_times for the activities *)
 
-(* TODO: try with should raise a specific error otherwise i can't figure out what went wrong *)
-let pull_streams token activity_id =
-  let open Or_error.Let_syntax in
+let pull_streams_aux token activity_id =
   let resp = get_streams token activity_id in
   let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
-  let%bind _ = Or_error.try_with (fun () -> Streams.t_of_yojson json) in
+  Or_error.try_with (fun () -> Streams.t_of_yojson json)
+
+(* TODO: try with should raise a specific error otherwise i can't figure out what went wrong *)
+let pull_streams token activity_id =
+  let%bind streams = pull_streams_aux token activity_id in
   let filename = sprintf "streams_%d.json" activity_id in
-  Yojson.Safe.to_file filename json;
+  Yojson.Safe.to_file filename (Streams.yojson_of_t streams);
   printf "Saved streams to file %s\n" filename;
+  Ok ()
+
+let process_activities token num_activities =
+  let resp = list_activities token num_activities in
+  let timestamp = Time_ns.now () |> Time_ns.to_string in
+  let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
+  let filename = sprintf "%s_activities.json" timestamp in
+  Yojson.Safe.to_file filename json;
+  printf "Saved activities to file %s\n" filename;
+  let%bind activities =
+    Or_error.try_with (fun () -> StravaActivities.t_of_yojson json)
+  in
+  let streams =
+    List.map ~f:(fun activity -> pull_streams_aux token activity.id) activities
+  in
+  let%bind streams = Or_error.combine_errors streams in
+  let stats = List.map ~f:Streams.stats streams in
+  let out = [%yojson_of: ActivityStats.t list] stats in
+  let filename = sprintf "%s_stats.json" timestamp in
+  Yojson.Safe.to_file filename out;
+  printf "Saved stats to file %s\n" filename;
   Ok ()
 
 let%expect_test "deserialize get_stream.json" =
@@ -492,8 +532,7 @@ let%expect_test "process_streams" =
       max_speed = (Some 5.); average_cadence = (Some 75);
       max_cadence = (Some 99); average_temp = (Some 32);
       average_heartrate = (Some 169); max_heartrate = (Some 186);
-      average_power = None; max_power = None; max_uphill_grade = None;
-      max_downhill_grade = None } |}]
+      average_power = None; max_power = None } |}]
 
 let%expect_test "distance by coords" =
   let coord1 = [ 54.755563; 25.37736 ] in

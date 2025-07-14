@@ -47,12 +47,32 @@ let command_pull_streams auth_client =
        in
        Or_error.ok_exn (Unto.Strava.pull_streams auth.access_token id))
 
+let command_test auth_client =
+  Command.basic ~summary:"Test"
+    (let%map_open.Command auth_filename =
+       flag "-t"
+         (optional_with_default "tokens.json" Filename_unix.arg_type)
+         ~doc:"Filename where to read access and refresh tokens from"
+     and n =
+       flag "-n"
+         (optional_with_default 10 int)
+         ~doc:"number of activities to test"
+     in
+     fun () ->
+       let auth =
+         Or_error.ok_exn
+           (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
+       in
+       printf "hello";
+       Or_error.ok_exn (Unto.Strava.process_activities auth.access_token n))
+
 let command auth_client =
   Command.group ~summary:"CLI utility to download data from strava"
     [
       ("obtain-access-token", command_obtain_access_token auth_client);
       ("pull-activities", command_pull_activities auth_client);
       ("pull-streams", command_pull_streams auth_client);
+      ("test", command_test auth_client);
     ]
 
 let () =
