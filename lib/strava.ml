@@ -63,9 +63,11 @@ type sportType =
   | Windsurf
   | Workout
   | Yoga
-[@@deriving yojson, show { with_path = false }]
+[@@deriving yojson, show { with_path = false }, sexp]
 
-module ActivityStats = struct
+let sportType_of_string s = sportType_of_sexp (Sexp.of_string s)
+
+module Stats = struct
   type t = {
     moving_time : int;
     elapsed_time : int;
@@ -109,23 +111,6 @@ module ActivityStats = struct
       average_power = None;
       max_power = None;
     }
-end
-
-module Activity = struct
-  type t = {
-    id : string;
-    athlete_id : string;
-    name : string;
-    sport_type : sportType;
-    start_date : string;
-    timezone : string;
-    map_id : string;
-    map_summary_polyline : string;
-    (* NOTE: these are calculated from the data streams of the
-       activity and not taken from strava directly *)
-    stats : ActivityStats.t;
-  }
-  [@@deriving show { with_path = false }]
 end
 
 module Stream = struct
@@ -172,11 +157,11 @@ module StreamType = struct
         GradeStream (Stream.t_of_yojson [%of_yojson: float] json)
     | _ -> failwith "unsupported"
 
-  let stats_of_t (stats : ActivityStats.t) (stream : t) : ActivityStats.t =
+  let stats_of_t (stats : Stats.t) (stream : t) : Stats.t =
     match stream with
     | TimeStream s ->
-        let elapsed_time = List.last_exn s.data - 1 in
-        let moving_time = List.length s.data - 2 in
+        let elapsed_time = List.last_exn s.data in
+        let moving_time = List.length s.data - 1 in
         { stats with elapsed_time; moving_time }
     | DistanceStream s ->
         let distance = List.last_exn s.data in
@@ -236,30 +221,26 @@ end
 (* NOTE: here is a m/s to min/km converter:  *)
 (* https://www.unitjuggler.com/convert-speed-from-ms-to-minkm.html?val=2.257 *)
 
-(* NOTE: this was translated from this:
-  https://github.com/gpxstudio/gpx.studio/blob/a9ea0e223d925f964c274deb4d558d88f1246f3c/gpx/src/gpx.ts#L1901
-  *)
-let distance (coord1 : float list) (coord2 : float list) =
-  let open Float in
-  let earth_radius = 6371008.8 in
-  let rad = pi / 180.0 in
-  let lat1 = List.nth_exn coord1 0 in
-  let lat1 = lat1 * rad in
-  let lat2 = List.nth_exn coord2 0 in
-  let lat2 = lat2 * rad in
-  let lon1 = List.nth_exn coord1 1 in
-  let lon2 = List.nth_exn coord2 1 in
-  let a =
-    (sin lat1 * sin lat2) + (cos lat1 * cos lat2 * cos ((lon2 - lon1) * rad))
-  in
-  let max_meters = earth_radius * acos (min a 1.0) in
-  max_meters
-
 module Streams = struct
   type t = StreamType.t list [@@deriving show { with_path = false }, yojson]
 
-  let stats (streams : t) : ActivityStats.t =
-    List.fold ~init:(ActivityStats.empty ()) ~f:StreamType.stats_of_t streams
+  let stats (streams : t) : Stats.t =
+    List.fold ~init:(Stats.empty ()) ~f:StreamType.stats_of_t streams
+end
+
+module Lap = struct
+  type t = { start_index : int; end_index : int; lap_index : int }
+  [@@deriving show { with_path = false }, yojson] [@@yojson.allow_extra_fields]
+
+  let empty () = { start_index = 0; end_index = 10; lap_index = 0 }
+end
+
+(* TODO: should i calculate splits here, i.e. for every 1km? because laps can differ from splits? *)
+
+module Laps = struct
+  type t = Lap.t list [@@deriving show { with_path = false }, yojson]
+
+  let empty () : t = [ Lap.empty () ]
 end
 
 let _athlete_info token =
@@ -295,6 +276,38 @@ end
 
 module StravaActivities = struct
   type t = StravaActivity.t list [@@deriving yojson, show { with_path = false }]
+end
+
+module Activity = struct
+  type t = {
+    id : int;
+    athlete_id : int;
+    name : string;
+    sport_type : sportType;
+    start_date : string;
+    timezone : string;
+    map_id : string;
+    map_summary_polyline : string;
+    (* NOTE: these are calculated from the data streams of the
+       activity and not taken from strava directly *)
+    stats : Stats.t;
+    laps : Laps.t;
+  }
+  [@@deriving show { with_path = false }]
+
+  let t_of_StravaActivity (activity : StravaActivity.t) : t =
+    {
+      id = activity.id;
+      athlete_id = activity.athlete.id;
+      name = activity.name;
+      sport_type = sportType_of_string activity.sport_type;
+      start_date = activity.start_date_local;
+      timezone = activity.timezone;
+      map_id = activity.map.id;
+      map_summary_polyline = activity.map.summary_polyline;
+      stats = Stats.empty ();
+      laps = Laps.empty ();
+    }
 end
 
 (* TODO: Create a custom activity class that has all the properties calculated from the streams *)
@@ -340,6 +353,16 @@ let get_streams token activity_id =
   let out = match res with Ok c -> c.body | Error (_, s) -> s in
   out
 
+let get_laps token activity_id =
+  let url =
+    sprintf "https://www.strava.com/api/v3/activities/%d/laps" activity_id
+  in
+
+  let headers = [ ("Authorization", sprintf "Bearer %s" token) ] in
+  let res = Ezcurl.get ~headers ~url () in
+  let out = match res with Ok c -> c.body | Error (_, s) -> s in
+  out
+
 let pull_activities token num_activities =
   let activities = list_activities token num_activities in
   print_endline activities
@@ -359,6 +382,15 @@ let pull_streams token activity_id =
   printf "Saved streams to file %s\n" filename;
   Ok ()
 
+let pull_laps token activity_id =
+  let resp = get_laps token activity_id in
+  let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
+  let%bind laps = Or_error.try_with (fun () -> Laps.t_of_yojson json) in
+  let filename = sprintf "laps_%d.json" activity_id in
+  Yojson.Safe.to_file filename (Laps.yojson_of_t laps);
+  printf "Saved laps to file %s\n" filename;
+  Ok ()
+
 let process_activities token num_activities =
   let resp = list_activities token num_activities in
   let timestamp = Time_ns.now () |> Time_ns.to_string in
@@ -366,9 +398,10 @@ let process_activities token num_activities =
   let filename = sprintf "%s_activities.json" timestamp in
   Yojson.Safe.to_file filename json;
   printf "Saved activities to file %s\n" filename;
-  let%bind activities =
+  let%bind strava_activities =
     Or_error.try_with (fun () -> StravaActivities.t_of_yojson json)
   in
+  let activities = List.map ~f:Activity.t_of_StravaActivity strava_activities in
   let streams =
     List.map
       ~f:(fun activity ->
@@ -383,7 +416,7 @@ let process_activities token num_activities =
   in
   (* let%bind streams = Or_error.combine_errors streams in *)
   let stats = List.map ~f:Streams.stats streams in
-  let out = [%yojson_of: ActivityStats.t list] stats in
+  let out = [%yojson_of: Stats.t list] stats in
   let filename = sprintf "%s_stats.json" timestamp in
   Yojson.Safe.to_file filename out;
   printf "Saved stats to file %s\n" filename;
@@ -514,11 +547,11 @@ let%expect_test "process_streams" =
   in
   let streams = Streams.t_of_yojson json in
   let stats = Streams.stats streams in
-  printf "%s" (ActivityStats.show stats);
+  printf "%s" (Stats.show stats);
   [%expect
     {|
     Smoothing equilibrium reached at depth=8
-    { moving_time = 4887; elapsed_time = 5561; distance = (Some 11033.);
+    { moving_time = 4888; elapsed_time = 5562; distance = (Some 11033.);
       elev_gain = (Some 108); elev_loss = (Some 103); elev_high = (Some 140);
       elev_low = (Some 110); start_latlng = (Some (54.755563, 25.37736));
       end_latlng = (Some (54.755553, 25.377283)); average_speed = (Some 2.258);
@@ -526,14 +559,6 @@ let%expect_test "process_streams" =
       max_cadence = (Some 99); average_temp = (Some 32);
       average_heartrate = (Some 169); max_heartrate = (Some 186);
       average_power = None; max_power = None } |}]
-
-let%expect_test "distance by coords" =
-  let coord1 = [ 54.755563; 25.37736 ] in
-  let coord2 = [ 54.755523; 25.377214 ] in
-  let distance = distance coord1 coord2 in
-  printf "%f" distance;
-  [%expect {|
-    10.370148 |}]
 
 let%expect_test "altitude smoothing (exponential moving average)" =
   let data =
@@ -597,6 +622,13 @@ let%expect_test "altitude smoothing (moving average)" =
   [%expect
     {| 115.20 115.20 115.20 115.20 115.14 115.05 114.95 114.82 114.69 114.53 114.36 114.18 114.00 113.78 113.56 113.38 113.30 113.22 113.15 113.06 113.00 |}]
 
+let%expect_test "sportType of string" =
+  let sport_str = "Run" in
+  let sport = sportType_of_string sport_str in
+  let success = match sport with Run -> true | _ -> false in
+  printf "%b" success;
+  [%expect {| true |}]
+
 (* let%expect_test "write raw altitude csv" = *)
 (*   let json = *)
 (*     Yojson.Safe.from_file *)
@@ -618,26 +650,6 @@ let%expect_test "altitude smoothing (moving average)" =
 (*               raw_data *)
 (*           in *)
 (*           Out_channel.write_all "/home/angel/Documents/ocaml/unto/alt5.csv" *)
-(*             ~data:out_raw *)
-(*       | _ -> ()); *)
-(*   [%expect {| a |}] *)
-(**)
-(* let%expect_test "write velocity csv" = *)
-(*   let json = *)
-(*     Yojson.Safe.from_file *)
-(*       "/home/angel/Documents/ocaml/unto/streams_14995177737.json" *)
-(*   in *)
-(*   let streams = Streams.t_of_yojson json in *)
-(*   List.iter streams ~f:(fun stream -> *)
-(*       match stream with *)
-(*       | VelocityStream s -> *)
-(*           let raw_data = s.data in *)
-(*           let out_raw = *)
-(*             List.foldi ~init:"time,velocity\n" *)
-(*               ~f:(fun i acc vel -> sprintf "%s%d,%f\n" acc i vel) *)
-(*               raw_data *)
-(*           in *)
-(*           Out_channel.write_all "/home/angel/Documents/ocaml/unto/vel.csv" *)
 (*             ~data:out_raw *)
 (*       | _ -> ()); *)
 (*   [%expect {| a |}] *)
