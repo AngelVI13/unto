@@ -62,3 +62,13 @@ let average data =
 
   let avg = sum /. Float.of_int (List.length data) in
   avg |> Float.round_nearest |> Int.of_float |> Some
+
+let repeat_smoothing times window data =
+  let rec smoothe times data =
+    if times = 0 then data
+    else
+      let new_data = moving_average (module FloatOps) window data in
+      smoothe (times - 1) new_data
+  in
+
+  smoothe times data

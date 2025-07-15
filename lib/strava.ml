@@ -70,10 +70,10 @@ module ActivityStats = struct
     moving_time : int;
     elapsed_time : int;
     distance : float option;
-    elev_gain : float option;
-    elev_loss : float option;
-    elev_high : float option;
-    elev_low : float option;
+    elev_gain : int option;
+    elev_loss : int option;
+    elev_high : int option;
+    elev_low : int option;
     start_latlng : (float * float) option;
     end_latlng : (float * float) option;
     average_speed : float option;
@@ -193,46 +193,16 @@ module StreamType = struct
         let end_latlng = Some (List.nth_exn end_ 0, List.nth_exn end_ 1) in
         { stats with start_latlng; end_latlng }
     | AltitudeStream s ->
-        (* let smoothed = Utils.exponential_moving_average 0.20 s.data in *)
         let smoothing_window = 5 in
-        let smoothed =
-          Utils.moving_average (module Utils.FloatOps) smoothing_window s.data
-        in
-        let smoothed =
-          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
-        in
-        let smoothed =
-          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
-        in
-        let smoothed =
-          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
-        in
-        let smoothed =
-          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
-        in
-        let smoothed =
-          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
-        in
-        let smoothed =
-          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
-        in
-        let smoothed =
-          Utils.moving_average (module Utils.FloatOps) smoothing_window smoothed
-        in
+        let results = ElevResult.compute smoothing_window s.data in
 
-        let smoothed = List.map ~f:Int.of_float smoothed in
-        let compute_fn = ElevResultInt.compute smoothed in
-        let results =
-          List.foldi ~init:(ElevResultInt.empty ()) ~f:compute_fn smoothed
-        in
-
-        let elev_high, elev_low, elev_gain, elev_loss =
-          ( Some (Float.of_int @@ Option.value_exn results.elev_high),
-            Some (Float.of_int @@ Option.value_exn results.elev_low),
-            Some (Float.of_int @@ Option.value_exn results.elev_gain),
-            Some (Float.of_int @@ Option.value_exn results.elev_loss) )
-        in
-        { stats with elev_high; elev_low; elev_gain; elev_loss }
+        {
+          stats with
+          elev_high = results.elev_high;
+          elev_low = results.elev_low;
+          elev_gain = results.elev_gain;
+          elev_loss = results.elev_loss;
+        }
     | VelocityStream s ->
         let max_speed = List.max_elt ~compare:Float.compare s.data in
         { stats with max_speed }
@@ -524,10 +494,10 @@ let%expect_test "process_streams" =
   printf "%s" (ActivityStats.show stats);
   [%expect
     {|
+    Smoothing equilibrium reached at depth=8
     { moving_time = 4887; elapsed_time = 5561; distance = (Some 11033.);
-      elev_gain = (Some 102.6); elev_loss = (Some 96.0363636364);
-      elev_high = (Some 140.927272727); elev_low = (Some 110.054545455);
-      start_latlng = (Some (54.755563, 25.37736));
+      elev_gain = (Some 108); elev_loss = (Some 103); elev_high = (Some 140);
+      elev_low = (Some 110); start_latlng = (Some (54.755563, 25.37736));
       end_latlng = (Some (54.755553, 25.377283)); average_speed = (Some 2.258);
       max_speed = (Some 5.); average_cadence = (Some 75);
       max_cadence = (Some 99); average_temp = (Some 32);
