@@ -283,14 +283,12 @@ module StravaActivity = struct
   type t = {
     athlete : StravaAthlete.t;
     name : string;
-    (* TODO: convert to correct sport type and not just string *)
-    (* sport_type : sportType; *)
     sport_type : string;
     id : int;
     start_date_local : string;
     timezone : string;
     map : StravaPolylineMap.t;
-    gear_id : string;
+    gear_id : string option;
   }
   [@@deriving yojson, show { with_path = false }] [@@yojson.allow_extra_fields]
 end
@@ -372,9 +370,18 @@ let process_activities token num_activities =
     Or_error.try_with (fun () -> StravaActivities.t_of_yojson json)
   in
   let streams =
-    List.map ~f:(fun activity -> pull_streams_aux token activity.id) activities
+    List.map
+      ~f:(fun activity ->
+        printf "downloading streams for activity=%d\n" activity.id;
+        match pull_streams_aux token activity.id with
+        | Ok s ->
+            printf "successfully downloaded streams for activity=%d\n"
+              activity.id;
+            s
+        | Error e -> Error.raise e)
+      activities
   in
-  let%bind streams = Or_error.combine_errors streams in
+  (* let%bind streams = Or_error.combine_errors streams in *)
   let stats = List.map ~f:Streams.stats streams in
   let out = [%yojson_of: ActivityStats.t list] stats in
   let filename = sprintf "%s_stats.json" timestamp in
@@ -465,7 +472,7 @@ let%expect_test "deserialize get_stream.json" =
       ]
     |}]
 
-let%expect_test "deserialize activity" =
+let%expect_test "deserialize running activity" =
   let json =
     Yojson.Safe.from_file "/home/angel/Documents/ocaml/unto/one_activity.json"
   in
@@ -481,7 +488,23 @@ let%expect_test "deserialize activity" =
          summary_polyline =
          "wmemIkqzyCiAtDIv@k@bC}@jC_AxFWt@Pm@lA}GpBiGlAuEHq@Tk@t@eHD}@]oHQaA_@}@WwBOkBGIMw@aBlBu@^cAbAg@|@_AhAo@dBu@bAe@hAg@t@oAhAqDXc@a@g@]q@QCNJJXEnAjADv@f@~@FfDpBbHv@|Af@`Db@VHz@Nd@ZVKgAb@}GCaDL}@D{BRkAR[\\}APER_@b@}AVcBlAmCb@o@ZQhAJGO_@KS_@WmAsAmEo@oAGk@Wu@o@Gw@RKZBl@QcAWC]k@kBuBo@oBEcAJu@GMe@[YJoAcAe@_ACOFo@XuAAo@FoAHC?SLm@Ay@I_@a@u@_@KKLz@jAH^KrAGbB`@mBDo@Me@?]ZcBj@aAPGDPRJFIq@~Ag@zA[jB[r@Kl@c@Da@d@JPFAI@Rh@?RMu@@QKUd@OV{@Bo@GYIE\\Sh@sB\\Ed@k@Jq@R_@t@D^Vz@i@nA@T_ATUl@qAHgAf@OFR~@\\FF@ZRc@fAy@P?TRbAELr@VGNZ^JeAz@g@MWv@TQrAPNW|@uCp@wCPK`B`BvAbBt@f@Zk@`AqD\\aCpBkGBwAJSVGf@TbAo@n@aCj@n@|@d@l@TZCj@^nBWjAuALw@NBPa@XIH_@\\a@VWZOTy@VoAXyBt@aCh@aAJc@T_Ch@yCZo@Nu@Ng@VE|@zAUiCGU]WmA\\eCEQJe@fABc@E{@_AgDs@e@QmAEaAw@kCEo@y@m@c@q@gBIo@g@o@Ob@}A|@k@Za@l@G~@o@dCCDd@MfBBrAE|@m@lAu@bAc@lCBdBGp@@~@b@rAl@`@i@Sk@_AmARw@a@eAmAaAUWg@?Z[hAAn@Hf@Mb@?XVr@n@p@n@pAIt@Bb@GpB[t@SjAMPAj@S~@EzAIFAh@DrA_@|@Mx@cAfAI\\WRMVO~Ak@nBS`@BdAEVU\\Op@cA^Ya@]^E[o@FELFRVPVv@h@ZNf@YnBqAnEUh@K~@dBzC\\z@PwACYQACMLQ@_@a@RQj@UF_A_BKAKVeA|F_@pAYVm@LG\\]n@Qr@JhAEf@jBnBXl@@pEDJ|@j@LZJfAuAHw@bAoBz@M?[c@YMeCZTlCXpBs@{E}@eMk@}C^rBx@xGX~E"
          };
-       gear_id = "g272465" }
+       gear_id = (Some "g272465") }
+      ] |}]
+
+let%expect_test "deserialize crossfit activity" =
+  let json =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/crossfit_activity.json"
+  in
+  let activities = StravaActivities.t_of_yojson json in
+  printf "%s" (StravaActivities.show activities);
+  [%expect
+    {|
+    [{ athlete = { id = 3504239 }; name = "Lunch Crossfit";
+       sport_type = "Crossfit"; id = 15086886566;
+       start_date_local = "2025-07-12T11:49:53Z";
+       timezone = "(GMT+03:00) Africa/Addis_Ababa";
+       map = { id = "a15086886566"; summary_polyline = "" }; gear_id = None }
       ] |}]
 
 let%expect_test "process_streams" =
@@ -574,7 +597,6 @@ let%expect_test "altitude smoothing (moving average)" =
   [%expect
     {| 115.20 115.20 115.20 115.20 115.14 115.05 114.95 114.82 114.69 114.53 114.36 114.18 114.00 113.78 113.56 113.38 113.30 113.22 113.15 113.06 113.00 |}]
 
-(* TODO: implement the gpx studio algorithm and compare with these simple approaches *)
 (* let%expect_test "write raw altitude csv" = *)
 (*   let json = *)
 (*     Yojson.Safe.from_file *)
@@ -585,23 +607,21 @@ let%expect_test "altitude smoothing (moving average)" =
 (*       match stream with *)
 (*       | AltitudeStream s -> *)
 (*           let raw_data = s.data in *)
-(*           let smoothed_ma = Utils.moving_average 5 s.data in *)
-(*           (* NOTE: The exponential moving average seems to be closest to suunto but strava graph is way too flat. 0.15 looks good, try 0.10 or 0.7 or 0.5 *) *)
-(*           (* NOTE: The moving average also ok for values of 20-ish, maybe try 15 *) *)
-(*           let smoothed_ema = Utils.exponential_moving_average 0.20 s.data in *)
+(*           let smoothed_ma = Utils.repeat_smoothing 8 5 s.data in *)
+(*           let smoothed_int = List.map ~f:Int.of_float smoothed_ma in *)
 (*           let out_raw = *)
-(*             List.foldi ~init:"time,raw,ma_30,ema_015\n" *)
+(*             List.foldi ~init:"time,raw,8x_ma_5,8x_ma_5_int\n" *)
 (*               ~f:(fun i acc alt -> *)
-(*                 sprintf "%s\n%d,%f,%f,%f" acc i alt *)
+(*                 sprintf "%s%d,%f,%f,%d\n" acc i alt *)
 (*                   (List.nth_exn smoothed_ma i) *)
-(*                   (List.nth_exn smoothed_ema i)) *)
+(*                   (List.nth_exn smoothed_int i)) *)
 (*               raw_data *)
 (*           in *)
-(*           Out_channel.write_all "/home/angel/Documents/ocaml/unto/alt4.csv" *)
+(*           Out_channel.write_all "/home/angel/Documents/ocaml/unto/alt5.csv" *)
 (*             ~data:out_raw *)
 (*       | _ -> ()); *)
 (*   [%expect {| a |}] *)
-
+(**)
 (* let%expect_test "write velocity csv" = *)
 (*   let json = *)
 (*     Yojson.Safe.from_file *)

@@ -38,7 +38,9 @@ module ElevResult = struct
 
   let compute ?(max_n = 10) window data =
     let rec advanced_smoothing_aux n prev data =
-      if n = 0 then prev
+      if n = 0 then (
+        printf "\nSmoothing equilibrium NOT reached until depth=%d\n" max_n;
+        prev)
       else
         let smoothed =
           Utils.moving_average (module Utils.FloatOps) window data

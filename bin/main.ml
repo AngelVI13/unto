@@ -63,7 +63,6 @@ let command_test auth_client =
          Or_error.ok_exn
            (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       printf "hello";
        Or_error.ok_exn (Unto.Strava.process_activities auth.access_token n))
 
 let command auth_client =
