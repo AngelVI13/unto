@@ -1,4 +1,7 @@
+open Core
+open Streams
 open Strava_models
+open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 type t = {
   id : int;
@@ -12,9 +15,9 @@ type t = {
   (* NOTE: these are calculated from the data streams of the
        activity and not taken from strava directly *)
   stats : Stats.t;
-  laps : Laps.t;
+  laps : Lap.t list;
 }
-[@@deriving show { with_path = false }]
+[@@deriving show { with_path = false }, fields, yojson_of]
 
 let t_of_StravaActivity (activity : StravaActivity.t) : t =
   {
@@ -27,5 +30,20 @@ let t_of_StravaActivity (activity : StravaActivity.t) : t =
     map_id = activity.map.id;
     map_summary_polyline = activity.map.summary_polyline;
     stats = Stats.empty ();
-    laps = Laps.empty ();
+    laps = [];
   }
+
+let calculate_stats (t : t) (streams : Streams.t) (laps : Lap.t list) : t =
+  let laps =
+    List.map
+      ~f:(fun l ->
+        let lap_stats = Streams.lap_stats streams l in
+        Lap.set_stats l lap_stats)
+      laps
+  in
+  (* TODO: for each activity save total number of datapoints *)
+  (* TODO: it seems like I need to add +1 to the length in order for moving time to match with the actual data *)
+  (* TODO: really double check lap indexes *)
+  (* TODO: check issues for last orienteering that the last lap index number finishes before the end of the data *)
+  let stats = Streams.activity_stats streams in
+  { t with stats; laps }

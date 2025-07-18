@@ -59,7 +59,7 @@ let sportType_of_string s = sportType_of_sexp (Sexp.of_string s)
 (* NOTE: here is a m/s to min/km converter:  *)
 (* https://www.unitjuggler.com/convert-speed-from-ms-to-minkm.html?val=2.257 *)
 
-module Lap = struct
+module StravaLap = struct
   type t = { start_index : int; end_index : int; lap_index : int }
   [@@deriving show { with_path = false }, yojson] [@@yojson.allow_extra_fields]
 
@@ -68,10 +68,10 @@ end
 
 (* TODO: should i calculate splits here, i.e. for every 1km? because laps can differ from splits? *)
 
-module Laps = struct
-  type t = Lap.t list [@@deriving show { with_path = false }, yojson]
+module StravaLaps = struct
+  type t = StravaLap.t list [@@deriving show { with_path = false }, yojson]
 
-  let empty () : t = [ Lap.empty () ]
+  let empty () : t = [ StravaLap.empty () ]
 end
 
 module StravaPolylineMap = struct

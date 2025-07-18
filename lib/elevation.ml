@@ -36,18 +36,21 @@ module ElevResult = struct
     in
     { elev_high; elev_low; elev_gain; elev_loss }
 
-  let compute ?(max_n = 10) window data =
+  let compute data =
+    let smoothed_int = List.map ~f:Int.of_float data in
+    let compute_fn = fold_elt smoothed_int in
+    List.foldi ~init:(empty ()) ~f:compute_fn smoothed_int
+
+  let smoothe ?(max_n = 10) ~window data =
     let rec advanced_smoothing_aux n prev data =
       if n = 0 then (
         printf "\nSmoothing equilibrium NOT reached until depth=%d\n" max_n;
-        prev)
+        data)
       else
         let smoothed =
           Utils.moving_average (module Utils.FloatOps) window data
         in
-        let smoothed_int = List.map ~f:Int.of_float smoothed in
-        let compute_fn = fold_elt smoothed_int in
-        let results = List.foldi ~init:(empty ()) ~f:compute_fn smoothed_int in
+        let results = compute smoothed in
         let gain, loss =
           ( Option.value_exn results.elev_gain,
             Option.value_exn results.elev_loss )
@@ -57,7 +60,7 @@ module ElevResult = struct
         in
         if prev_gain = gain && prev_loss = loss then (
           printf "Smoothing equilibrium reached at depth=%d\n" (max_n - n);
-          results)
+          smoothed)
         else advanced_smoothing_aux (n - 1) results smoothed
     in
     let start_data = empty () in

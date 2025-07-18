@@ -3,6 +3,8 @@ open Stats
 open Elevation
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
+type streamRange = { pos : int; len : int }
+
 module Stream = struct
   type 'a t = {
     type_ : string; [@key "type"]
@@ -12,6 +14,8 @@ module Stream = struct
     resolution : string;
   }
   [@@deriving show { with_path = false }, yojson]
+
+  let sub ~pos ~len t = { t with data = List.sub ~pos ~len t.data }
 end
 
 module StreamType = struct
@@ -47,29 +51,38 @@ module StreamType = struct
         GradeStream (Stream.t_of_yojson [%of_yojson: float] json)
     | _ -> failwith "unsupported"
 
-  let stats_of_t (stats : Stats.t) (stream : t) : Stats.t =
+  let stats_of_t { pos; len } (stats : Stats.t) (stream : t) : Stats.t =
+    (* NOTE: each match case has to account for lap slicing *)
     match stream with
     | TimeStream s ->
-        let elapsed_time = List.last_exn s.data in
-        let moving_time = List.length s.data - 1 in
+        let data = List.sub ~pos ~len s.data in
+        let elapsed_time = List.last_exn data - List.hd_exn data in
+        let moving_time = List.length data - 1 in
         { stats with elapsed_time; moving_time }
     | DistanceStream s ->
-        let distance = List.last_exn s.data in
-        let average_speed = distance /. Float.of_int (List.length s.data - 2) in
+        let data = List.sub ~pos ~len s.data in
+        let distance = List.last_exn data -. List.hd_exn data in
+        let average_speed = distance /. Float.of_int (List.length data - 2) in
         let average_speed =
           Float.round_decimal ~decimal_digits:3 average_speed
         in
         let distance, average_speed = (Some distance, Some average_speed) in
         { stats with distance; average_speed }
     | LatLngStream s ->
-        let start = List.hd_exn s.data in
+        let data = List.sub ~pos ~len s.data in
+        let start = List.hd_exn data in
         let start_latlng = Some (List.nth_exn start 0, List.nth_exn start 1) in
-        let end_ = List.last_exn s.data in
+        let end_ = List.last_exn data in
         let end_latlng = Some (List.nth_exn end_ 0, List.nth_exn end_ 1) in
         { stats with start_latlng; end_latlng }
     | AltitudeStream s ->
-        let smoothing_window = 5 in
-        let results = ElevResult.compute smoothing_window s.data in
+        (* NOTE: here we first smooth the data and then we take sublist to
+           calculate elevation stats on. This is to make sure that all laps
+           will sum up to the same total gain *)
+        let smoothed = ElevResult.smoothe ~window:5 s.data in
+
+        let data = List.sub ~pos ~len smoothed in
+        let results = ElevResult.compute data in
 
         {
           stats with
@@ -79,27 +92,27 @@ module StreamType = struct
           elev_loss = results.elev_loss;
         }
     | VelocityStream s ->
-        let max_speed = List.max_elt ~compare:Float.compare s.data in
+        let data = List.sub ~pos ~len s.data in
+        let max_speed = List.max_elt ~compare:Float.compare data in
         { stats with max_speed }
     | HeartRateStream s ->
-        let data = s.data in
+        let data = List.sub ~pos ~len s.data in
         let average_heartrate = Utils.average data in
         let max_heartrate = List.max_elt ~compare:Int.compare data in
         { stats with average_heartrate; max_heartrate }
     | CadenceStream s ->
-        let data = s.data in
+        let data = List.sub ~pos ~len s.data in
         let data = List.filter data ~f:(fun cad -> cad > 0) in
         let average_cadence = Utils.average data in
 
         let max_cadence = List.max_elt ~compare:Int.compare data in
         { stats with average_cadence; max_cadence }
     | TempStream s ->
-        let data = s.data in
+        let data = List.sub ~pos ~len s.data in
         let average_temp = Utils.average data in
         { stats with average_temp }
     | WattsStream s ->
-        (* NOTE: the the example activity im using doesn't have power data -> test this code *)
-        let data = s.data in
+        let data = List.sub ~pos ~len s.data in
         let data = List.filter ~f:Option.is_some data in
         let data = List.map ~f:(fun power -> Option.value_exn power) data in
         let average_power = Utils.average data in
@@ -111,6 +124,24 @@ end
 module Streams = struct
   type t = StreamType.t list [@@deriving show { with_path = false }, yojson]
 
-  let stats (streams : t) : Stats.t =
-    List.fold ~init:(Stats.empty ()) ~f:StreamType.stats_of_t streams
+  let activity_stats (streams : t) : Stats.t =
+    let size =
+      List.find_map
+        ~f:(fun stream ->
+          match stream with TimeStream s -> Some s.original_size | _ -> None)
+        streams
+    in
+    match size with
+    | None -> Stats.empty ()
+    | Some size ->
+        let _ = size in
+        let stats_fn = StreamType.stats_of_t { pos = 0; len = size } in
+        List.fold ~init:(Stats.empty ()) ~f:stats_fn streams
+
+  let lap_stats (streams : t) (lap : Lap.t) : Stats.t =
+    List.fold ~init:(Stats.empty ())
+      ~f:
+        (StreamType.stats_of_t
+           { pos = lap.start_index; len = lap.end_index - lap.start_index + 1 })
+      streams
 end
