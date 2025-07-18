@@ -8,6 +8,9 @@
 *.cmxs
 *.cmxa
 
+*.json
+*.csv
+
 .env
 
 # ocamlbuild working directory

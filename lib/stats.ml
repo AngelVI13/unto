@@ -2,6 +2,7 @@ open Core
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 type t = {
+  data_points : int;
   moving_time : int;
   elapsed_time : int;
   distance : float option;
@@ -25,6 +26,7 @@ type t = {
 
 let empty () =
   {
+    data_points = 0;
     moving_time = 0;
     elapsed_time = 0;
     distance = None;

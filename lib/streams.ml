@@ -1,4 +1,5 @@
 open Core
+open Laps
 open Stats
 open Elevation
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
@@ -58,7 +59,7 @@ module StreamType = struct
         let data = List.sub ~pos ~len s.data in
         let elapsed_time = List.last_exn data - List.hd_exn data in
         let moving_time = List.length data - 1 in
-        { stats with elapsed_time; moving_time }
+        { stats with elapsed_time; moving_time; data_points = List.length data }
     | DistanceStream s ->
         let data = List.sub ~pos ~len s.data in
         let distance = List.last_exn data -. List.hd_exn data in
@@ -79,6 +80,9 @@ module StreamType = struct
         (* NOTE: here we first smooth the data and then we take sublist to
            calculate elevation stats on. This is to make sure that all laps
            will sum up to the same total gain *)
+        (* TODO: this performs the whole smoothing algorihtm for the whole data
+           to calculate the gain for each lap. Make it cache the smoothed data
+           somehow so we don't do this all the time *)
         let smoothed = ElevResult.smoothe ~window:5 s.data in
 
         let data = List.sub ~pos ~len smoothed in
@@ -124,24 +128,31 @@ end
 module Streams = struct
   type t = StreamType.t list [@@deriving show { with_path = false }, yojson]
 
-  let activity_stats (streams : t) : Stats.t =
-    let size =
+  let length (streams : t) : int =
+    let s =
       List.find_map
         ~f:(fun stream ->
           match stream with TimeStream s -> Some s.original_size | _ -> None)
         streams
     in
-    match size with
-    | None -> Stats.empty ()
-    | Some size ->
-        let _ = size in
-        let stats_fn = StreamType.stats_of_t { pos = 0; len = size } in
-        List.fold ~init:(Stats.empty ()) ~f:stats_fn streams
+    Option.value_exn s
+
+  let activity_stats (streams : t) : Stats.t =
+    let len = length streams in
+    let stats_fn = StreamType.stats_of_t { pos = 0; len } in
+    List.fold ~init:(Stats.empty ()) ~f:stats_fn streams
 
   let lap_stats (streams : t) (lap : Lap.t) : Stats.t =
+    let len = length streams in
+    let possible_len = len - lap.start in
+
+    (* NOTE: strava gives us data only with 1 second resolution so here we add
+       any remaining rounding errors to the last lap. *)
+    let len =
+      if abs (lap.len - possible_len) <= 2 then possible_len
+      else min lap.len possible_len
+    in
     List.fold ~init:(Stats.empty ())
-      ~f:
-        (StreamType.stats_of_t
-           { pos = lap.start_index; len = lap.end_index - lap.start_index + 1 })
+      ~f:(StreamType.stats_of_t { pos = lap.start; len })
       streams
 end

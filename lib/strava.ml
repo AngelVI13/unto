@@ -1,4 +1,5 @@
 open Core
+open Laps
 open Import
 open Streams
 open Strava_api
@@ -21,6 +22,8 @@ let pull_activities token num_activities =
 let pull_streams_aux token activity_id =
   let resp = get_streams token activity_id in
   let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
+  let filename = sprintf "raw_streams_%d.json" activity_id in
+  Yojson.Safe.to_file filename json;
   Or_error.try_with (fun () -> Streams.t_of_yojson json)
 
 (* TODO: try with should raise a specific error otherwise i can't figure out what went wrong *)
@@ -34,6 +37,7 @@ let pull_streams token activity_id =
 let pull_laps_aux token activity_id =
   let resp = get_laps token activity_id in
   let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
+  Yojson.Safe.to_file (sprintf "raw_laps_%d.json" activity_id) json;
   Or_error.try_with (fun () -> StravaLaps.t_of_yojson json)
 
 let pull_laps token activity_id =
@@ -65,7 +69,7 @@ let process_activities token num_activities =
         match (streams, laps) with
         | Ok streams, Ok laps ->
             printf "successfully downloaded laps & streams\n";
-            let laps = List.map ~f:Lap.t_of_StravaLap laps in
+            let laps = Laps.t_of_StravaLaps laps in
             printf "calculating stats\n";
             Activity.calculate_stats activity streams laps
         | Error e, Ok _ -> Error.raise e
@@ -76,10 +80,6 @@ let process_activities token num_activities =
                  (Error.to_string_hum e2)))
       activities
   in
-  (* let%bind streams = Or_error.combine_errors streams in *)
-  (* let stats = *)
-  (*   List.map ~f:(fun a -> Field.get Activity.Fields.stats a) activities *)
-  (* in *)
   let out = [%yojson_of: Activity.t list] activities in
   let filename = sprintf "%s_stats.json" timestamp in
   Yojson.Safe.to_file filename out;
@@ -215,9 +215,10 @@ let%expect_test "process_streams" =
   [%expect
     {|
     Smoothing equilibrium reached at depth=8
-    { moving_time = 4888; elapsed_time = 5562; distance = (Some 11033.);
-      elev_gain = (Some 108); elev_loss = (Some 103); elev_high = (Some 140);
-      elev_low = (Some 110); start_latlng = (Some (54.755563, 25.37736));
+    { data_points = 4889; moving_time = 4888; elapsed_time = 5562;
+      distance = (Some 11033.); elev_gain = (Some 108); elev_loss = (Some 103);
+      elev_high = (Some 140); elev_low = (Some 110);
+      start_latlng = (Some (54.755563, 25.37736));
       end_latlng = (Some (54.755553, 25.377283)); average_speed = (Some 2.258);
       max_speed = (Some 5.); average_cadence = (Some 75);
       max_cadence = (Some 99); average_temp = (Some 32);
@@ -317,3 +318,92 @@ let%expect_test "sportType of string" =
 (*             ~data:out_raw *)
 (*       | _ -> ()); *)
 (*   [%expect {| a |}] *)
+
+let%expect_test "lap stats" =
+  let streams_json =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/raw_streams_15145174551.json"
+  in
+  let streams = Streams.t_of_yojson streams_json in
+
+  let laps_json =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/raw_laps_15145174551.json"
+  in
+  let laps = StravaLaps.t_of_yojson laps_json in
+  let laps = Laps.t_of_StravaLaps laps in
+
+  let json =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/raw_activity_15145174551.json"
+  in
+  let activity = List.nth_exn (StravaActivities.t_of_yojson json) 0 in
+  let activity = Activity.t_of_StravaActivity activity in
+  let activity = Activity.calculate_stats activity streams laps in
+  (* let activity_json = Activity.yojson_of_t activity in *)
+  (* Yojson.Safe.to_file *)
+  (*   "/home/angel/Documents/ocaml/unto/processed_15145174551.json" activity_json; *)
+  printf "%s" (Activity.show activity);
+  [%expect
+    {|
+    0: 505
+    Smoothing equilibrium reached at depth=7
+    505: 3753
+    Smoothing equilibrium reached at depth=7
+    4258: 355
+    Smoothing equilibrium reached at depth=7
+    Smoothing equilibrium reached at depth=7
+    { id = 15145174551; athlete_id = 3504239; name = "Afternoon Run";
+      sport_type = Run; start_date = "2025-07-17T16:41:32Z";
+      timezone = "(GMT+02:00) Europe/Vilnius"; map_id = "a15145174551";
+      map_summary_polyline =
+      "m{gmIqhqyClBAnADj@LnAO\\QTa@`As@y@r@OX_@RiATsCIaBA{@f@i@fAeAG_@cAq@qA_A{Bc@yA^UZe@P[Pw@RqCTo@Ce@RcCx@}@t@_Bt@k@dAOd@Xt@EhA\\RGPQTs@HsA@MF@VVFf@N^LN\\FXd@n@J`@]n@PfC|BnA\\DbBKb@?rAi@jAKj@Hc@d@gA?wAJy@MgCLm@Ei@JmACqANcAWk@IiAJ`@?TIv@Al@KNIdA{@jA]Ds@b@uAo@c@Xk@AcAN}AO[VCd@{@~@Kf@Bt@L^hBv@l@IbAv@j@FTNlAbCj@hBzB|Fx@bB\\fAhAlCV`@\\tAnDtHf@bBG|AHlAx@vBi@j@cAlCc@f@c@vB?jAKtAMb@?b@i@fAi@t@KZYGaA|@IQOcBToAFu@PKFWh@UFMPFPU@[f@`@@n@Tb@Mj@Cb@\\dAL`CNJ`@MXRl@DLP\\HL^D|@~@C~@\\l@p@xDeCz@[d@g@|AeCNc@D[G]Yi@ZAb@^L?pBcD\\yA^_E?a@[mC_@gBCe@TaDXq@\\YJARf@REP\\`Al@rBUPFLdCLj@@xATTCl@Lh@GNQNc@KGRYTi@N]VUKUBG~@D~AHTGTY]Wg@YeAa@_AEm@U]S}Ag@wBAqATiBSc@Cu@i@yBa@i@m@[k@gAsAo@OBy@mALv@Mh@D\\a@f@Fl@AtBMZC|@[xAOlDUz@EjBc@xAIx@eArAo@|AAPS\\y@T]Sg@VgAi@a@C]WMm@wAwD_AgBc@wASOcAdBYjAMTg@E{@d@o@EeAaD_@s@y@aAOBb@}A`@mBG{EhAgBlCiF`DsE|@kBFq@AeBDa@MKKu@UK\\EZNJVJ`BXfArAZZXTCRLLXX_@HBBTWNMj@Hz@Kf@Ez@l@lC@XZb@t@XzB?V\\BZKFSh@KB[x@u@VMXu@RiAqAiBeF}AuCe@m@}AyCiA{@{Bi@cB\\aAh@cA~@q@PEXL|CJX^`@]`AUNCRW`@OBK]?wAy@}Ag@[[m@s@e@s@mA]Ua@w@OGOe@w@Y]m@sAmAMs@_@O{@f@D@Ct@u@n@A\\Pl@RVVnBj@pBPdAz@vBf@hBjArCkA_CeBwF";
+      stats =
+      { data_points = 4615; moving_time = 4614; elapsed_time = 4719;
+        distance = (Some 10604.); elev_gain = (Some 146); elev_loss = (Some 145);
+        elev_high = (Some 150); elev_low = (Some 112);
+        start_latlng = (Some (54.769788, 25.326307));
+        end_latlng = (Some (54.77022, 25.326757)); average_speed = (Some 2.299);
+        max_speed = (Some 6.); average_cadence = (Some 75);
+        max_cadence = (Some 98); average_temp = (Some 26);
+        average_heartrate = (Some 166); max_heartrate = (Some 180);
+        average_power = None; max_power = None };
+      laps =
+      [{ moving_time = 505; start = 0; len = 505; lap_index = 1;
+         stats =
+         { data_points = 505; moving_time = 504; elapsed_time = 504;
+           distance = (Some 1027.); elev_gain = (Some 10); elev_loss = (Some 10);
+           elev_high = (Some 149); elev_low = (Some 142);
+           start_latlng = (Some (54.769788, 25.326307));
+           end_latlng = (Some (54.769812, 25.32632));
+           average_speed = (Some 2.042); max_speed = (Some 3.8);
+           average_cadence = (Some 80); max_cadence = (Some 81);
+           average_temp = (Some 29); average_heartrate = (Some 142);
+           max_heartrate = (Some 153); average_power = None; max_power = None }
+         };
+        { moving_time = 3753; start = 505; len = 3753; lap_index = 2;
+          stats =
+          { data_points = 3753; moving_time = 3752; elapsed_time = 3752;
+            distance = (Some 8872.); elev_gain = (Some 127);
+            elev_loss = (Some 127); elev_high = (Some 150);
+            elev_low = (Some 112); start_latlng = (Some (54.769812, 25.32632));
+            end_latlng = (Some (54.769815, 25.3267));
+            average_speed = (Some 2.365); max_speed = (Some 6.);
+            average_cadence = (Some 74); max_cadence = (Some 98);
+            average_temp = (Some 26); average_heartrate = (Some 170);
+            max_heartrate = (Some 180); average_power = None; max_power = None }
+          };
+        { moving_time = 355; start = 4258; len = 355; lap_index = 3;
+          stats =
+          { data_points = 355; moving_time = 354; elapsed_time = 459;
+            distance = (Some 705.); elev_gain = (Some 8); elev_loss = (Some 8);
+            elev_high = (Some 146); elev_low = (Some 143);
+            start_latlng = (Some (54.769838, 25.326683));
+            end_latlng = (Some (54.770202, 25.326698));
+            average_speed = (Some 1.997); max_speed = (Some 4.);
+            average_cadence = (Some 79); max_cadence = (Some 82);
+            average_temp = (Some 27); average_heartrate = (Some 150);
+            max_heartrate = (Some 178); average_power = None; max_power = None }
+          }
+        ]
+      } |}]

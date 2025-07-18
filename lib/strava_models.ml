@@ -60,10 +60,19 @@ let sportType_of_string s = sportType_of_sexp (Sexp.of_string s)
 (* https://www.unitjuggler.com/convert-speed-from-ms-to-minkm.html?val=2.257 *)
 
 module StravaLap = struct
-  type t = { start_index : int; end_index : int; lap_index : int }
-  [@@deriving show { with_path = false }, yojson] [@@yojson.allow_extra_fields]
+  type t = {
+    moving_time : int;
+    (* NOTE: start & end index returned by the API is clearly wrong so we are
+       using moving time to determine our lap start & end indexes *)
+    start_index : int;
+    end_index : int;
+    lap_index : int;
+  }
+  [@@deriving show { with_path = false }, yojson, fields]
+  [@@yojson.allow_extra_fields]
 
-  let empty () = { start_index = 0; end_index = 10; lap_index = 0 }
+  let empty () =
+    { moving_time = 0; start_index = 0; end_index = 10; lap_index = 0 }
 end
 
 (* TODO: should i calculate splits here, i.e. for every 1km? because laps can differ from splits? *)
