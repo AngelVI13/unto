@@ -1,6 +1,7 @@
 open Core
 open Laps
 open Stats
+open Splits
 open Elevation
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
@@ -139,6 +140,9 @@ module Streams = struct
         | _ -> stream)
       streams
 
+  (* TODO: this should not be replacing the original data cause i will need
+       it to store in database. The smoothed data should be attached somehow
+       differently. *)
   let t_of_yojson_smoothed json =
     let streams = t_of_yojson json in
     smoothe_altitude_if_present streams
@@ -170,4 +174,32 @@ module Streams = struct
     List.fold ~init:(Stats.empty ())
       ~f:(StreamType.stats_of_t { pos = lap.start; len })
       streams
+
+  let split_stats (streams : t) (split : Split.t) : Stats.t =
+    List.fold ~init:(Stats.empty ())
+      ~f:(StreamType.stats_of_t { pos = split.start; len = split.len })
+      streams
+
+  let splits ?(distance = 1000.0) (streams : t) : Splits.t option =
+    let stream =
+      List.find_map
+        ~f:(fun stream ->
+          match stream with DistanceStream s -> Some s | _ -> None)
+        streams
+    in
+    match stream with
+    | None -> None
+    | Some s ->
+        let len = List.length s.data in
+        let _, _, splits =
+          List.foldi
+            ~init:(0, 1.0, Splits.empty ())
+            ~f:(fun i (start, split_n, splits) elmt ->
+              if i = len - 1 || Float.(elmt >= split_n * distance) then
+                let new_split = Split.make ~start ~len:(i - start + 1) in
+                (i + 1, split_n +. 1.0, splits @ [ new_split ])
+              else (start, split_n, splits))
+            s.data
+        in
+        Some splits
 end
