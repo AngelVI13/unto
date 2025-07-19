@@ -4,6 +4,7 @@ open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
 module Lap = struct
   type t = {
+    id : int;
     moving_time : int;
     start : int;
     len : int;
@@ -14,6 +15,7 @@ module Lap = struct
 
   let t_of_StravaLap (lap : StravaLap.t) start_index =
     {
+      id = lap.id;
       moving_time = lap.moving_time;
       start = start_index;
       len = lap.moving_time;

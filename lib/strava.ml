@@ -12,6 +12,20 @@ open Or_error.Let_syntax
 
 (* TODO: 1. define the strava API I'm using (with only the needed fields) *)
 (* TODO: 2. Insert data to databases on every request if the data is not already there *)
+
+(* NOTE: *)
+(* Expected tables: *)
+(*   1. activity table  *)
+(*   2. activity stats table (with activity id as primary key) *)
+(*   3. lap table (with activity id as primary key) *)
+(*   4. lap stats table (with lap id as primary key) *)
+(*   5. splits table (with activity id as primary key) *)
+(*   6. splits stats table (with splits id as primary key) *)
+(*   7. streams table (with activity id as primary key) - this table only  *)
+(*     stores filenames where the streams data is actually stored *)
+
+(* TODO: create split ids *)
+
 (* TODO: 3. Visualize the data in a web ui *)
 (* TODO: 4. Analyze the data *)
 
@@ -363,7 +377,8 @@ let%expect_test "all stats" =
         average_heartrate = (Some 166); max_heartrate = (Some 180);
         average_power = None; max_power = None };
       laps =
-      [{ moving_time = 505; start = 0; len = 505; lap_index = 1;
+      [{ id = 53876729540; moving_time = 505; start = 0; len = 505;
+         lap_index = 1;
          stats =
          { data_points = 505; moving_time = 504; elapsed_time = 504;
            distance = (Some 1027.); elev_gain = (Some 10); elev_loss = (Some 10);
@@ -375,7 +390,8 @@ let%expect_test "all stats" =
            average_temp = (Some 29); average_heartrate = (Some 142);
            max_heartrate = (Some 153); average_power = None; max_power = None }
          };
-        { moving_time = 3753; start = 505; len = 3753; lap_index = 2;
+        { id = 53876729549; moving_time = 3753; start = 505; len = 3753;
+          lap_index = 2;
           stats =
           { data_points = 3753; moving_time = 3752; elapsed_time = 3752;
             distance = (Some 8872.); elev_gain = (Some 127);
@@ -387,7 +403,8 @@ let%expect_test "all stats" =
             average_temp = (Some 26); average_heartrate = (Some 170);
             max_heartrate = (Some 180); average_power = None; max_power = None }
           };
-        { moving_time = 355; start = 4258; len = 355; lap_index = 3;
+        { id = 53876729554; moving_time = 355; start = 4258; len = 355;
+          lap_index = 3;
           stats =
           { data_points = 357; moving_time = 356; elapsed_time = 461;
             distance = (Some 705.); elev_gain = (Some 8); elev_loss = (Some 8);
@@ -401,7 +418,7 @@ let%expect_test "all stats" =
           }
         ];
       splits =
-      (Some [{ start = 0; len = 495;
+      (Some [{ split_index = 0; start = 0; len = 495;
                stats =
                { data_points = 495; moving_time = 494; elapsed_time = 494;
                  distance = (Some 1001.); elev_gain = (Some 10);
@@ -415,7 +432,7 @@ let%expect_test "all stats" =
                  max_heartrate = (Some 152); average_power = None;
                  max_power = None }
                };
-              { start = 495; len = 333;
+              { split_index = 1; start = 495; len = 333;
                 stats =
                 { data_points = 333; moving_time = 332; elapsed_time = 332;
                   distance = (Some 997.); elev_gain = (Some 4);
@@ -429,7 +446,7 @@ let%expect_test "all stats" =
                   max_heartrate = (Some 171); average_power = None;
                   max_power = None }
                 };
-              { start = 828; len = 405;
+              { split_index = 2; start = 828; len = 405;
                 stats =
                 { data_points = 405; moving_time = 404; elapsed_time = 404;
                   distance = (Some 998.); elev_gain = (Some 8);
@@ -443,7 +460,7 @@ let%expect_test "all stats" =
                   max_heartrate = (Some 175); average_power = None;
                   max_power = None }
                 };
-              { start = 1233; len = 375;
+              { split_index = 3; start = 1233; len = 375;
                 stats =
                 { data_points = 375; moving_time = 374; elapsed_time = 374;
                   distance = (Some 997.); elev_gain = (Some 15);
@@ -457,7 +474,7 @@ let%expect_test "all stats" =
                   max_heartrate = (Some 175); average_power = None;
                   max_power = None }
                 };
-              { start = 1608; len = 460;
+              { split_index = 4; start = 1608; len = 460;
                 stats =
                 { data_points = 460; moving_time = 459; elapsed_time = 459;
                   distance = (Some 998.); elev_gain = (Some 5);
@@ -471,7 +488,7 @@ let%expect_test "all stats" =
                   max_heartrate = (Some 173); average_power = None;
                   max_power = None }
                 };
-              { start = 2068; len = 449;
+              { split_index = 5; start = 2068; len = 449;
                 stats =
                 { data_points = 449; moving_time = 448; elapsed_time = 448;
                   distance = (Some 997.7); elev_gain = (Some 13);
@@ -485,7 +502,7 @@ let%expect_test "all stats" =
                   max_heartrate = (Some 174); average_power = None;
                   max_power = None }
                 };
-              { start = 2517; len = 556;
+              { split_index = 6; start = 2517; len = 556;
                 stats =
                 { data_points = 556; moving_time = 555; elapsed_time = 555;
                   distance = (Some 999.); elev_gain = (Some 35);
@@ -499,7 +516,7 @@ let%expect_test "all stats" =
                   max_heartrate = (Some 177); average_power = None;
                   max_power = None }
                 };
-              { start = 3073; len = 351;
+              { split_index = 7; start = 3073; len = 351;
                 stats =
                 { data_points = 351; moving_time = 350; elapsed_time = 350;
                   distance = (Some 1000.); elev_gain = (Some 4);
@@ -513,7 +530,7 @@ let%expect_test "all stats" =
                   max_heartrate = (Some 177); average_power = None;
                   max_power = None }
                 };
-              { start = 3424; len = 455;
+              { split_index = 8; start = 3424; len = 455;
                 stats =
                 { data_points = 455; moving_time = 454; elapsed_time = 454;
                   distance = (Some 1000.); elev_gain = (Some 27);
@@ -527,7 +544,7 @@ let%expect_test "all stats" =
                   max_heartrate = (Some 180); average_power = None;
                   max_power = None }
                 };
-              { start = 3879; len = 435;
+              { split_index = 9; start = 3879; len = 435;
                 stats =
                 { data_points = 435; moving_time = 434; elapsed_time = 539;
                   distance = (Some 999.); elev_gain = (Some 17);
@@ -541,7 +558,7 @@ let%expect_test "all stats" =
                   max_heartrate = (Some 178); average_power = None;
                   max_power = None }
                 };
-              { start = 4314; len = 301;
+              { split_index = 10; start = 4314; len = 301;
                 stats =
                 { data_points = 301; moving_time = 300; elapsed_time = 300;
                   distance = (Some 602.); elev_gain = (Some 8);

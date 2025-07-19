@@ -61,6 +61,7 @@ let sportType_of_string s = sportType_of_sexp (Sexp.of_string s)
 
 module StravaLap = struct
   type t = {
+    id : int;
     moving_time : int;
     (* NOTE: start & end index returned by the API is clearly wrong so we are
        using moving time to determine our lap start & end indexes *)
@@ -72,10 +73,8 @@ module StravaLap = struct
   [@@yojson.allow_extra_fields]
 
   let empty () =
-    { moving_time = 0; start_index = 0; end_index = 10; lap_index = 0 }
+    { id = 0; moving_time = 0; start_index = 0; end_index = 10; lap_index = 0 }
 end
-
-(* TODO: should i calculate splits here, i.e. for every 1km? because laps can differ from splits? *)
 
 module StravaLaps = struct
   type t = StravaLap.t list [@@deriving show { with_path = false }, yojson]

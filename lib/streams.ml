@@ -81,9 +81,6 @@ module StreamType = struct
         (* NOTE: here we first smooth the data and then we take sublist to
            calculate elevation stats on. This is to make sure that all laps
            will sum up to the same total gain *)
-        (* TODO: this performs the whole smoothing algorihtm for the whole data
-           to calculate the gain for each lap. Make it cache the smoothed data
-           somehow so we don't do this all the time *)
         let smoothed = s.data in
 
         let data = List.sub ~pos ~len smoothed in
@@ -196,7 +193,11 @@ module Streams = struct
             ~init:(0, 1.0, Splits.empty ())
             ~f:(fun i (start, split_n, splits) elmt ->
               if i = len - 1 || Float.(elmt >= split_n * distance) then
-                let new_split = Split.make ~start ~len:(i - start + 1) in
+                let new_split =
+                  Split.make ~start
+                    ~len:(i - start + 1)
+                    ~index:(Int.of_float (split_n -. 1.0))
+                in
                 (i + 1, split_n +. 1.0, splits @ [ new_split ])
               else (start, split_n, splits))
             s.data
