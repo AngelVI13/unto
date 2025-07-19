@@ -24,7 +24,7 @@ let pull_streams_aux token activity_id =
   let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
   let filename = sprintf "raw_streams_%d.json" activity_id in
   Yojson.Safe.to_file filename json;
-  Or_error.try_with (fun () -> Streams.t_of_yojson json)
+  Or_error.try_with (fun () -> Streams.t_of_yojson_smoothed json)
 
 (* TODO: try with should raise a specific error otherwise i can't figure out what went wrong *)
 let pull_streams token activity_id =
@@ -209,7 +209,7 @@ let%expect_test "process_streams" =
     Yojson.Safe.from_file
       "/home/angel/Documents/ocaml/unto/streams_14995177737.json"
   in
-  let streams = Streams.t_of_yojson json in
+  let streams = Streams.t_of_yojson_smoothed json in
   let stats = Streams.activity_stats streams in
   printf "%s" (Stats.show stats);
   [%expect
@@ -299,7 +299,7 @@ let%expect_test "sportType of string" =
 (*     Yojson.Safe.from_file *)
 (*       "/home/angel/Documents/ocaml/unto/streams_14995177737.json" *)
 (*   in *)
-(*   let streams = Streams.t_of_yojson json in *)
+(*   let streams = Streams.t_of_yojson_smoothed json in *)
 (*   List.iter streams ~f:(fun stream -> *)
 (*       match stream with *)
 (*       | AltitudeStream s -> *)
@@ -324,7 +324,7 @@ let%expect_test "lap stats" =
     Yojson.Safe.from_file
       "/home/angel/Documents/ocaml/unto/raw_streams_15145174551.json"
   in
-  let streams = Streams.t_of_yojson streams_json in
+  let streams = Streams.t_of_yojson_smoothed streams_json in
 
   let laps_json =
     Yojson.Safe.from_file
@@ -346,11 +346,8 @@ let%expect_test "lap stats" =
   printf "%s" (Activity.show activity);
   [%expect
     {|
-    0: 505
     Smoothing equilibrium reached at depth=7
-    505: 3753
     Smoothing equilibrium reached at depth=7
-    4258: 355
     Smoothing equilibrium reached at depth=7
     Smoothing equilibrium reached at depth=7
     { id = 15145174551; athlete_id = 3504239; name = "Afternoon Run";
@@ -395,12 +392,12 @@ let%expect_test "lap stats" =
           };
         { moving_time = 355; start = 4258; len = 355; lap_index = 3;
           stats =
-          { data_points = 355; moving_time = 354; elapsed_time = 459;
+          { data_points = 357; moving_time = 356; elapsed_time = 461;
             distance = (Some 705.); elev_gain = (Some 8); elev_loss = (Some 8);
             elev_high = (Some 146); elev_low = (Some 143);
             start_latlng = (Some (54.769838, 25.326683));
-            end_latlng = (Some (54.770202, 25.326698));
-            average_speed = (Some 1.997); max_speed = (Some 4.);
+            end_latlng = (Some (54.77022, 25.326757));
+            average_speed = (Some 1.986); max_speed = (Some 4.);
             average_cadence = (Some 79); max_cadence = (Some 82);
             average_temp = (Some 27); average_heartrate = (Some 150);
             max_heartrate = (Some 178); average_power = None; max_power = None }

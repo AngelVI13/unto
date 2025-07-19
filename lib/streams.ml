@@ -83,7 +83,7 @@ module StreamType = struct
         (* TODO: this performs the whole smoothing algorihtm for the whole data
            to calculate the gain for each lap. Make it cache the smoothed data
            somehow so we don't do this all the time *)
-        let smoothed = ElevResult.smoothe ~window:5 s.data in
+        let smoothed = s.data in
 
         let data = List.sub ~pos ~len smoothed in
         let results = ElevResult.compute data in
@@ -127,6 +127,21 @@ end
 
 module Streams = struct
   type t = StreamType.t list [@@deriving show { with_path = false }, yojson]
+
+  let smoothe_altitude_if_present (streams : t) =
+    List.map
+      ~f:(fun stream ->
+        match stream with
+        | AltitudeStream s ->
+            let smoothed = ElevResult.smoothe ~window:5 s.data in
+            StreamType.AltitudeStream { s with data = smoothed }
+            (* StreamType.update_altitude_data stream smoothed *)
+        | _ -> stream)
+      streams
+
+  let t_of_yojson_smoothed json =
+    let streams = t_of_yojson json in
+    smoothe_altitude_if_present streams
 
   let length (streams : t) : int =
     let s =
