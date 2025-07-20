@@ -11,6 +11,7 @@ module Stream = struct
   type 'a t = {
     type_ : string; [@key "type"]
     data : 'a list;
+    smoothed : 'a list; [@default []] [@yojson_drop_if fun _ -> true] [@opaque]
     series_type : string;
     original_size : int;
     resolution : string;
@@ -81,7 +82,7 @@ module StreamType = struct
         (* NOTE: here we first smooth the data and then we take sublist to
            calculate elevation stats on. This is to make sure that all laps
            will sum up to the same total gain *)
-        let smoothed = s.data in
+        let smoothed = s.smoothed in
 
         let data = List.sub ~pos ~len smoothed in
         let results = ElevResult.compute data in
@@ -132,14 +133,10 @@ module Streams = struct
         match stream with
         | AltitudeStream s ->
             let smoothed = ElevResult.smoothe ~window:5 s.data in
-            StreamType.AltitudeStream { s with data = smoothed }
-            (* StreamType.update_altitude_data stream smoothed *)
+            StreamType.AltitudeStream { s with smoothed }
         | _ -> stream)
       streams
 
-  (* TODO: this should not be replacing the original data cause i will need
-       it to store in database. The smoothed data should be attached somehow
-       differently. *)
   let t_of_yojson_smoothed json =
     let streams = t_of_yojson json in
     smoothe_altitude_if_present streams

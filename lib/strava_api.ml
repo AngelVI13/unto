@@ -1,5 +1,7 @@
 open Core
 
+(* TODO: parse these results and also add support for /athlete/zones (check
+   where are the zones coming from cause i can't find that info in strava??) *)
 let _athlete_info token =
   let url = "https://www.strava.com/api/v3/athlete" in
   let headers = [ ("Authorization", sprintf "Bearer %s" token) ] in

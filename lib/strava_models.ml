@@ -61,7 +61,6 @@ let sportType_of_string s = sportType_of_sexp (Sexp.of_string s)
 
 module StravaLap = struct
   type t = {
-    id : int;
     moving_time : int;
     (* NOTE: start & end index returned by the API is clearly wrong so we are
        using moving time to determine our lap start & end indexes *)
@@ -73,7 +72,7 @@ module StravaLap = struct
   [@@yojson.allow_extra_fields]
 
   let empty () =
-    { id = 0; moving_time = 0; start_index = 0; end_index = 10; lap_index = 0 }
+    { moving_time = 0; start_index = 0; end_index = 10; lap_index = 0 }
 end
 
 module StravaLaps = struct
@@ -87,14 +86,14 @@ module StravaPolylineMap = struct
   [@@deriving yojson, show { with_path = false }] [@@yojson.allow_extra_fields]
 end
 
-module StravaAthlete = struct
+module StravaAthleteRef = struct
   type t = { id : int }
   [@@deriving yojson, show { with_path = false }] [@@yojson.allow_extra_fields]
 end
 
 module StravaActivity = struct
   type t = {
-    athlete : StravaAthlete.t;
+    athlete : StravaAthleteRef.t;
     name : string;
     sport_type : string;
     id : int;
@@ -109,3 +108,22 @@ end
 module StravaActivities = struct
   type t = StravaActivity.t list [@@deriving yojson, show { with_path = false }]
 end
+
+module StravaAthlete = struct
+  type t = {
+    id : int;
+    username : string;
+    firstname : string;
+    lastname : string;
+    city : string;
+    state : string;
+    country : string;
+    sex : string;
+    created_at : string;
+    date_preference : string;
+    measurement_preference : string;
+    ftp : int; (* optional??? *)
+    weight : int;
+  }
+end
+(* TODO: finish this *)

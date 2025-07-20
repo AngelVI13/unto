@@ -23,8 +23,8 @@ open Or_error.Let_syntax
 (*   6. splits stats table (with splits id as primary key) *)
 (*   7. streams table (with activity id as primary key) - this table only  *)
 (*     stores filenames where the streams data is actually stored *)
-
-(* TODO: create split ids *)
+(* Splits and laps can be found by activity ID an lap/split index, i don't
+   think i need to create a separate lap/split id for each one. *)
 
 (* TODO: 3. Visualize the data in a web ui *)
 (* TODO: 4. Analyze the data *)
@@ -114,13 +114,15 @@ let%expect_test "deserialize get_stream.json" =
           data =
           [0; 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19;
             20];
-          series_type = "distance"; original_size = 21; resolution = "high" });
+          smoothed = <opaque>; series_type = "distance"; original_size = 21;
+          resolution = "high" });
       (DistanceStream
          { type_ = "distance";
            data =
            [0.; 2.8; 5.5; 8.3; 11.; 13.8; 16.5; 19.3; 22.; 27.; 32.; 36.; 39.;
              42.; 45.; 48.; 51.; 54.; 57.; 60.; 64.];
-           series_type = "distance"; original_size = 21; resolution = "high" });
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
       (LatLngStream
          { type_ = "latlng";
            data =
@@ -134,32 +136,37 @@ let%expect_test "deserialize get_stream.json" =
              [54.703233; 25.316753]; [54.70324; 25.31671];
              [54.703245; 25.316665]; [54.703255; 25.31662];
              [54.703265; 25.316572]; [54.703273; 25.316523]];
-           series_type = "distance"; original_size = 21; resolution = "high" });
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
       (AltitudeStream
          { type_ = "altitude";
            data =
            [115.2; 115.2; 115.2; 115.2; 115.2; 115.2; 115.2; 115.2; 115.2; 114.6;
              114.2; 114.; 113.8; 113.8; 113.4; 113.4; 113.2; 113.2; 112.8; 112.8;
              112.6];
-           series_type = "distance"; original_size = 21; resolution = "high" });
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
       (VelocityStream
          { type_ = "velocity_smooth";
            data =
            [0.; 0.; 2.75; 2.75; 2.75; 2.75; 2.75; 2.75; 2.75; 3.2; 3.65; 3.9;
              3.95; 4.; 3.6; 3.2; 3.; 3.; 3.; 3.; 3.2];
-           series_type = "distance"; original_size = 21; resolution = "high" });
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
       (HeartRateStream
          { type_ = "heartrate";
            data =
            [80; 79; 78; 77; 77; 75; 75; 75; 76; 78; 80; 80; 82; 84; 87; 89; 91;
              95; 97; 99; 100];
-           series_type = "distance"; original_size = 21; resolution = "high" });
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
       (CadenceStream
          { type_ = "cadence";
            data =
            [84; 84; 84; 84; 84; 84; 84; 84; 84; 85; 86; 86; 86; 85; 84; 83; 82;
              82; 82; 82; 82];
-           series_type = "distance"; original_size = 21; resolution = "high" });
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
       (WattsStream
          { type_ = "watts";
            data =
@@ -167,19 +174,22 @@ let%expect_test "deserialize get_stream.json" =
              (Some 243); (Some 279); (Some 273); (Some 263); (Some 261);
              (Some 219); (Some 220); (Some 201); (Some 209); (Some 193);
              (Some 200); (Some 198)];
-           series_type = "distance"; original_size = 21; resolution = "high" });
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
       (TempStream
          { type_ = "temp";
            data =
            [29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29;
              29; 29; 29; 29];
-           series_type = "distance"; original_size = 21; resolution = "high" });
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
       (GradeStream
          { type_ = "grade_smooth";
            data =
            [0.; 0.; 0.; 0.; 0.; 0.; 0.; -4.5; -6.5; -7.2; -8.2; -5.3; -6.2; -5.;
              -5.; -5.; -5.; -5.; -4.6; -4.6; -3.1];
-           series_type = "distance"; original_size = 21; resolution = "high" })
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" })
       ]
     |}]
 
@@ -377,8 +387,7 @@ let%expect_test "all stats" =
         average_heartrate = (Some 166); max_heartrate = (Some 180);
         average_power = None; max_power = None };
       laps =
-      [{ id = 53876729540; moving_time = 505; start = 0; len = 505;
-         lap_index = 1;
+      [{ moving_time = 505; start = 0; len = 505; lap_index = 1;
          stats =
          { data_points = 505; moving_time = 504; elapsed_time = 504;
            distance = (Some 1027.); elev_gain = (Some 10); elev_loss = (Some 10);
@@ -390,8 +399,7 @@ let%expect_test "all stats" =
            average_temp = (Some 29); average_heartrate = (Some 142);
            max_heartrate = (Some 153); average_power = None; max_power = None }
          };
-        { id = 53876729549; moving_time = 3753; start = 505; len = 3753;
-          lap_index = 2;
+        { moving_time = 3753; start = 505; len = 3753; lap_index = 2;
           stats =
           { data_points = 3753; moving_time = 3752; elapsed_time = 3752;
             distance = (Some 8872.); elev_gain = (Some 127);
@@ -403,8 +411,7 @@ let%expect_test "all stats" =
             average_temp = (Some 26); average_heartrate = (Some 170);
             max_heartrate = (Some 180); average_power = None; max_power = None }
           };
-        { id = 53876729554; moving_time = 355; start = 4258; len = 355;
-          lap_index = 3;
+        { moving_time = 355; start = 4258; len = 355; lap_index = 3;
           stats =
           { data_points = 357; moving_time = 356; elapsed_time = 461;
             distance = (Some 705.); elev_gain = (Some 8); elev_loss = (Some 8);
