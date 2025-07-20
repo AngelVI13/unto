@@ -47,8 +47,8 @@ let command_pull_streams auth_client =
        in
        Or_error.ok_exn (Unto.Strava.pull_streams auth.access_token id))
 
-let command_test auth_client =
-  Command.basic ~summary:"Test"
+let command_download auth_client =
+  Command.basic ~summary:"Download activities"
     (let%map_open.Command auth_filename =
        flag "-t"
          (optional_with_default "tokens.json" Filename_unix.arg_type)
@@ -80,6 +80,34 @@ let command_pull_laps auth_client =
        in
        Or_error.ok_exn (Unto.Strava.pull_laps auth.access_token id))
 
+let command_user_info auth_client =
+  Command.basic ~summary:"Get user info"
+    (let%map_open.Command auth_filename =
+       flag "-t"
+         (optional_with_default "tokens.json" Filename_unix.arg_type)
+         ~doc:"Filename where to read access and refresh tokens from"
+     in
+     fun () ->
+       let auth =
+         Or_error.ok_exn
+           (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
+       in
+       Or_error.ok_exn (Unto.Strava.process_user auth.access_token))
+
+let command_zones auth_client =
+  Command.basic ~summary:"Get user zones info"
+    (let%map_open.Command auth_filename =
+       flag "-t"
+         (optional_with_default "tokens.json" Filename_unix.arg_type)
+         ~doc:"Filename where to read access and refresh tokens from"
+     in
+     fun () ->
+       let auth =
+         Or_error.ok_exn
+           (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
+       in
+       Or_error.ok_exn (Unto.Strava.process_zones auth.access_token))
+
 let command auth_client =
   Command.group ~summary:"CLI utility to download data from strava"
     [
@@ -87,7 +115,9 @@ let command auth_client =
       ("pull-activities", command_pull_activities auth_client);
       ("pull-streams", command_pull_streams auth_client);
       ("pull-laps", command_pull_laps auth_client);
-      ("test", command_test auth_client);
+      ("download", command_download auth_client);
+      ("user-info", command_user_info auth_client);
+      ("zones", command_zones auth_client);
     ]
 
 let () =

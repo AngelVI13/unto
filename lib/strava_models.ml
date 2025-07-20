@@ -112,7 +112,6 @@ end
 module StravaAthlete = struct
   type t = {
     id : int;
-    username : string;
     firstname : string;
     lastname : string;
     city : string;
@@ -120,10 +119,11 @@ module StravaAthlete = struct
     country : string;
     sex : string;
     created_at : string;
-    date_preference : string;
-    measurement_preference : string;
-    ftp : int; (* optional??? *)
-    weight : int;
+    weight : float;
   }
+  [@@deriving yojson] [@@yojson.allow_extra_fields]
 end
-(* TODO: finish this *)
+
+module StravaZones = struct
+  type t = { id : int } [@@deriving yojson] [@@yojson.allow_extra_fields]
+end

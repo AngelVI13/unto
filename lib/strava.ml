@@ -61,6 +61,39 @@ let pull_laps token activity_id =
   printf "Saved laps to file %s\n" filename;
   Ok ()
 
+let process_user token =
+  let resp = athlete_info token in
+  let timestamp = Time_ns.now () |> Time_ns.to_string in
+  let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
+  let filename = sprintf "%s_raw_user.json" timestamp in
+  Yojson.Safe.to_file filename json;
+  printf "Saved raw user info to file %s\n" filename;
+  let%bind strava_athlete =
+    Or_error.try_with (fun () -> StravaAthlete.t_of_yojson json)
+  in
+  let out = [%yojson_of: StravaAthlete.t] strava_athlete in
+  let filename = sprintf "%s_user.json" timestamp in
+  Yojson.Safe.to_file filename out;
+  printf "Saved user info to file %s\n" filename;
+  Ok ()
+
+(* NOTE: I don't know where strava gets these zones., they are not the same
+   as my suunto and not the same as what i had entered manually before. For
+   now we ignore this data and maybe compute it ourselves *)
+let process_zones token =
+  let resp = zones token in
+  let timestamp = Time_ns.now () |> Time_ns.to_string in
+  let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
+  let filename = sprintf "%s_raw_zones.json" timestamp in
+  Yojson.Safe.to_file filename json;
+  printf "Saved raw zones info to file %s\n" filename;
+  (* let%bind zones = Or_error.try_with (fun () -> StravaZones.t_of_yojson json) in *)
+  (* let out = [%yojson_of: StravaZones.t] zones in *)
+  (* let filename = sprintf "%s_zones.json" timestamp in *)
+  (* Yojson.Safe.to_file filename out; *)
+  (* printf "Saved zones info to file %s\n" filename; *)
+  Ok ()
+
 let process_activities token num_activities =
   let resp = list_activities token num_activities in
   let timestamp = Time_ns.now () |> Time_ns.to_string in

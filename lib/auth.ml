@@ -91,22 +91,24 @@ let load_token_file filename =
   | `Yes -> Or_error.try_with (fun () -> Yojson.Safe.from_file filename)
   | _ ->
       let url =
-        "https://www.strava.com/oauth/authorize?client_id=21710&response_type=code&redirect_uri=http://localhost/exchange_token&approval_prompt=force&scope=read_all,activity:read_all"
+        "https://www.strava.com/oauth/authorize?client_id=21710&response_type=code&redirect_uri=http://localhost/exchange_token&approval_prompt=force&scope=read_all,activity:read_all,profile:read_all"
       in
-      printf "Paste the URL in your browser and Authorize the app: %S\n" url;
+      printf "!ERROR!: Did not find the tokens file you provided: %s\n\n"
+        filename;
+      printf "If you don't have such a file please follow the steps below\n";
+      printf "\t1.Paste the URL in your browser and Authorize the app: \n\t%S\n"
+        url;
       printf
-        "Afterwards wait for the browser to redirect you and copy the code \
-         after `auth_code` parameter from the url\n";
+        "\t2.Afterwards wait for the browser to redirect you and copy the code \
+         after `code=` parameter from the url\n";
       printf
-        "Next to obtain an access & refresh tokens execute the script:\n\
-        \ ./bin/main.exe obtain-access-token --auth-code AUTH_CODE\n";
+        "\t3.Next to obtain an access & refresh tokens execute the script:\n\
+         \t ./bin/main.exe obtain-access-token --auth-code AUTH_CODE\n\n";
       Or_error.error_s [%message "Missing tokens"]
 
 let load_and_refresh_tokens auth_client filename =
   let open Or_error.Let_syntax in
-  let%bind contents =
-    Or_error.try_with (fun () -> Yojson.Safe.from_file filename)
-  in
+  let%bind contents = load_token_file filename in
   let%bind auth = Or_error.try_with (fun () -> Auth.t_of_yojson contents) in
 
   let now_since_epoch =

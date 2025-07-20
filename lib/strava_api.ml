@@ -1,9 +1,14 @@
 open Core
 
-(* TODO: parse these results and also add support for /athlete/zones (check
-   where are the zones coming from cause i can't find that info in strava??) *)
-let _athlete_info token =
+let athlete_info token =
   let url = "https://www.strava.com/api/v3/athlete" in
+  let headers = [ ("Authorization", sprintf "Bearer %s" token) ] in
+  let res = Ezcurl.get ~headers ~url () in
+  let out = match res with Ok c -> c.body | Error (_, s) -> s in
+  out
+
+let zones token =
+  let url = "https://www.strava.com/api/v3/athlete/zones" in
   let headers = [ ("Authorization", sprintf "Bearer %s" token) ] in
   let res = Ezcurl.get ~headers ~url () in
   let out = match res with Ok c -> c.body | Error (_, s) -> s in
