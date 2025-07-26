@@ -108,6 +108,18 @@ let command_zones auth_client =
        in
        Or_error.ok_exn (Unto.Strava.process_zones auth.access_token))
 
+let command_test () =
+  Command.basic ~summary:"Test things"
+    (let%map_open.Command db_filename =
+       flag "-d"
+         (optional_with_default "app.db" Filename_unix.arg_type)
+         ~doc:"DB filename"
+     in
+     fun () ->
+       let db = Unto.Db.load db_filename in
+       let _ = Or_error.ok_exn (Unto.Db.close db) in
+       ())
+
 let command auth_client =
   Command.group ~summary:"CLI utility to download data from strava"
     [
@@ -118,6 +130,7 @@ let command auth_client =
       ("download", command_download auth_client);
       ("user-info", command_user_info auth_client);
       ("zones", command_zones auth_client);
+      ("test", command_test ());
     ]
 
 let () =
