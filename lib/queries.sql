@@ -11,13 +11,8 @@ CREATE TABLE IF NOT EXISTS athletes (
     weight FLOAT NOT NULL
 );
 
--- TODO: 1. write all insert queries or maybe generate them?
--- TODO: 2. You can have queries that fetch all activities by
--- some criteria (between dates etc.) with their stats which is
--- much more performant than first fetching all activities and
--- then for each activity fetching their stats. For this we have
--- to use join. Example:
--- SELECT * FROM activity JOIN stats ON activity.stats_id = stats.id WHERE activity.id = ?
+-- @add_athlete
+INSERT INTO athletes VALUES;
 
 -- @list_athletes
 SELECT * FROM athletes
@@ -65,6 +60,38 @@ CREATE TABLE IF NOT EXISTS activities (
     FOREIGN KEY (athlete_id) REFERENCES athletes (id) ON DELETE CASCADE,
     FOREIGN KEY (stats_id) REFERENCES stats (id) ON DELETE CASCADE
 );
+
+-- @add_activity
+INSERT INTO activities VALUES;
+
+-- @activities_after
+SELECT 
+    a.*,
+    s.moving_time,
+    s.elapsed_time,
+    s.distance,
+    s.elev_gain,
+    s.elev_loss,
+    s.elev_high,
+    s.elev_low,
+    s.start_lat,
+    s.start_lng,
+    s.end_lat,
+    s.end_lng,
+    s.average_speed,
+    s.max_speed,
+    s.average_cadence,
+    s.max_cadence,
+    s.average_temp,
+    s.average_heartrate,
+    s.max_heartrate,
+    s.average_power,
+    s.max_power
+FROM activities a
+JOIN stats s ON a.stats_id = s.id
+WHERE a.start_date > @start_date;
+
+-- TODO: 1. write all insert queries or maybe generate them?
 
 -- example query for activity that happened after certain date
 -- All events after a certain UTC datetime
