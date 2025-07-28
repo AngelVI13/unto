@@ -117,6 +117,7 @@ let command_test () =
      in
      fun () ->
        let db = Unto.Db.load db_filename in
+       Unto.Db.add_test_split db;
        let _ = Or_error.ok_exn (Unto.Db.close db) in
        ())
 

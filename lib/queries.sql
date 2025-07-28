@@ -21,8 +21,7 @@ ORDER BY id;
 -- @create_stats
 CREATE TABLE IF NOT EXISTS stats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    activity_id INTEGER PRIMARY KEY,
-    FOREIGN KEY (activity_id) REFERENCES activities (id),
+    activity_id INTEGER NOT NULL,
     data_points INTEGER NOT NULL,
     moving_time INTEGER NOT NULL,
     elapsed_time INTEGER NOT NULL,
@@ -43,8 +42,13 @@ CREATE TABLE IF NOT EXISTS stats (
     average_heartrate INTEGER, -- optional
     max_heartrate INTEGER,     -- optional
     average_power INTEGER,     -- optional
-    max_power INTEGER          -- optional
+    max_power INTEGER,          -- optional
+
+    FOREIGN KEY (activity_id) REFERENCES activities (id) ON DELETE CASCADE
 );
+
+-- @add_stats
+INSERT INTO stats VALUES;
 
 -- @create_activities
 CREATE TABLE IF NOT EXISTS activities (
@@ -91,14 +95,6 @@ FROM activities a
 JOIN stats s ON a.stats_id = s.id
 WHERE a.start_date > @start_date;
 
--- TODO: 1. write all insert queries or maybe generate them?
-
--- example query for activity that happened after certain date
--- All events after a certain UTC datetime
---SELECT * FROM events
---WHERE start_date > '2025-07-20T00:00:00Z';
--- here have to replace the hardcoded date with `?`
-
 -- @create_laps
 CREATE TABLE IF NOT EXISTS laps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,6 +108,8 @@ CREATE TABLE IF NOT EXISTS laps (
     FOREIGN KEY (stats_id) REFERENCES stats (id) ON DELETE CASCADE
 );
 
+-- @add_lap
+INSERT INTO laps VALUES;
 
 -- @create_splits
 CREATE TABLE IF NOT EXISTS splits (
@@ -125,3 +123,5 @@ CREATE TABLE IF NOT EXISTS splits (
     FOREIGN KEY (stats_id) REFERENCES stats (id) ON DELETE CASCADE
 );
 
+-- @add_split
+INSERT INTO splits VALUES;
