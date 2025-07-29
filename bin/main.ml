@@ -117,7 +117,11 @@ let command_test () =
      in
      fun () ->
        let db = Unto.Db.load db_filename in
-       Unto.Db.add_test_split db;
+       let activities = Unto.Db.all_activities db in
+       List.iter activities ~f:(fun v -> printf "%d\n" v);
+       (* Unto.Db.add_test_activity db 123L; *)
+       (* Unto.Db.add_test_activity db 345L; *)
+       (* Unto.Db.add_test_activity db 567L; *)
        let _ = Or_error.ok_exn (Unto.Db.close db) in
        ())
 

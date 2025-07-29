@@ -22,6 +22,23 @@ let add_test_split { handle; _ } =
   in
   ()
 
+let add_test_activity { handle; _ } id =
+  let _ =
+    DB.add_activity handle ~id ~athlete_id:1L
+      ~name:(sprintf "run %d" (Int64.to_int_exn id))
+      ~sport_type:"Run" ~start_date:"date" ~timezone:"EEST" ~map_id:"asasdsad"
+      ~map_summary_polyline:"asda1221" ~stats_id:14L
+  in
+  ()
+
+let all_activities { handle; _ } =
+  let activities = ref [] in
+  let _ =
+    DB.list_activities handle (fun ~id ->
+        activities := Int64.to_int_exn id :: !activities)
+  in
+  !activities
+
 let load filename =
   match Sys_unix.file_exists filename with
   | `Yes -> { handle = Sqlite3.db_open filename; filename }

@@ -95,6 +95,9 @@ FROM activities a
 JOIN stats s ON a.stats_id = s.id
 WHERE a.start_date > @start_date;
 
+-- @list_activities
+SELECT id FROM activities;
+
 -- @create_laps
 CREATE TABLE IF NOT EXISTS laps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
