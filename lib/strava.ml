@@ -614,3 +614,30 @@ let%expect_test "all stats" =
                 }
               ])
       } |}]
+
+(* TODO: do a time comparison for parse_json_from_bytes and convert to
+  string and then Yojson.Safe.from_string *)
+let parse_json_from_bytes (b : bytes) : Yojson.Safe.t =
+  (* let len = Bytes.length b in *)
+  let s = Bytes.unsafe_to_string ~no_mutation_while_string_reachable:b in
+  let lexbuf = Lexing.from_string s in
+  let buf = Buffer.create 4096 in
+  (* Tune based on your typical JSON payloads *)
+  let lexer_state = Yojson.init_lexer ~buf () in
+  Yojson.Safe.from_lexbuf lexer_state lexbuf
+
+let%expect_test "compress text" =
+  let data =
+    In_channel.read_all "/home/angel/Documents/ocaml/unto/get_streams_test.json"
+  in
+  let data_b = Bytes.of_string data in
+  let compressed = LZ4.Bytes.compress data_b in
+  printf "%d -> %d\n" (Bytes.length data_b) (Bytes.length compressed);
+  let decompressed =
+    LZ4.Bytes.decompress ~length:(String.length data) compressed
+  in
+  let json = parse_json_from_bytes decompressed in
+  let streams = Streams.t_of_yojson json in
+  printf "%s\n" (Streams.show streams);
+  (* => "wild wild fox" *)
+  [%expect {| true |}]

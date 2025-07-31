@@ -53,7 +53,7 @@ INSERT INTO stats VALUES;
 -- @create_activities
 CREATE TABLE IF NOT EXISTS activities (
     id INTEGER PRIMARY KEY,
-    athlete_id INTEGER,
+    athlete_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     sport_type TEXT NOT NULL,
     start_date TEXT NOT NULL,
@@ -128,3 +128,15 @@ CREATE TABLE IF NOT EXISTS splits (
 
 -- @add_split
 INSERT INTO splits VALUES;
+
+-- @create_streams
+CREATE TABLE IF NOT EXISTS streams (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    activity_id INTEGER NOT NULL,
+    data BLOB NOT NULL,
+    data_len INTEGER NOT NULL, -- decompressed string length
+    FOREIGN KEY (activity_id) REFERENCES activities (id) ON DELETE CASCADE
+);
+
+-- @add_streams
+INSERT INTO streams VALUES;

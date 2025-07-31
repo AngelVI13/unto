@@ -3,4 +3,4 @@
  (inline_tests)
  (preprocess 
    (pps ppx_deriving.show ppx_deriving.enum ppx_inline_test ppx_expect ppx_jane ppx_sexp_message ppx_yojson_conv))
- (libraries core core_unix.sys_unix core_unix.time_ns_unix ezcurl uri yojson sqlite3 sqlgg.sqlite3 sqlgg.traits))
+ (libraries core core_unix.sys_unix core_unix.time_ns_unix ezcurl uri yojson sqlite3 sqlgg.sqlite3 sqlgg.traits lz4))
