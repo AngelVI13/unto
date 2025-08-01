@@ -19,6 +19,7 @@ type t = {
   stats : Stats.t;
   laps : Laps.t;
   splits : Splits.t option;
+  streams : Streams.t; [@opaque]
 }
 [@@deriving show { with_path = false }, fields, yojson_of]
 
@@ -35,6 +36,7 @@ let t_of_StravaActivity (activity : StravaActivity.t) : t =
     stats = Stats.empty ();
     laps = [];
     splits = None;
+    streams = [];
   }
 
 let calculate_stats (t : t) (streams : Streams.t) (laps : Laps.t) : t =

@@ -125,6 +125,41 @@ let command_test () =
        let _ = Or_error.ok_exn (Unto.Db.close db) in
        ())
 
+let command_update_db auth_client =
+  Command.basic ~summary:"Update db with latest N activities"
+    (let%map_open.Command db_filename =
+       flag "-d"
+         (optional_with_default "app.db" Filename_unix.arg_type)
+         ~doc:"DB filename"
+     and auth_filename =
+       flag "-t"
+         (optional_with_default "tokens.json" Filename_unix.arg_type)
+         ~doc:"Filename where to read access and refresh tokens from"
+     and n =
+       flag "-n"
+         (optional_with_default 10 int)
+         ~doc:"number of activities to fetch"
+     in
+     fun () ->
+       let db = Unto.Db.load db_filename in
+       let present_activities = Unto.Db.all_activities db in
+       Fun.protect
+         ~finally:(fun () -> ignore @@ Unto.Db.close db)
+         (fun () ->
+           let auth =
+             Or_error.ok_exn
+               (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
+           in
+           let new_activities =
+             Or_error.ok_exn
+               (Unto.Strava.fetch_activities ~token:auth.access_token
+                  ~num_activities:n ~exclude:present_activities)
+           in
+           ignore
+             (List.map
+                ~f:(fun activity -> Unto.Db.add_activity db activity)
+                new_activities)))
+
 let command auth_client =
   Command.group ~summary:"CLI utility to download data from strava"
     [
@@ -136,6 +171,7 @@ let command auth_client =
       ("user-info", command_user_info auth_client);
       ("zones", command_zones auth_client);
       ("test", command_test ());
+      ("update", command_update_db auth_client);
     ]
 
 let () =

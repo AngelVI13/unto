@@ -6,7 +6,6 @@ let () =
   let data =
     In_channel.read_all "/home/angel/Documents/ocaml/unto/get_streams_test.json"
   in
-  (* printf "%s\n" data; *)
   let data_b = Bytes.of_string data in
 
   let tests =

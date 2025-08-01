@@ -30,7 +30,7 @@ open Or_error.Let_syntax
 (* TODO: 4. Analyze the data *)
 
 let pull_activities token num_activities =
-  let activities = list_activities token num_activities in
+  let activities = list_activities ~token ~page:1 ~per_page:num_activities () in
   print_endline activities
 
 let pull_streams_aux token activity_id =
@@ -95,7 +95,7 @@ let process_zones token =
   Ok ()
 
 let process_activities token num_activities =
-  let resp = list_activities token num_activities in
+  let resp = list_activities ~token ~page:1 ~per_page:num_activities () in
   let timestamp = Time_ns.now () |> Time_ns.to_string in
   let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
   let filename = sprintf "%s_activities.json" timestamp in
@@ -132,6 +132,61 @@ let process_activities token num_activities =
   Yojson.Safe.to_file filename out;
   printf "Saved stats to file %s\n" filename;
   Ok ()
+
+let fetch_one_page ~token ~page ~per_page ~exclude =
+  printf "downloading activity page %d (per_page=%d)\n" page per_page;
+  let resp = list_activities ~token ~page ~per_page () in
+  let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
+  let%bind strava_activities =
+    Or_error.try_with (fun () -> StravaActivities.t_of_yojson json)
+  in
+  let activities = List.map ~f:Activity.t_of_StravaActivity strava_activities in
+  let activities =
+    List.filter
+      ~f:(fun activity ->
+        match List.exists ~f:(Int.equal activity.id) exclude with
+        | true ->
+            printf "...skipping activity (%d) - already exists\n" activity.id;
+            false
+        | false -> true)
+      activities
+  in
+  let activities =
+    List.map
+      ~f:(fun activity ->
+        Time_ns.pause (Time_ns.Span.create ~ms:100 ());
+        printf "\tprocessing activity=%d\n" activity.id;
+        printf "\t\tdownloading streams\n";
+        let streams = pull_streams_aux token activity.id in
+        printf "\t\tdownloading laps\n";
+        let laps = pull_laps_aux token activity.id in
+        match (streams, laps) with
+        | Ok streams, Ok laps ->
+            printf "\t\tsuccessfully downloaded laps & streams\n";
+            let laps = Laps.t_of_StravaLaps laps in
+            printf "\t\tcalculating stats\n";
+            Activity.calculate_stats activity streams laps
+        | Error e, Ok _ -> Error.raise e
+        | Ok _, Error e -> Error.raise e
+        | Error e1, Error e2 ->
+            failwith
+              (sprintf "Errors:\n%s\n%s\n" (Error.to_string_hum e1)
+                 (Error.to_string_hum e2)))
+      activities
+  in
+  Ok activities
+
+let fetch_activities ~token ~num_activities ~exclude =
+  let per_page = min num_activities 100 in
+  let pages = Float.(round_up (of_int num_activities /. of_int per_page)) in
+  let pages = Int.of_float pages in
+  let activities =
+    List.init pages ~f:(fun i ->
+        fetch_one_page ~token ~page:(i + 1) ~per_page ~exclude)
+  in
+  let%bind activities = Or_error.all activities in
+  let activities = List.join activities in
+  Ok activities
 
 let%expect_test "deserialize get_stream.json" =
   let json =
@@ -350,31 +405,6 @@ let%expect_test "sportType of string" =
   let success = match sport with Run -> true | _ -> false in
   printf "%b" success;
   [%expect {| true |}]
-
-(* let%expect_test "write raw altitude csv" = *)
-(*   let json = *)
-(*     Yojson.Safe.from_file *)
-(*       "/home/angel/Documents/ocaml/unto/streams_14995177737.json" *)
-(*   in *)
-(*   let streams = Streams.t_of_yojson_smoothed json in *)
-(*   List.iter streams ~f:(fun stream -> *)
-(*       match stream with *)
-(*       | AltitudeStream s -> *)
-(*           let raw_data = s.data in *)
-(*           let smoothed_ma = Utils.repeat_smoothing 8 5 s.data in *)
-(*           let smoothed_int = List.map ~f:Int.of_float smoothed_ma in *)
-(*           let out_raw = *)
-(*             List.foldi ~init:"time,raw,8x_ma_5,8x_ma_5_int\n" *)
-(*               ~f:(fun i acc alt -> *)
-(*                 sprintf "%s%d,%f,%f,%d\n" acc i alt *)
-(*                   (List.nth_exn smoothed_ma i) *)
-(*                   (List.nth_exn smoothed_int i)) *)
-(*               raw_data *)
-(*           in *)
-(*           Out_channel.write_all "/home/angel/Documents/ocaml/unto/alt5.csv" *)
-(*             ~data:out_raw *)
-(*       | _ -> ()); *)
-(*   [%expect {| a |}] *)
 
 let%expect_test "all stats" =
   let streams_json =
@@ -612,8 +642,8 @@ let%expect_test "all stats" =
                   max_heartrate = (Some 155); average_power = None;
                   max_power = None }
                 }
-              ])
-      } |}]
+              ]);
+      streams = <opaque> } |}]
 
 let parse_json_from_bytes_lexbuf (b : bytes) : Yojson.Safe.t =
   let s = Bytes.unsafe_to_string ~no_mutation_while_string_reachable:b in
@@ -638,5 +668,88 @@ let%expect_test "compress text" =
   let json = parse_json_from_bytes decompressed in
   let streams = Streams.t_of_yojson json in
   printf "%s\n" (Streams.show streams);
-  (* => "wild wild fox" *)
-  [%expect {| true |}]
+  [%expect
+    {|
+    2186 -> 879
+    [(TimeStream
+        { type_ = "time";
+          data =
+          [0; 1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19;
+            20];
+          smoothed = <opaque>; series_type = "distance"; original_size = 21;
+          resolution = "high" });
+      (DistanceStream
+         { type_ = "distance";
+           data =
+           [0.; 2.8; 5.5; 8.3; 11.; 13.8; 16.5; 19.3; 22.; 27.; 32.; 36.; 39.;
+             42.; 45.; 48.; 51.; 54.; 57.; 60.; 64.];
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
+      (LatLngStream
+         { type_ = "latlng";
+           data =
+           [[54.70304; 25.317412]; [54.703055; 25.317374];
+             [54.703069; 25.317336]; [54.703084; 25.317297];
+             [54.703099; 25.317259]; [54.703113; 25.317221];
+             [54.703128; 25.317183]; [54.703143; 25.317144];
+             [54.703158; 25.317106]; [54.703175; 25.31704];
+             [54.70319; 25.316983]; [54.703203; 25.316937]; [54.70321; 25.31689];
+             [54.703218; 25.316848]; [54.703228; 25.3168];
+             [54.703233; 25.316753]; [54.70324; 25.31671];
+             [54.703245; 25.316665]; [54.703255; 25.31662];
+             [54.703265; 25.316572]; [54.703273; 25.316523]];
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
+      (AltitudeStream
+         { type_ = "altitude";
+           data =
+           [115.2; 115.2; 115.2; 115.2; 115.2; 115.2; 115.2; 115.2; 115.2; 114.6;
+             114.2; 114.; 113.8; 113.8; 113.4; 113.4; 113.2; 113.2; 112.8; 112.8;
+             112.6];
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
+      (VelocityStream
+         { type_ = "velocity_smooth";
+           data =
+           [0.; 0.; 2.75; 2.75; 2.75; 2.75; 2.75; 2.75; 2.75; 3.2; 3.65; 3.9;
+             3.95; 4.; 3.6; 3.2; 3.; 3.; 3.; 3.; 3.2];
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
+      (HeartRateStream
+         { type_ = "heartrate";
+           data =
+           [80; 79; 78; 77; 77; 75; 75; 75; 76; 78; 80; 80; 82; 84; 87; 89; 91;
+             95; 97; 99; 100];
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
+      (CadenceStream
+         { type_ = "cadence";
+           data =
+           [84; 84; 84; 84; 84; 84; 84; 84; 84; 85; 86; 86; 86; 85; 84; 83; 82;
+             82; 82; 82; 82];
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
+      (WattsStream
+         { type_ = "watts";
+           data =
+           [None; None; None; None; None; None; None; None; (Some 283);
+             (Some 243); (Some 279); (Some 273); (Some 263); (Some 261);
+             (Some 219); (Some 220); (Some 201); (Some 209); (Some 193);
+             (Some 200); (Some 198)];
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
+      (TempStream
+         { type_ = "temp";
+           data =
+           [29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29; 29;
+             29; 29; 29; 29];
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" });
+      (GradeStream
+         { type_ = "grade_smooth";
+           data =
+           [0.; 0.; 0.; 0.; 0.; 0.; 0.; -4.5; -6.5; -7.2; -8.2; -5.3; -6.2; -5.;
+             -5.; -5.; -5.; -5.; -4.6; -4.6; -3.1];
+           smoothed = <opaque>; series_type = "distance"; original_size = 21;
+           resolution = "high" })
+      ] |}]

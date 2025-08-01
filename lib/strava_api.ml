@@ -14,10 +14,10 @@ let zones token =
   let out = match res with Ok c -> c.body | Error (_, s) -> s in
   out
 
-let list_activities token n =
+let list_activities ~token ?(page = 1) ?(per_page = 100) () =
   let url = Uri.of_string "https://www.strava.com/api/v3/athlete/activities" in
-  let url = Uri.add_query_param url ("page", [ "1" ]) in
-  let url = Uri.add_query_param url ("per_page", [ Int.to_string n ]) in
+  let url = Uri.add_query_param url ("page", [ Int.to_string page ]) in
+  let url = Uri.add_query_param url ("per_page", [ Int.to_string per_page ]) in
   let url = Uri.to_string url in
 
   let headers = [ ("Authorization", sprintf "Bearer %s" token) ] in
