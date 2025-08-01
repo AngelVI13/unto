@@ -615,16 +615,15 @@ let%expect_test "all stats" =
               ])
       } |}]
 
-(* TODO: do a time comparison for parse_json_from_bytes and convert to
-  string and then Yojson.Safe.from_string *)
-let parse_json_from_bytes (b : bytes) : Yojson.Safe.t =
-  (* let len = Bytes.length b in *)
+let parse_json_from_bytes_lexbuf (b : bytes) : Yojson.Safe.t =
   let s = Bytes.unsafe_to_string ~no_mutation_while_string_reachable:b in
   let lexbuf = Lexing.from_string s in
-  let buf = Buffer.create 4096 in
-  (* Tune based on your typical JSON payloads *)
-  let lexer_state = Yojson.init_lexer ~buf () in
+  let lexer_state = Yojson.init_lexer () in
   Yojson.Safe.from_lexbuf lexer_state lexbuf
+
+let parse_json_from_bytes (b : bytes) : Yojson.Safe.t =
+  let s = Bytes.unsafe_to_string ~no_mutation_while_string_reachable:b in
+  Yojson.Safe.from_string s
 
 let%expect_test "compress text" =
   let data =

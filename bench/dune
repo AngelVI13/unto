@@ -1,0 +1,4 @@
+(executables
+  (names bench)
+  (libraries core_bench unto core core_unix.command_unix)
+  (preprocess (pps ppx_jane)))
