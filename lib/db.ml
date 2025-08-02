@@ -78,8 +78,8 @@ let add_stats (t : t) (stats : Stats.t) (activity_id : int) =
   (*   t.handle; *)
   !stats_id
 
-let add_activity (t : t) (activity : Activity.t) (athlete_id : int) =
-  let stats_id = add_stats t activity.stats activity.id in
+let add_activity_aux (t : t) (activity : Activity.t) (athlete_id : int)
+    (stats_id : Int64.t) =
   let _ =
     DB.add_activity t.handle ~id:(Int64.of_int activity.id)
       ~athlete_id:(Int64.of_int athlete_id) ~name:activity.name
@@ -89,6 +89,29 @@ let add_activity (t : t) (activity : Activity.t) (athlete_id : int) =
       ~map_summary_polyline:activity.map_summary_polyline ~stats_id
   in
   (* explain (sprintf "add_activity %d" activity.id) t.handle; *)
+  ()
+
+let add_lap (t : t) (lap : Laps.Lap.t) (activity_id : int) =
+  let stats_id = add_stats t lap.stats activity_id in
+  ignore
+    (DB.add_lap t.handle ~id:None ~activity_id:(Int64.of_int activity_id)
+       ~lap_index:(Int64.of_int lap.lap_index)
+       ~moving_time:(Int64.of_int lap.moving_time)
+       ~start:(Int64.of_int lap.start) ~len:(Int64.of_int lap.len) ~stats_id)
+
+let add_split (t : t) (split : Splits.Split.t) (activity_id : int) =
+  let stats_id = add_stats t split.stats activity_id in
+  ignore
+    (DB.add_split t.handle ~id:None ~activity_id:(Int64.of_int activity_id)
+       ~split_index:(Int64.of_int split.split_index)
+       ~start:(Int64.of_int split.start) ~len:(Int64.of_int split.len) ~stats_id)
+
+let add_activity (t : t) (activity : Activity.t) (athlete_id : int) =
+  let stats_id = add_stats t activity.stats activity.id in
+  add_activity_aux t activity athlete_id stats_id;
+  ignore (List.map ~f:(fun lap -> add_lap t lap activity.id) activity.laps);
+  ignore
+    (List.map ~f:(fun split -> add_split t split activity.id) activity.splits);
   (* TODO: add storing of streams, laps and splits and their stats *)
   ()
 

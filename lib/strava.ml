@@ -494,161 +494,139 @@ let%expect_test "all stats" =
           }
         ];
       splits =
-      (Some [{ split_index = 0; start = 0; len = 495;
-               stats =
-               { data_points = 495; moving_time = 494; elapsed_time = 494;
-                 distance = (Some 1001.); elev_gain = (Some 10);
-                 elev_loss = (Some 10); elev_high = (Some 149);
-                 elev_low = (Some 142);
-                 start_latlng = (Some (54.769788, 25.326307));
-                 end_latlng = (Some (54.76971, 25.326038));
-                 average_speed = (Some 2.03); max_speed = (Some 3.8);
-                 average_cadence = (Some 80); max_cadence = (Some 81);
-                 average_temp = (Some 29); average_heartrate = (Some 142);
-                 max_heartrate = (Some 152); average_power = None;
-                 max_power = None }
-               };
-              { split_index = 1; start = 495; len = 333;
-                stats =
-                { data_points = 333; moving_time = 332; elapsed_time = 332;
-                  distance = (Some 997.); elev_gain = (Some 4);
-                  elev_loss = (Some 16); elev_high = (Some 145);
-                  elev_low = (Some 131);
-                  start_latlng = (Some (54.769727, 25.326067));
-                  end_latlng = (Some (54.764443, 25.327693));
-                  average_speed = (Some 3.012); max_speed = (Some 5.8);
-                  average_cadence = (Some 82); max_cadence = (Some 90);
-                  average_temp = (Some 27); average_heartrate = (Some 163);
-                  max_heartrate = (Some 171); average_power = None;
-                  max_power = None }
-                };
-              { split_index = 2; start = 828; len = 405;
-                stats =
-                { data_points = 405; moving_time = 404; elapsed_time = 404;
-                  distance = (Some 998.); elev_gain = (Some 8);
-                  elev_loss = (Some 7); elev_high = (Some 135);
-                  elev_low = (Some 127);
-                  start_latlng = (Some (54.764423, 25.327732));
-                  end_latlng = (Some (54.765352, 25.326905));
-                  average_speed = (Some 2.476); max_speed = (Some 4.8);
-                  average_cadence = (Some 74); max_cadence = (Some 86);
-                  average_temp = (Some 25); average_heartrate = (Some 170);
-                  max_heartrate = (Some 175); average_power = None;
-                  max_power = None }
-                };
-              { split_index = 3; start = 1233; len = 375;
-                stats =
-                { data_points = 375; moving_time = 374; elapsed_time = 374;
-                  distance = (Some 997.); elev_gain = (Some 15);
-                  elev_loss = (Some 2); elev_high = (Some 147);
-                  elev_low = (Some 134);
-                  start_latlng = (Some (54.765352, 25.326905));
-                  end_latlng = (Some (54.764235, 25.316138));
-                  average_speed = (Some 2.673); max_speed = (Some 4.4);
-                  average_cadence = (Some 77); max_cadence = (Some 83);
-                  average_temp = (Some 25); average_heartrate = (Some 171);
-                  max_heartrate = (Some 175); average_power = None;
-                  max_power = None }
-                };
-              { split_index = 4; start = 1608; len = 460;
-                stats =
-                { data_points = 460; moving_time = 459; elapsed_time = 459;
-                  distance = (Some 998.); elev_gain = (Some 5);
-                  elev_loss = (Some 18); elev_high = (Some 149);
-                  elev_low = (Some 133);
-                  start_latlng = (Some (54.764235, 25.316138));
-                  end_latlng = (Some (54.75836, 25.31797));
-                  average_speed = (Some 2.179); max_speed = (Some 5.6);
-                  average_cadence = (Some 69); max_cadence = (Some 98);
-                  average_temp = (Some 26); average_heartrate = (Some 163);
-                  max_heartrate = (Some 173); average_power = None;
-                  max_power = None }
-                };
-              { split_index = 5; start = 2068; len = 449;
-                stats =
-                { data_points = 449; moving_time = 448; elapsed_time = 448;
-                  distance = (Some 997.7); elev_gain = (Some 13);
-                  elev_loss = (Some 19); elev_high = (Some 132);
-                  elev_low = (Some 118);
-                  start_latlng = (Some (54.758343, 25.318051));
-                  end_latlng = (Some (54.75852, 25.320668));
-                  average_speed = (Some 2.232); max_speed = (Some 4.6);
-                  average_cadence = (Some 71); max_cadence = (Some 82);
-                  average_temp = (Some 26); average_heartrate = (Some 170);
-                  max_heartrate = (Some 174); average_power = None;
-                  max_power = None }
-                };
-              { split_index = 6; start = 2517; len = 556;
-                stats =
-                { data_points = 556; moving_time = 555; elapsed_time = 555;
-                  distance = (Some 999.); elev_gain = (Some 35);
-                  elev_loss = (Some 14); elev_high = (Some 147);
-                  elev_low = (Some 112);
-                  start_latlng = (Some (54.75852, 25.320668));
-                  end_latlng = (Some (54.763295, 25.318497));
-                  average_speed = (Some 1.803); max_speed = (Some 4.);
-                  average_cadence = (Some 70); max_cadence = (Some 81);
-                  average_temp = (Some 26); average_heartrate = (Some 172);
-                  max_heartrate = (Some 177); average_power = None;
-                  max_power = None }
-                };
-              { split_index = 7; start = 3073; len = 351;
-                stats =
-                { data_points = 351; moving_time = 350; elapsed_time = 350;
-                  distance = (Some 1000.); elev_gain = (Some 4);
-                  elev_loss = (Some 18); elev_high = (Some 149);
-                  elev_low = (Some 133);
-                  start_latlng = (Some (54.763295, 25.318497));
-                  end_latlng = (Some (54.763765, 25.326707));
-                  average_speed = (Some 2.865); max_speed = (Some 6.);
-                  average_cadence = (Some 79); max_cadence = (Some 82);
-                  average_temp = (Some 25); average_heartrate = (Some 174);
-                  max_heartrate = (Some 177); average_power = None;
-                  max_power = None }
-                };
-              { split_index = 8; start = 3424; len = 455;
-                stats =
-                { data_points = 455; moving_time = 454; elapsed_time = 454;
-                  distance = (Some 1000.); elev_gain = (Some 27);
-                  elev_loss = (Some 25); elev_high = (Some 136);
-                  elev_low = (Some 113);
-                  start_latlng = (Some (54.763765, 25.326707));
-                  end_latlng = (Some (54.764205, 25.325385));
-                  average_speed = (Some 2.208); max_speed = (Some 4.);
-                  average_cadence = (Some 73); max_cadence = (Some 89);
-                  average_temp = (Some 26); average_heartrate = (Some 175);
-                  max_heartrate = (Some 180); average_power = None;
-                  max_power = None }
-                };
-              { split_index = 9; start = 3879; len = 435;
-                stats =
-                { data_points = 435; moving_time = 434; elapsed_time = 539;
-                  distance = (Some 999.); elev_gain = (Some 17);
-                  elev_loss = (Some 7); elev_high = (Some 150);
-                  elev_low = (Some 135);
-                  start_latlng = (Some (54.76423, 25.32541));
-                  end_latlng = (Some (54.769912, 25.325525));
-                  average_speed = (Some 2.307); max_speed = (Some 4.6);
-                  average_cadence = (Some 75); max_cadence = (Some 83);
-                  average_temp = (Some 26); average_heartrate = (Some 170);
-                  max_heartrate = (Some 178); average_power = None;
-                  max_power = None }
-                };
-              { split_index = 10; start = 4314; len = 301;
-                stats =
-                { data_points = 301; moving_time = 300; elapsed_time = 300;
-                  distance = (Some 602.); elev_gain = (Some 8);
-                  elev_loss = (Some 7); elev_high = (Some 146);
-                  elev_low = (Some 143);
-                  start_latlng = (Some (54.769912, 25.325525));
-                  end_latlng = (Some (54.77022, 25.326757));
-                  average_speed = (Some 2.013); max_speed = (Some 3.2);
-                  average_cadence = (Some 79); max_cadence = (Some 80);
-                  average_temp = (Some 27); average_heartrate = (Some 151);
-                  max_heartrate = (Some 155); average_power = None;
-                  max_power = None }
-                }
-              ]);
+      [{ split_index = 0; start = 0; len = 495;
+         stats =
+         { data_points = 495; moving_time = 494; elapsed_time = 494;
+           distance = (Some 1001.); elev_gain = (Some 10); elev_loss = (Some 10);
+           elev_high = (Some 149); elev_low = (Some 142);
+           start_latlng = (Some (54.769788, 25.326307));
+           end_latlng = (Some (54.76971, 25.326038));
+           average_speed = (Some 2.03); max_speed = (Some 3.8);
+           average_cadence = (Some 80); max_cadence = (Some 81);
+           average_temp = (Some 29); average_heartrate = (Some 142);
+           max_heartrate = (Some 152); average_power = None; max_power = None }
+         };
+        { split_index = 1; start = 495; len = 333;
+          stats =
+          { data_points = 333; moving_time = 332; elapsed_time = 332;
+            distance = (Some 997.); elev_gain = (Some 4); elev_loss = (Some 16);
+            elev_high = (Some 145); elev_low = (Some 131);
+            start_latlng = (Some (54.769727, 25.326067));
+            end_latlng = (Some (54.764443, 25.327693));
+            average_speed = (Some 3.012); max_speed = (Some 5.8);
+            average_cadence = (Some 82); max_cadence = (Some 90);
+            average_temp = (Some 27); average_heartrate = (Some 163);
+            max_heartrate = (Some 171); average_power = None; max_power = None }
+          };
+        { split_index = 2; start = 828; len = 405;
+          stats =
+          { data_points = 405; moving_time = 404; elapsed_time = 404;
+            distance = (Some 998.); elev_gain = (Some 8); elev_loss = (Some 7);
+            elev_high = (Some 135); elev_low = (Some 127);
+            start_latlng = (Some (54.764423, 25.327732));
+            end_latlng = (Some (54.765352, 25.326905));
+            average_speed = (Some 2.476); max_speed = (Some 4.8);
+            average_cadence = (Some 74); max_cadence = (Some 86);
+            average_temp = (Some 25); average_heartrate = (Some 170);
+            max_heartrate = (Some 175); average_power = None; max_power = None }
+          };
+        { split_index = 3; start = 1233; len = 375;
+          stats =
+          { data_points = 375; moving_time = 374; elapsed_time = 374;
+            distance = (Some 997.); elev_gain = (Some 15); elev_loss = (Some 2);
+            elev_high = (Some 147); elev_low = (Some 134);
+            start_latlng = (Some (54.765352, 25.326905));
+            end_latlng = (Some (54.764235, 25.316138));
+            average_speed = (Some 2.673); max_speed = (Some 4.4);
+            average_cadence = (Some 77); max_cadence = (Some 83);
+            average_temp = (Some 25); average_heartrate = (Some 171);
+            max_heartrate = (Some 175); average_power = None; max_power = None }
+          };
+        { split_index = 4; start = 1608; len = 460;
+          stats =
+          { data_points = 460; moving_time = 459; elapsed_time = 459;
+            distance = (Some 998.); elev_gain = (Some 5); elev_loss = (Some 18);
+            elev_high = (Some 149); elev_low = (Some 133);
+            start_latlng = (Some (54.764235, 25.316138));
+            end_latlng = (Some (54.75836, 25.31797));
+            average_speed = (Some 2.179); max_speed = (Some 5.6);
+            average_cadence = (Some 69); max_cadence = (Some 98);
+            average_temp = (Some 26); average_heartrate = (Some 163);
+            max_heartrate = (Some 173); average_power = None; max_power = None }
+          };
+        { split_index = 5; start = 2068; len = 449;
+          stats =
+          { data_points = 449; moving_time = 448; elapsed_time = 448;
+            distance = (Some 997.7); elev_gain = (Some 13);
+            elev_loss = (Some 19); elev_high = (Some 132); elev_low = (Some 118);
+            start_latlng = (Some (54.758343, 25.318051));
+            end_latlng = (Some (54.75852, 25.320668));
+            average_speed = (Some 2.232); max_speed = (Some 4.6);
+            average_cadence = (Some 71); max_cadence = (Some 82);
+            average_temp = (Some 26); average_heartrate = (Some 170);
+            max_heartrate = (Some 174); average_power = None; max_power = None }
+          };
+        { split_index = 6; start = 2517; len = 556;
+          stats =
+          { data_points = 556; moving_time = 555; elapsed_time = 555;
+            distance = (Some 999.); elev_gain = (Some 35); elev_loss = (Some 14);
+            elev_high = (Some 147); elev_low = (Some 112);
+            start_latlng = (Some (54.75852, 25.320668));
+            end_latlng = (Some (54.763295, 25.318497));
+            average_speed = (Some 1.803); max_speed = (Some 4.);
+            average_cadence = (Some 70); max_cadence = (Some 81);
+            average_temp = (Some 26); average_heartrate = (Some 172);
+            max_heartrate = (Some 177); average_power = None; max_power = None }
+          };
+        { split_index = 7; start = 3073; len = 351;
+          stats =
+          { data_points = 351; moving_time = 350; elapsed_time = 350;
+            distance = (Some 1000.); elev_gain = (Some 4); elev_loss = (Some 18);
+            elev_high = (Some 149); elev_low = (Some 133);
+            start_latlng = (Some (54.763295, 25.318497));
+            end_latlng = (Some (54.763765, 25.326707));
+            average_speed = (Some 2.865); max_speed = (Some 6.);
+            average_cadence = (Some 79); max_cadence = (Some 82);
+            average_temp = (Some 25); average_heartrate = (Some 174);
+            max_heartrate = (Some 177); average_power = None; max_power = None }
+          };
+        { split_index = 8; start = 3424; len = 455;
+          stats =
+          { data_points = 455; moving_time = 454; elapsed_time = 454;
+            distance = (Some 1000.); elev_gain = (Some 27);
+            elev_loss = (Some 25); elev_high = (Some 136); elev_low = (Some 113);
+            start_latlng = (Some (54.763765, 25.326707));
+            end_latlng = (Some (54.764205, 25.325385));
+            average_speed = (Some 2.208); max_speed = (Some 4.);
+            average_cadence = (Some 73); max_cadence = (Some 89);
+            average_temp = (Some 26); average_heartrate = (Some 175);
+            max_heartrate = (Some 180); average_power = None; max_power = None }
+          };
+        { split_index = 9; start = 3879; len = 435;
+          stats =
+          { data_points = 435; moving_time = 434; elapsed_time = 539;
+            distance = (Some 999.); elev_gain = (Some 17); elev_loss = (Some 7);
+            elev_high = (Some 150); elev_low = (Some 135);
+            start_latlng = (Some (54.76423, 25.32541));
+            end_latlng = (Some (54.769912, 25.325525));
+            average_speed = (Some 2.307); max_speed = (Some 4.6);
+            average_cadence = (Some 75); max_cadence = (Some 83);
+            average_temp = (Some 26); average_heartrate = (Some 170);
+            max_heartrate = (Some 178); average_power = None; max_power = None }
+          };
+        { split_index = 10; start = 4314; len = 301;
+          stats =
+          { data_points = 301; moving_time = 300; elapsed_time = 300;
+            distance = (Some 602.); elev_gain = (Some 8); elev_loss = (Some 7);
+            elev_high = (Some 146); elev_low = (Some 143);
+            start_latlng = (Some (54.769912, 25.325525));
+            end_latlng = (Some (54.77022, 25.326757));
+            average_speed = (Some 2.013); max_speed = (Some 3.2);
+            average_cadence = (Some 79); max_cadence = (Some 80);
+            average_temp = (Some 27); average_heartrate = (Some 151);
+            max_heartrate = (Some 155); average_power = None; max_power = None }
+          }
+        ];
       streams = <opaque> } |}]
 
 let parse_json_from_bytes_lexbuf (b : bytes) : Yojson.Safe.t =

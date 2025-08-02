@@ -97,6 +97,14 @@ module StreamType = struct
     | VelocityStream s ->
         let data = List.sub ~pos ~len s.data in
         let max_speed = List.max_elt ~compare:Float.compare data in
+        let max_speed =
+          match max_speed with
+          | None -> None
+          | Some x ->
+              if Float.(round_significant ~significant_digits:1 x = 0.0) then
+                None
+              else Some x
+        in
         { stats with max_speed }
     | HeartRateStream s ->
         let data = List.sub ~pos ~len s.data in

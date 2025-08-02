@@ -18,7 +18,7 @@ type t = {
        activity and not taken from strava directly *)
   stats : Stats.t;
   laps : Laps.t;
-  splits : Splits.t option;
+  splits : Splits.t;
   streams : Streams.t; [@opaque]
 }
 [@@deriving show { with_path = false }, fields, yojson_of]
@@ -35,7 +35,7 @@ let t_of_StravaActivity (activity : StravaActivity.t) : t =
     map_summary_polyline = activity.map.summary_polyline;
     stats = Stats.empty ();
     laps = [];
-    splits = None;
+    splits = [];
     streams = [];
   }
 
@@ -51,13 +51,12 @@ let calculate_stats (t : t) (streams : Streams.t) (laps : Laps.t) : t =
   let splits = Streams.splits streams in
   let splits =
     match splits with
-    | None -> splits
+    | None -> []
     | Some splits ->
-        Some
-          (List.map
-             ~f:(fun split ->
-               let split_stats = Streams.split_stats streams split in
-               Split.set_stats split split_stats)
-             splits)
+        List.map
+          ~f:(fun split ->
+            let split_stats = Streams.split_stats streams split in
+            Split.set_stats split split_stats)
+          splits
   in
   { t with stats; laps; splits }
