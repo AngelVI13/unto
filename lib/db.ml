@@ -13,6 +13,7 @@ let create filename =
   let _ = DB.create_stats handle in
   let _ = DB.create_laps handle in
   let _ = DB.create_splits handle in
+  let _ = DB.create_streams handle in
   { filename; handle }
 
 let add_test_split { handle; _ } =
@@ -106,14 +107,24 @@ let add_split (t : t) (split : Splits.Split.t) (activity_id : int) =
        ~split_index:(Int64.of_int split.split_index)
        ~start:(Int64.of_int split.start) ~len:(Int64.of_int split.len) ~stats_id)
 
+let add_streams (t : t) (streams : Streams.Streams.t) (activity_id : int) =
+  let streams = Streams.Streams.yojson_of_t streams in
+  let streams = Yojson.Safe.to_string streams in
+  let streams_bin = Bytes.of_string streams in
+  let compressed = LZ4.Bytes.compress streams_bin in
+  ignore
+    (DB.add_streams t.handle ~id:None ~activity_id:(Int64.of_int activity_id)
+       ~data:
+         (Bytes.unsafe_to_string ~no_mutation_while_string_reachable:compressed)
+       ~data_len:(Int64.of_int @@ String.length streams))
+
 let add_activity (t : t) (activity : Activity.t) (athlete_id : int) =
   let stats_id = add_stats t activity.stats activity.id in
   add_activity_aux t activity athlete_id stats_id;
   ignore (List.map ~f:(fun lap -> add_lap t lap activity.id) activity.laps);
   ignore
     (List.map ~f:(fun split -> add_split t split activity.id) activity.splits);
-  (* TODO: add storing of streams, laps and splits and their stats *)
-  ()
+  add_streams t activity.streams activity.id
 
 let all_activities { handle; _ } =
   let activities = ref [] in

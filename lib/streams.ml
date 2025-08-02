@@ -97,6 +97,9 @@ module StreamType = struct
     | VelocityStream s ->
         let data = List.sub ~pos ~len s.data in
         let max_speed = List.max_elt ~compare:Float.compare data in
+        (* NOTE: even if there is no GPS data, strava still gives me a velocity
+           stream of all 0.0. So here we replace it with None to denote the
+           lack of values. *)
         let max_speed =
           match max_speed with
           | None -> None

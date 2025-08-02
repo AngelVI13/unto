@@ -59,4 +59,4 @@ let calculate_stats (t : t) (streams : Streams.t) (laps : Laps.t) : t =
             Split.set_stats split split_stats)
           splits
   in
-  { t with stats; laps; splits }
+  { t with streams; stats; laps; splits }
