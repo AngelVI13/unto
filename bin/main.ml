@@ -117,8 +117,7 @@ let command_test () =
      in
      fun () ->
        let db = Unto.Db.load db_filename in
-       let activities = Unto.Db.all_activities db in
-       List.iter activities ~f:(fun v -> printf "%d\n" v);
+       Unto.Db.stream_for_activity db 15310528167;
        (* Unto.Db.add_test_activity db 123L; *)
        (* Unto.Db.add_test_activity db 345L; *)
        (* Unto.Db.add_test_activity db 567L; *)
@@ -152,6 +151,11 @@ let command_update_db auth_client =
              Or_error.ok_exn
                (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
            in
+           (* TODO: Strava only allows for 100 API read requests per 15 mins.
+              Calculate the number of requests per activity or keep track of
+              all requests?? Make a bash script that every 15 mins calls
+              ./update_db.sh with increasing number of activities (in order to
+              populate the whole db) *)
            let athlete =
              Or_error.ok_exn
                (Unto.Strava.fetch_athlete ~token:auth.access_token)

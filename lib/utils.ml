@@ -72,3 +72,13 @@ let repeat_smoothing times window data =
   in
 
   smoothe times data
+
+let parse_json_from_bytes_lexbuf (b : bytes) : Yojson.Safe.t =
+  let s = Bytes.unsafe_to_string ~no_mutation_while_string_reachable:b in
+  let lexbuf = Lexing.from_string s in
+  let lexer_state = Yojson.init_lexer () in
+  Yojson.Safe.from_lexbuf lexer_state lexbuf
+
+let parse_json_from_bytes (b : bytes) : Yojson.Safe.t =
+  let s = Bytes.unsafe_to_string ~no_mutation_while_string_reachable:b in
+  Yojson.Safe.from_string s

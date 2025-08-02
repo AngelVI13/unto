@@ -135,6 +135,26 @@ let all_activities { handle; _ } =
   in
   !activities
 
+let stream_for_activity { handle; _ } (activity_id : int) =
+  DB.streams_for_activity handle ~activity_id:(Int64.of_int activity_id)
+    (fun ~id ~activity_id ~data ~data_len ->
+      let _ = (id, activity_id) in
+      let data_bin = Bytes.of_string data in
+      let data =
+        LZ4.Bytes.decompress ~length:(Int64.to_int_exn data_len) data_bin
+      in
+      let json = Utils.parse_json_from_bytes data in
+      Yojson.Safe.to_file
+        (sprintf "decompressed_streams_%d.json" (Int64.to_int_exn activity_id))
+        json;
+      (* TODO: this fails because my t_of_yojson implementation for Streams
+           is expected to work with the strava format and not with a serialized
+           Streams.t object. Have to create different method to create
+           Streams.t object that corresponds to Streams.yojson_of_t *)
+      let streams = Streams.Streams.t_of_yojson json in
+      printf "%s\n" (Streams.Streams.show streams);
+      ())
+
 let load filename =
   match Sys_unix.file_exists filename with
   | `Yes ->

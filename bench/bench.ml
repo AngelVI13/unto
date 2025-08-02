@@ -11,9 +11,9 @@ let () =
   let tests =
     [
       Bench.Test.create ~name:"lexbuf" (fun () ->
-          ignore (Strava.parse_json_from_bytes_lexbuf data_b));
+          ignore (Utils.parse_json_from_bytes_lexbuf data_b));
       Bench.Test.create ~name:"from_string" (fun () ->
-          ignore (Strava.parse_json_from_bytes data_b));
+          ignore (Utils.parse_json_from_bytes data_b));
     ]
   in
 

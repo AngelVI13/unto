@@ -1,30 +1,12 @@
 open Core
 open Laps
+open Utils
 open Import
 open Streams
 open Strava_api
 open Strava_models
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 open Or_error.Let_syntax
-
-(* TODO: use https://github.com/mmottl/sqlite3-ocaml for sqlite storage *)
-(* some examples can be found here: https://github.com/patoline/patoline/blob/75fd8c928efc68d0aaa400d3a699a0e668c26c5f/permap/permap.ml#L43 *)
-
-(* TODO: 1. define the strava API I'm using (with only the needed fields) *)
-(* TODO: 2. Insert data to databases on every request if the data is not already there *)
-
-(* NOTE: *)
-(* Expected tables: *)
-(*   1. activity table  *)
-(*   2. activity stats table (with activity id as primary key) *)
-(*   3. lap table (with activity id as primary key) *)
-(*   4. lap stats table (with lap id as primary key) *)
-(*   5. splits table (with activity id as primary key) *)
-(*   6. splits stats table (with splits id as primary key) *)
-(*   7. streams table (with activity id as primary key) - this table only  *)
-(*     stores filenames where the streams data is actually stored *)
-(* Splits and laps can be found by activity ID an lap/split index, i don't
-   think i need to create a separate lap/split id for each one. *)
 
 (* TODO: 3. Visualize the data in a web ui *)
 (* TODO: 4. Analyze the data *)
@@ -628,16 +610,6 @@ let%expect_test "all stats" =
           }
         ];
       streams = <opaque> } |}]
-
-let parse_json_from_bytes_lexbuf (b : bytes) : Yojson.Safe.t =
-  let s = Bytes.unsafe_to_string ~no_mutation_while_string_reachable:b in
-  let lexbuf = Lexing.from_string s in
-  let lexer_state = Yojson.init_lexer () in
-  Yojson.Safe.from_lexbuf lexer_state lexbuf
-
-let parse_json_from_bytes (b : bytes) : Yojson.Safe.t =
-  let s = Bytes.unsafe_to_string ~no_mutation_while_string_reachable:b in
-  Yojson.Safe.from_string s
 
 let%expect_test "compress text" =
   let data =

@@ -146,3 +146,6 @@ CREATE TABLE IF NOT EXISTS streams (
 
 -- @add_streams
 INSERT INTO streams VALUES;
+
+-- @streams_for_activity
+SELECT * FROM streams WHERE activity_id == @activity_id;
