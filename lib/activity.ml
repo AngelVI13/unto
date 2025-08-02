@@ -13,6 +13,11 @@ type t = {
   start_date : string;
   timezone : string;
   map_id : string;
+  (* NOTE: Polyline values are string encodings of the latitude and longitude points
+     using the Google encoded polyline algorithm format. More info can be found
+     here:
+       https://developers.google.com/maps/documentation/utilities/polylinealgorithm
+       *)
   map_summary_polyline : string;
   (* NOTE: these are calculated from the data streams of the
        activity and not taken from strava directly *)
