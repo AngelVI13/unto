@@ -25,30 +25,33 @@ CREATE TABLE IF NOT EXISTS stats (
     data_points INTEGER NOT NULL,
     moving_time INTEGER NOT NULL,
     elapsed_time INTEGER NOT NULL,
-    distance REAL,           -- optional
-    elev_gain INTEGER,       -- optional
-    elev_loss INTEGER,       -- optional
-    elev_high INTEGER,       -- optional
-    elev_low INTEGER,        -- optional
-    start_lat REAL,          -- optional
-    start_lng REAL,          -- optional
-    end_lat REAL,            -- optional
-    end_lng REAL,            -- optional
-    average_speed REAL,      -- optional
-    max_speed REAL,          -- optional
-    average_cadence INTEGER, -- optional
-    max_cadence INTEGER,     -- optional
-    average_temp INTEGER,    -- optional
-    average_heartrate INTEGER, -- optional
-    max_heartrate INTEGER,     -- optional
-    average_power INTEGER,     -- optional
-    max_power INTEGER,          -- optional
+    distance REAL NULL,           -- optional
+    elev_gain INTEGER NULL,       -- optional
+    elev_loss INTEGER NULL,       -- optional
+    elev_high INTEGER NULL,       -- optional
+    elev_low INTEGER NULL,        -- optional
+    start_lat REAL NULL,          -- optional
+    start_lng REAL NULL,          -- optional
+    end_lat REAL NULL,            -- optional
+    end_lng REAL NULL,            -- optional
+    average_speed REAL NULL,      -- optional
+    max_speed REAL NULL,          -- optional
+    average_cadence INTEGER NULL, -- optional
+    max_cadence INTEGER NULL,     -- optional
+    average_temp INTEGER NULL,    -- optional
+    average_heartrate INTEGER NULL, -- optional
+    max_heartrate INTEGER NULL,     -- optional
+    average_power INTEGER NULL,     -- optional
+    max_power INTEGER NULL,          -- optional
 
     FOREIGN KEY (activity_id) REFERENCES activities (id) ON DELETE CASCADE
 );
 
 -- @add_stats
 INSERT INTO stats VALUES;
+
+-- @last_stats_id
+SELECT id FROM stats WHERE activity_id == @activity_id;
 
 -- @create_activities
 CREATE TABLE IF NOT EXISTS activities (

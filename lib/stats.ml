@@ -46,3 +46,31 @@ let empty () =
     average_power = None;
     max_power = None;
   }
+
+let start_lat (t : t) =
+  match t.start_latlng with
+  | None -> None
+  | Some latlng ->
+      let lat, _ = latlng in
+      Some lat
+
+let start_lng (t : t) =
+  match t.start_latlng with
+  | None -> None
+  | Some latlng ->
+      let _, lng = latlng in
+      Some lng
+
+let end_lat (t : t) =
+  match t.end_latlng with
+  | None -> None
+  | Some latlng ->
+      let lat, _ = latlng in
+      Some lat
+
+let end_lng (t : t) =
+  match t.end_latlng with
+  | None -> None
+  | Some latlng ->
+      let _, lng = latlng in
+      Some lng

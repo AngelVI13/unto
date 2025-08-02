@@ -31,28 +31,37 @@ let add_test_activity { handle; _ } id =
   in
   ()
 
+let to_int64_option (i : int option) =
+  match i with None -> None | Some value -> Some (Int64.of_int value)
+
 let add_activity { handle; _ } (activity : Activity.t) =
-  (* TODO: how to pass some fields as optionals ??? *)
-  (* let _ = *)
-  (*   DB.add_stats ~id:None ~activity_id:(Int64.of_int activity.id) *)
-  (*     ~data_points:(Int64.of_int activity.stats.data_points) *)
-  (*     ~moving_time:(Int64.of_int activity.stats.moving_time) *)
-  (*     ~elapsed_time:(Int64.of_int activity.stats.elapsed_time) *)
-  (*     ~distance:activity.stats.distance ~elev_gain:activity.stats.elev_gain *)
-  (*     ~elev_loss:activity.stats.elev_loss ~elev_high:activity.stats.elev_high *)
-  (*     ~elev_low:activity.stats.elev_low ~start_lat:activity.stats.start_lat *)
-  (*     ~start_lng:activity.stats.start_lng ~end_lat:activity.stats.end_lat *)
-  (*     ~end_lng:activity.stats.end_lng *)
-  (*     ~average_speed:activity.stats.average_speed *)
-  (*     ~max_speed:activity.stats.max_speed *)
-  (*     ~average_cadence:activity.stats.average_cadence *)
-  (*     ~max_cadence:activity.stats.max_cadence *)
-  (*     ~average_temp:activity.stats.average_temp *)
-  (*     ~average_heartrate:activity.stats.average_heartrate *)
-  (*     ~max_heartrate:activity.stats.max_heartrate *)
-  (*     ~average_power:activity.stats.average_power *)
-  (*     ~max_power:activity.stats.max_power *)
-  (* in *)
+  let _ =
+    DB.add_stats handle ~id:None ~activity_id:(Int64.of_int activity.id)
+      ~data_points:(Int64.of_int activity.stats.data_points)
+      ~moving_time:(Int64.of_int activity.stats.moving_time)
+      ~elapsed_time:(Int64.of_int activity.stats.elapsed_time)
+      ~distance:activity.stats.distance
+      ~elev_gain:(to_int64_option activity.stats.elev_gain)
+      ~elev_loss:(to_int64_option activity.stats.elev_loss)
+      ~elev_high:(to_int64_option activity.stats.elev_high)
+      ~elev_low:(to_int64_option activity.stats.elev_low)
+      ~start_lat:(Stats.start_lat activity.stats)
+      ~start_lng:(Stats.start_lng activity.stats)
+      ~end_lat:(Stats.end_lat activity.stats)
+      ~end_lng:(Stats.end_lng activity.stats)
+      ~average_speed:activity.stats.average_speed
+      ~max_speed:activity.stats.max_speed
+      ~average_cadence:(to_int64_option activity.stats.average_cadence)
+      ~max_cadence:(to_int64_option activity.stats.max_cadence)
+      ~average_temp:(to_int64_option activity.stats.average_temp)
+      ~average_heartrate:(to_int64_option activity.stats.average_heartrate)
+      ~max_heartrate:(to_int64_option activity.stats.max_heartrate)
+      ~average_power:(to_int64_option activity.stats.average_power)
+      ~max_power:(to_int64_option activity.stats.max_power)
+  in
+  let stats_id = ref (Int64.of_int (-1)) in
+  DB.last_stats_id handle ~activity_id:(Int64.of_int activity.id) (fun ~id ->
+      stats_id := id);
   let _ = (handle, activity) in
   ()
 
