@@ -18,6 +18,9 @@ INSERT INTO athletes VALUES;
 SELECT * FROM athletes
 ORDER BY id;
 
+-- @list_athlete_ids
+SELECT id FROM athletes;
+
 -- @create_stats
 CREATE TABLE IF NOT EXISTS stats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,7 +53,7 @@ CREATE TABLE IF NOT EXISTS stats (
 -- @add_stats
 INSERT INTO stats VALUES;
 
--- @last_stats_id
+-- @stats_id_for_activity
 SELECT id FROM stats WHERE activity_id == @activity_id;
 
 -- @create_activities

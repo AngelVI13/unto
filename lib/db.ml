@@ -34,48 +34,80 @@ let add_test_activity { handle; _ } id =
 let to_int64_option (i : int option) =
   match i with None -> None | Some value -> Some (Int64.of_int value)
 
-let add_activity { handle; _ } (activity : Activity.t) =
+let add_athlete_if_not_exist { handle; _ }
+    (athlete : Strava_models.StravaAthlete.t) =
+  let athlete_ids = ref [] in
+  DB.list_athlete_ids handle (fun ~id -> athlete_ids := id :: !athlete_ids);
+
+  if List.exists ~f:(Int64.equal (Int64.of_int athlete.id)) !athlete_ids then ()
+  else
+    ignore
+      (DB.add_athlete handle ~id:(Int64.of_int athlete.id)
+         ~firstname:athlete.firstname ~lastname:athlete.lastname
+         ~city:athlete.city ~state:athlete.state ~country:athlete.country
+         ~sex:athlete.sex ~created_at:athlete.created_at ~weight:athlete.weight)
+
+let add_stats (t : t) (stats : Stats.t) (activity_id : int) =
   let _ =
-    DB.add_stats handle ~id:None ~activity_id:(Int64.of_int activity.id)
-      ~data_points:(Int64.of_int activity.stats.data_points)
-      ~moving_time:(Int64.of_int activity.stats.moving_time)
-      ~elapsed_time:(Int64.of_int activity.stats.elapsed_time)
-      ~distance:activity.stats.distance
-      ~elev_gain:(to_int64_option activity.stats.elev_gain)
-      ~elev_loss:(to_int64_option activity.stats.elev_loss)
-      ~elev_high:(to_int64_option activity.stats.elev_high)
-      ~elev_low:(to_int64_option activity.stats.elev_low)
-      ~start_lat:(Stats.start_lat activity.stats)
-      ~start_lng:(Stats.start_lng activity.stats)
-      ~end_lat:(Stats.end_lat activity.stats)
-      ~end_lng:(Stats.end_lng activity.stats)
-      ~average_speed:activity.stats.average_speed
-      ~max_speed:activity.stats.max_speed
-      ~average_cadence:(to_int64_option activity.stats.average_cadence)
-      ~max_cadence:(to_int64_option activity.stats.max_cadence)
-      ~average_temp:(to_int64_option activity.stats.average_temp)
-      ~average_heartrate:(to_int64_option activity.stats.average_heartrate)
-      ~max_heartrate:(to_int64_option activity.stats.max_heartrate)
-      ~average_power:(to_int64_option activity.stats.average_power)
-      ~max_power:(to_int64_option activity.stats.max_power)
+    DB.add_stats t.handle ~id:None ~activity_id:(Int64.of_int activity_id)
+      ~data_points:(Int64.of_int stats.data_points)
+      ~moving_time:(Int64.of_int stats.moving_time)
+      ~elapsed_time:(Int64.of_int stats.elapsed_time)
+      ~distance:stats.distance
+      ~elev_gain:(to_int64_option stats.elev_gain)
+      ~elev_loss:(to_int64_option stats.elev_loss)
+      ~elev_high:(to_int64_option stats.elev_high)
+      ~elev_low:(to_int64_option stats.elev_low)
+      ~start_lat:(Stats.start_lat stats) ~start_lng:(Stats.start_lng stats)
+      ~end_lat:(Stats.end_lat stats) ~end_lng:(Stats.end_lng stats)
+      ~average_speed:stats.average_speed ~max_speed:stats.max_speed
+      ~average_cadence:(to_int64_option stats.average_cadence)
+      ~max_cadence:(to_int64_option stats.max_cadence)
+      ~average_temp:(to_int64_option stats.average_temp)
+      ~average_heartrate:(to_int64_option stats.average_heartrate)
+      ~max_heartrate:(to_int64_option stats.max_heartrate)
+      ~average_power:(to_int64_option stats.average_power)
+      ~max_power:(to_int64_option stats.max_power)
   in
+  (* explain (sprintf "add_stats %d" activity_id) t.handle; *)
   let stats_id = ref (Int64.of_int (-1)) in
-  DB.last_stats_id handle ~activity_id:(Int64.of_int activity.id) (fun ~id ->
-      stats_id := id);
-  let _ = (handle, activity) in
+  DB.stats_id_for_activity t.handle ~activity_id:(Int64.of_int activity_id)
+    (fun ~id -> stats_id := id);
+  (* explain *)
+  (*   (sprintf "get_stats_id %d -> %d" activity_id (Int64.to_int_exn !stats_id)) *)
+  (*   t.handle; *)
+  !stats_id
+
+let add_activity (t : t) (activity : Activity.t) (athlete_id : int) =
+  let stats_id = add_stats t activity.stats activity.id in
+  let _ =
+    DB.add_activity t.handle ~id:(Int64.of_int activity.id)
+      ~athlete_id:(Int64.of_int athlete_id) ~name:activity.name
+      ~sport_type:(Strava_models.show_sportType activity.sport_type)
+      ~start_date:activity.start_date ~timezone:activity.timezone
+      ~map_id:activity.map_id
+      ~map_summary_polyline:activity.map_summary_polyline ~stats_id
+  in
+  (* explain (sprintf "add_activity %d" activity.id) t.handle; *)
+  (* TODO: add storing of streams, laps and splits and their stats *)
   ()
 
 let all_activities { handle; _ } =
   let activities = ref [] in
   let _ =
     DB.list_activities handle (fun ~id ->
+        printf "Found activity %d in db\n" (Int64.to_int_exn id);
         activities := Int64.to_int_exn id :: !activities)
   in
   !activities
 
 let load filename =
   match Sys_unix.file_exists filename with
-  | `Yes -> { handle = Sqlite3.db_open filename; filename }
-  | _ -> create filename
+  | `Yes ->
+      printf "Opening existing db %s\n" filename;
+      { handle = Sqlite3.db_open filename; filename }
+  | _ ->
+      printf "Creating new db file %s\n" filename;
+      create filename
 
 let close db = Or_error.try_with (fun () -> Sqlite3.db_close db.handle)

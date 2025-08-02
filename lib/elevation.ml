@@ -58,9 +58,9 @@ module ElevResult = struct
         let prev_gain, prev_loss =
           (Option.value_exn prev.elev_gain, Option.value_exn prev.elev_loss)
         in
-        if prev_gain = gain && prev_loss = loss then (
-          printf "Smoothing equilibrium reached at depth=%d\n" (max_n - n);
-          smoothed)
+        if prev_gain = gain && prev_loss = loss then
+          (* printf "Smoothing equilibrium reached at depth=%d\n" (max_n - n); *)
+          smoothed
         else advanced_smoothing_aux (n - 1) results smoothed
     in
     let start_data = empty () in

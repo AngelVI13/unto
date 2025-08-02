@@ -144,12 +144,21 @@ let command_update_db auth_client =
        let db = Unto.Db.load db_filename in
        let present_activities = Unto.Db.all_activities db in
        Fun.protect
-         ~finally:(fun () -> ignore @@ Unto.Db.close db)
+         ~finally:(fun () ->
+           printf "Closing the db\n";
+           ignore @@ Unto.Db.close db)
          (fun () ->
            let auth =
              Or_error.ok_exn
                (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
            in
+           let athlete =
+             Or_error.ok_exn
+               (Unto.Strava.fetch_athlete ~token:auth.access_token)
+           in
+           (* TODO: this should check if athlete details are the same and if
+             not it should update athlete details *)
+           Unto.Db.add_athlete_if_not_exist db athlete;
            let new_activities =
              Or_error.ok_exn
                (Unto.Strava.fetch_activities ~token:auth.access_token
@@ -157,7 +166,9 @@ let command_update_db auth_client =
            in
            ignore
              (List.map
-                ~f:(fun activity -> Unto.Db.add_activity db activity)
+                ~f:(fun activity ->
+                  printf "adding activity to db %d\n" activity.id;
+                  Unto.Db.add_activity db activity athlete.id)
                 new_activities)))
 
 let command auth_client =

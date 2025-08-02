@@ -133,6 +133,14 @@ let process_activities token num_activities =
   printf "Saved stats to file %s\n" filename;
   Ok ()
 
+let fetch_athlete ~token =
+  let resp = athlete_info token in
+  let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
+  let%bind strava_athlete =
+    Or_error.try_with (fun () -> StravaAthlete.t_of_yojson json)
+  in
+  Ok strava_athlete
+
 let fetch_one_page ~token ~page ~per_page ~exclude =
   printf "downloading activity page %d (per_page=%d)\n" page per_page;
   let resp = list_activities ~token ~page ~per_page () in
@@ -326,7 +334,6 @@ let%expect_test "process_streams" =
   printf "%s" (Stats.show stats);
   [%expect
     {|
-    Smoothing equilibrium reached at depth=8
     { data_points = 4889; moving_time = 4888; elapsed_time = 5562;
       distance = (Some 11033.); elev_gain = (Some 108); elev_loss = (Some 103);
       elev_high = (Some 140); elev_low = (Some 110);
@@ -433,7 +440,6 @@ let%expect_test "all stats" =
   printf "%s" (Activity.show activity);
   [%expect
     {|
-    Smoothing equilibrium reached at depth=7
     { id = 15145174551; athlete_id = 3504239; name = "Afternoon Run";
       sport_type = Run; start_date = "2025-07-17T16:41:32Z";
       timezone = "(GMT+02:00) Europe/Vilnius"; map_id = "a15145174551";
