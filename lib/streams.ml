@@ -33,9 +33,9 @@ module StreamType = struct
     | WattsStream of int option Stream.t
     | TempStream of int Stream.t
     | GradeStream of float Stream.t
-  [@@deriving show { with_path = false }, yojson_of]
+  [@@deriving show { with_path = false }, yojson]
 
-  let t_of_yojson (json : Yojson.Safe.t) : t =
+  let t_of_yojson_strava (json : Yojson.Safe.t) : t =
     let open Yojson.Safe.Util in
     let stream_type = Yojson.Safe.Util.member "type" json |> to_string in
     match stream_type with
@@ -138,6 +138,10 @@ end
 module Streams = struct
   type t = StreamType.t list [@@deriving show { with_path = false }, yojson]
 
+  let t_of_yojson_strava (json : Yojson.Safe.t) : t =
+    let elems = Yojson.Safe.Util.to_list json in
+    List.map ~f:StreamType.t_of_yojson_strava elems
+
   let smoothe_altitude_if_present (streams : t) =
     List.map
       ~f:(fun stream ->
@@ -149,7 +153,7 @@ module Streams = struct
       streams
 
   let t_of_yojson_smoothed json =
-    let streams = t_of_yojson json in
+    let streams = t_of_yojson_strava json in
     smoothe_altitude_if_present streams
 
   let length (streams : t) : int =

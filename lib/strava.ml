@@ -183,7 +183,7 @@ let%expect_test "deserialize get_stream.json" =
     Yojson.Safe.from_file
       "/home/angel/Documents/ocaml/unto/get_streams_test.json"
   in
-  let streams = Streams.t_of_yojson json in
+  let streams = Streams.t_of_yojson_strava json in
   printf "%s" (Streams.show streams);
   [%expect
     {|
@@ -622,7 +622,7 @@ let%expect_test "compress text" =
     LZ4.Bytes.decompress ~length:(String.length data) compressed
   in
   let json = parse_json_from_bytes decompressed in
-  let streams = Streams.t_of_yojson json in
+  let streams = Streams.t_of_yojson_strava json in
   printf "%s\n" (Streams.show streams);
   [%expect
     {|

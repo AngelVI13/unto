@@ -147,10 +147,6 @@ let stream_for_activity { handle; _ } (activity_id : int) =
       Yojson.Safe.to_file
         (sprintf "decompressed_streams_%d.json" (Int64.to_int_exn activity_id))
         json;
-      (* TODO: this fails because my t_of_yojson implementation for Streams
-           is expected to work with the strava format and not with a serialized
-           Streams.t object. Have to create different method to create
-           Streams.t object that corresponds to Streams.yojson_of_t *)
       let streams = Streams.Streams.t_of_yojson json in
       printf "%s\n" (Streams.Streams.show streams);
       ())
