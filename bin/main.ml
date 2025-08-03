@@ -151,11 +151,6 @@ let command_update_db auth_client =
              Or_error.ok_exn
                (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
            in
-           (* TODO: Strava only allows for 100 API read requests per 15 mins.
-              Calculate the number of requests per activity or keep track of
-              all requests?? Make a bash script that every 15 mins calls
-              ./update_db.sh with increasing number of activities (in order to
-              populate the whole db) *)
            let athlete =
              Or_error.ok_exn
                (Unto.Strava.fetch_athlete ~token:auth.access_token)

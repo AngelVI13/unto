@@ -18,8 +18,6 @@ let pull_activities token num_activities =
 let pull_streams_aux token activity_id =
   let resp = get_streams token activity_id in
   let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
-  let filename = sprintf "raw_streams_%d.json" activity_id in
-  Yojson.Safe.to_file filename json;
   Or_error.try_with (fun () -> Streams.t_of_yojson_smoothed json)
 
 (* TODO: try with should raise a specific error otherwise i can't figure out what went wrong *)
@@ -33,7 +31,6 @@ let pull_streams token activity_id =
 let pull_laps_aux token activity_id =
   let resp = get_laps token activity_id in
   let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
-  Yojson.Safe.to_file (sprintf "raw_laps_%d.json" activity_id) json;
   Or_error.try_with (fun () -> StravaLaps.t_of_yojson json)
 
 let pull_laps token activity_id =
@@ -115,6 +112,36 @@ let process_activities token num_activities =
   printf "Saved stats to file %s\n" filename;
   Ok ()
 
+let process_activity ~token (activity : Activity.t) =
+  printf "\tprocessing activity=%d\n" activity.id;
+
+  Time_ns.pause (Time_ns.Span.create ~ms:500 ());
+  printf "\t\tdownloading streams\n";
+  let streams = pull_streams_aux token activity.id in
+
+  Time_ns.pause (Time_ns.Span.create ~ms:500 ());
+  printf "\t\tdownloading laps\n";
+  let laps = pull_laps_aux token activity.id in
+
+  let err_prefix = "error while downloading/parsing" in
+  match (streams, laps) with
+  | Ok streams, Ok laps ->
+      printf "\t\tsuccessfully downloaded laps & streams\n";
+      let laps = Laps.t_of_StravaLaps laps in
+      printf "\t\tcalculating stats\n";
+      let activity = Activity.calculate_stats activity streams laps in
+      Some activity
+  | Error e, Ok _ ->
+      printf "\t\t%s streams: %s\n" err_prefix (Error.to_string_hum e);
+      None
+  | Ok _, Error e ->
+      printf "\t\t%s laps: %s\n" err_prefix (Error.to_string_hum e);
+      None
+  | Error e1, Error e2 ->
+      printf "\t\t%s laps & streams:\n%s\n%s\n" err_prefix
+        (Error.to_string_hum e1) (Error.to_string_hum e2);
+      None
+
 let fetch_athlete ~token =
   let resp = athlete_info token in
   let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
@@ -142,27 +169,7 @@ let fetch_one_page ~token ~page ~per_page ~exclude =
       activities
   in
   let activities =
-    List.map
-      ~f:(fun activity ->
-        Time_ns.pause (Time_ns.Span.create ~ms:100 ());
-        printf "\tprocessing activity=%d\n" activity.id;
-        printf "\t\tdownloading streams\n";
-        let streams = pull_streams_aux token activity.id in
-        printf "\t\tdownloading laps\n";
-        let laps = pull_laps_aux token activity.id in
-        match (streams, laps) with
-        | Ok streams, Ok laps ->
-            printf "\t\tsuccessfully downloaded laps & streams\n";
-            let laps = Laps.t_of_StravaLaps laps in
-            printf "\t\tcalculating stats\n";
-            Activity.calculate_stats activity streams laps
-        | Error e, Ok _ -> Error.raise e
-        | Ok _, Error e -> Error.raise e
-        | Error e1, Error e2 ->
-            failwith
-              (sprintf "Errors:\n%s\n%s\n" (Error.to_string_hum e1)
-                 (Error.to_string_hum e2)))
-      activities
+    activities |> List.map ~f:(process_activity ~token) |> List.filter_opt
   in
   Ok activities
 
