@@ -169,6 +169,21 @@ let command_update_db auth_client =
                   Db.add_activity db activity athlete.id)
                 new_activities)))
 
+let command_run_app () =
+  Command.basic ~summary:"Run the web app"
+    (let%map_open.Command db_filename =
+       flag "-d"
+         (optional_with_default "app.db" Filename_unix.arg_type)
+         ~doc:"DB filename"
+     in
+     fun () ->
+       let db = Db.load db_filename in
+       Fun.protect
+         ~finally:(fun () ->
+           printf "Closing the db\n";
+           ignore @@ Db.close db)
+         (fun () -> Web.App.run db))
+
 let command auth_client =
   Command.group ~summary:"CLI utility to download data from strava"
     [
@@ -181,6 +196,7 @@ let command auth_client =
       ("zones", command_zones auth_client);
       ("test", command_test ());
       ("update", command_update_db auth_client);
+      ("run-app", command_run_app ());
     ]
 
 let () =

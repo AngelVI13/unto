@@ -2,4 +2,4 @@
  (public_name unto)
  (name main)
  (preprocess (pps ppx_let))
- (libraries strava db core core_unix.command_unix core_unix.filename_unix dotenv))
+ (libraries web strava db core core_unix.command_unix core_unix.filename_unix dotenv))
