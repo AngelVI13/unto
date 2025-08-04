@@ -1,12 +1,14 @@
 open Core
-open Laps
+open Models.Laps
 open Utils
-open Import
-open Streams
+open Models.Streams
 open Strava_api
-open Strava_models
+open Models.Strava_models
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 open Or_error.Let_syntax
+
+(* alias to Time_ns *)
+module Time_ns = Time_ns_unix
 
 (* TODO: 3. Visualize the data in a web ui *)
 (* TODO: 4. Analyze the data *)
@@ -83,7 +85,9 @@ let process_activities token num_activities =
   let%bind strava_activities =
     Or_error.try_with (fun () -> StravaActivities.t_of_yojson json)
   in
-  let activities = List.map ~f:Activity.t_of_StravaActivity strava_activities in
+  let activities =
+    List.map ~f:Models.Activity.t_of_StravaActivity strava_activities
+  in
   let activities =
     List.map
       ~f:(fun activity ->
@@ -97,7 +101,7 @@ let process_activities token num_activities =
             printf "successfully downloaded laps & streams\n";
             let laps = Laps.t_of_StravaLaps laps in
             printf "calculating stats\n";
-            Activity.calculate_stats activity streams laps
+            Models.Activity.calculate_stats activity streams laps
         | Error e, Ok _ -> Error.raise e
         | Ok _, Error e -> Error.raise e
         | Error e1, Error e2 ->
@@ -106,13 +110,13 @@ let process_activities token num_activities =
                  (Error.to_string_hum e2)))
       activities
   in
-  let out = [%yojson_of: Activity.t list] activities in
+  let out = [%yojson_of: Models.Activity.t list] activities in
   let filename = sprintf "%s_stats.json" timestamp in
   Yojson.Safe.to_file filename out;
   printf "Saved stats to file %s\n" filename;
   Ok ()
 
-let process_activity ~token (activity : Activity.t) =
+let process_activity ~token (activity : Models.Activity.t) =
   printf "\tprocessing activity=%d\n" activity.id;
 
   Time_ns.pause (Time_ns.Span.create ~ms:500 ());
@@ -129,7 +133,7 @@ let process_activity ~token (activity : Activity.t) =
       printf "\t\tsuccessfully downloaded laps & streams\n";
       let laps = Laps.t_of_StravaLaps laps in
       printf "\t\tcalculating stats\n";
-      let activity = Activity.calculate_stats activity streams laps in
+      let activity = Models.Activity.calculate_stats activity streams laps in
       Some activity
   | Error e, Ok _ ->
       printf "\t\t%s streams: %s\n" err_prefix (Error.to_string_hum e);
@@ -150,14 +154,16 @@ let fetch_athlete ~token =
   in
   Ok strava_athlete
 
-let fetch_one_page ~token ~page ~per_page ~exclude =
+let fetch_one_page ~token ~page ~per_page ~remaining ~exclude =
   printf "downloading activity page %d (per_page=%d)\n" page per_page;
   let resp = list_activities ~token ~page ~per_page () in
   let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
   let%bind strava_activities =
     Or_error.try_with (fun () -> StravaActivities.t_of_yojson json)
   in
-  let activities = List.map ~f:Activity.t_of_StravaActivity strava_activities in
+  let activities =
+    List.map ~f:Models.Activity.t_of_StravaActivity strava_activities
+  in
   let activities =
     List.filter
       ~f:(fun activity ->
@@ -168,6 +174,7 @@ let fetch_one_page ~token ~page ~per_page ~exclude =
         | false -> true)
       activities
   in
+  let activities = List.take activities remaining in
   let activities =
     activities |> List.map ~f:(process_activity ~token) |> List.filter_opt
   in
@@ -179,7 +186,12 @@ let fetch_activities ~token ~num_activities ~exclude =
   let pages = Int.of_float pages in
   let activities =
     List.init pages ~f:(fun i ->
-        fetch_one_page ~token ~page:(i + 1) ~per_page ~exclude)
+        let remaining =
+          if i > 0 && i = pages - 1 then
+            num_activities - ((pages - 1) * per_page)
+          else per_page
+        in
+        fetch_one_page ~token ~page:(i + 1) ~per_page ~remaining ~exclude)
   in
   let%bind activities = Or_error.all activities in
   let activities = List.join activities in
@@ -320,7 +332,7 @@ let%expect_test "process_streams" =
   in
   let streams = Streams.t_of_yojson_smoothed json in
   let stats = Streams.activity_stats streams in
-  printf "%s" (Stats.show stats);
+  printf "%s" (Models.Stats.show stats);
   [%expect
     {|
     { data_points = 4889; moving_time = 4888; elapsed_time = 5562;
@@ -401,222 +413,6 @@ let%expect_test "sportType of string" =
   let success = match sport with Run -> true | _ -> false in
   printf "%b" success;
   [%expect {| true |}]
-
-let%expect_test "all stats" =
-  let streams_json =
-    Yojson.Safe.from_file
-      "/home/angel/Documents/ocaml/unto/raw_streams_15145174551.json"
-  in
-  let streams = Streams.t_of_yojson_smoothed streams_json in
-
-  let laps_json =
-    Yojson.Safe.from_file
-      "/home/angel/Documents/ocaml/unto/raw_laps_15145174551.json"
-  in
-  let laps = StravaLaps.t_of_yojson laps_json in
-  let laps = Laps.t_of_StravaLaps laps in
-
-  let json =
-    Yojson.Safe.from_file
-      "/home/angel/Documents/ocaml/unto/raw_activity_15145174551.json"
-  in
-  let activity = List.nth_exn (StravaActivities.t_of_yojson json) 0 in
-  let activity = Activity.t_of_StravaActivity activity in
-  let activity = Activity.calculate_stats activity streams laps in
-  (* let activity_json = Activity.yojson_of_t activity in *)
-  (* Yojson.Safe.to_file *)
-  (*   "/home/angel/Documents/ocaml/unto/processed_15145174551.json" activity_json; *)
-  printf "%s" (Activity.show activity);
-  [%expect
-    {|
-    { id = 15145174551; athlete_id = 3504239; name = "Afternoon Run";
-      sport_type = Run; start_date = "2025-07-17T16:41:32Z";
-      timezone = "(GMT+02:00) Europe/Vilnius"; map_id = "a15145174551";
-      map_summary_polyline =
-      "m{gmIqhqyClBAnADj@LnAO\\QTa@`As@y@r@OX_@RiATsCIaBA{@f@i@fAeAG_@cAq@qA_A{Bc@yA^UZe@P[Pw@RqCTo@Ce@RcCx@}@t@_Bt@k@dAOd@Xt@EhA\\RGPQTs@HsA@MF@VVFf@N^LN\\FXd@n@J`@]n@PfC|BnA\\DbBKb@?rAi@jAKj@Hc@d@gA?wAJy@MgCLm@Ei@JmACqANcAWk@IiAJ`@?TIv@Al@KNIdA{@jA]Ds@b@uAo@c@Xk@AcAN}AO[VCd@{@~@Kf@Bt@L^hBv@l@IbAv@j@FTNlAbCj@hBzB|Fx@bB\\fAhAlCV`@\\tAnDtHf@bBG|AHlAx@vBi@j@cAlCc@f@c@vB?jAKtAMb@?b@i@fAi@t@KZYGaA|@IQOcBToAFu@PKFWh@UFMPFPU@[f@`@@n@Tb@Mj@Cb@\\dAL`CNJ`@MXRl@DLP\\HL^D|@~@C~@\\l@p@xDeCz@[d@g@|AeCNc@D[G]Yi@ZAb@^L?pBcD\\yA^_E?a@[mC_@gBCe@TaDXq@\\YJARf@REP\\`Al@rBUPFLdCLj@@xATTCl@Lh@GNQNc@KGRYTi@N]VUKUBG~@D~AHTGTY]Wg@YeAa@_AEm@U]S}Ag@wBAqATiBSc@Cu@i@yBa@i@m@[k@gAsAo@OBy@mALv@Mh@D\\a@f@Fl@AtBMZC|@[xAOlDUz@EjBc@xAIx@eArAo@|AAPS\\y@T]Sg@VgAi@a@C]WMm@wAwD_AgBc@wASOcAdBYjAMTg@E{@d@o@EeAaD_@s@y@aAOBb@}A`@mBG{EhAgBlCiF`DsE|@kBFq@AeBDa@MKKu@UK\\EZNJVJ`BXfArAZZXTCRLLXX_@HBBTWNMj@Hz@Kf@Ez@l@lC@XZb@t@XzB?V\\BZKFSh@KB[x@u@VMXu@RiAqAiBeF}AuCe@m@}AyCiA{@{Bi@cB\\aAh@cA~@q@PEXL|CJX^`@]`AUNCRW`@OBK]?wAy@}Ag@[[m@s@e@s@mA]Ua@w@OGOe@w@Y]m@sAmAMs@_@O{@f@D@Ct@u@n@A\\Pl@RVVnBj@pBPdAz@vBf@hBjArCkA_CeBwF";
-      stats =
-      { data_points = 4615; moving_time = 4614; elapsed_time = 4719;
-        distance = (Some 10604.); elev_gain = (Some 146); elev_loss = (Some 145);
-        elev_high = (Some 150); elev_low = (Some 112);
-        start_latlng = (Some (54.769788, 25.326307));
-        end_latlng = (Some (54.77022, 25.326757)); average_speed = (Some 2.299);
-        max_speed = (Some 6.); average_cadence = (Some 75);
-        max_cadence = (Some 98); average_temp = (Some 26);
-        average_heartrate = (Some 166); max_heartrate = (Some 180);
-        average_power = None; max_power = None };
-      laps =
-      [{ moving_time = 505; start = 0; len = 505; lap_index = 1;
-         stats =
-         { data_points = 505; moving_time = 504; elapsed_time = 504;
-           distance = (Some 1027.); elev_gain = (Some 10); elev_loss = (Some 10);
-           elev_high = (Some 149); elev_low = (Some 142);
-           start_latlng = (Some (54.769788, 25.326307));
-           end_latlng = (Some (54.769812, 25.32632));
-           average_speed = (Some 2.042); max_speed = (Some 3.8);
-           average_cadence = (Some 80); max_cadence = (Some 81);
-           average_temp = (Some 29); average_heartrate = (Some 142);
-           max_heartrate = (Some 153); average_power = None; max_power = None }
-         };
-        { moving_time = 3753; start = 505; len = 3753; lap_index = 2;
-          stats =
-          { data_points = 3753; moving_time = 3752; elapsed_time = 3752;
-            distance = (Some 8872.); elev_gain = (Some 127);
-            elev_loss = (Some 127); elev_high = (Some 150);
-            elev_low = (Some 112); start_latlng = (Some (54.769812, 25.32632));
-            end_latlng = (Some (54.769815, 25.3267));
-            average_speed = (Some 2.365); max_speed = (Some 6.);
-            average_cadence = (Some 74); max_cadence = (Some 98);
-            average_temp = (Some 26); average_heartrate = (Some 170);
-            max_heartrate = (Some 180); average_power = None; max_power = None }
-          };
-        { moving_time = 355; start = 4258; len = 355; lap_index = 3;
-          stats =
-          { data_points = 357; moving_time = 356; elapsed_time = 461;
-            distance = (Some 705.); elev_gain = (Some 8); elev_loss = (Some 8);
-            elev_high = (Some 146); elev_low = (Some 143);
-            start_latlng = (Some (54.769838, 25.326683));
-            end_latlng = (Some (54.77022, 25.326757));
-            average_speed = (Some 1.986); max_speed = (Some 4.);
-            average_cadence = (Some 79); max_cadence = (Some 82);
-            average_temp = (Some 27); average_heartrate = (Some 150);
-            max_heartrate = (Some 178); average_power = None; max_power = None }
-          }
-        ];
-      splits =
-      [{ split_index = 0; start = 0; len = 495;
-         stats =
-         { data_points = 495; moving_time = 494; elapsed_time = 494;
-           distance = (Some 1001.); elev_gain = (Some 10); elev_loss = (Some 10);
-           elev_high = (Some 149); elev_low = (Some 142);
-           start_latlng = (Some (54.769788, 25.326307));
-           end_latlng = (Some (54.76971, 25.326038));
-           average_speed = (Some 2.03); max_speed = (Some 3.8);
-           average_cadence = (Some 80); max_cadence = (Some 81);
-           average_temp = (Some 29); average_heartrate = (Some 142);
-           max_heartrate = (Some 152); average_power = None; max_power = None }
-         };
-        { split_index = 1; start = 495; len = 333;
-          stats =
-          { data_points = 333; moving_time = 332; elapsed_time = 332;
-            distance = (Some 997.); elev_gain = (Some 4); elev_loss = (Some 16);
-            elev_high = (Some 145); elev_low = (Some 131);
-            start_latlng = (Some (54.769727, 25.326067));
-            end_latlng = (Some (54.764443, 25.327693));
-            average_speed = (Some 3.012); max_speed = (Some 5.8);
-            average_cadence = (Some 82); max_cadence = (Some 90);
-            average_temp = (Some 27); average_heartrate = (Some 163);
-            max_heartrate = (Some 171); average_power = None; max_power = None }
-          };
-        { split_index = 2; start = 828; len = 405;
-          stats =
-          { data_points = 405; moving_time = 404; elapsed_time = 404;
-            distance = (Some 998.); elev_gain = (Some 8); elev_loss = (Some 7);
-            elev_high = (Some 135); elev_low = (Some 127);
-            start_latlng = (Some (54.764423, 25.327732));
-            end_latlng = (Some (54.765352, 25.326905));
-            average_speed = (Some 2.476); max_speed = (Some 4.8);
-            average_cadence = (Some 74); max_cadence = (Some 86);
-            average_temp = (Some 25); average_heartrate = (Some 170);
-            max_heartrate = (Some 175); average_power = None; max_power = None }
-          };
-        { split_index = 3; start = 1233; len = 375;
-          stats =
-          { data_points = 375; moving_time = 374; elapsed_time = 374;
-            distance = (Some 997.); elev_gain = (Some 15); elev_loss = (Some 2);
-            elev_high = (Some 147); elev_low = (Some 134);
-            start_latlng = (Some (54.765352, 25.326905));
-            end_latlng = (Some (54.764235, 25.316138));
-            average_speed = (Some 2.673); max_speed = (Some 4.4);
-            average_cadence = (Some 77); max_cadence = (Some 83);
-            average_temp = (Some 25); average_heartrate = (Some 171);
-            max_heartrate = (Some 175); average_power = None; max_power = None }
-          };
-        { split_index = 4; start = 1608; len = 460;
-          stats =
-          { data_points = 460; moving_time = 459; elapsed_time = 459;
-            distance = (Some 998.); elev_gain = (Some 5); elev_loss = (Some 18);
-            elev_high = (Some 149); elev_low = (Some 133);
-            start_latlng = (Some (54.764235, 25.316138));
-            end_latlng = (Some (54.75836, 25.31797));
-            average_speed = (Some 2.179); max_speed = (Some 5.6);
-            average_cadence = (Some 69); max_cadence = (Some 98);
-            average_temp = (Some 26); average_heartrate = (Some 163);
-            max_heartrate = (Some 173); average_power = None; max_power = None }
-          };
-        { split_index = 5; start = 2068; len = 449;
-          stats =
-          { data_points = 449; moving_time = 448; elapsed_time = 448;
-            distance = (Some 997.7); elev_gain = (Some 13);
-            elev_loss = (Some 19); elev_high = (Some 132); elev_low = (Some 118);
-            start_latlng = (Some (54.758343, 25.318051));
-            end_latlng = (Some (54.75852, 25.320668));
-            average_speed = (Some 2.232); max_speed = (Some 4.6);
-            average_cadence = (Some 71); max_cadence = (Some 82);
-            average_temp = (Some 26); average_heartrate = (Some 170);
-            max_heartrate = (Some 174); average_power = None; max_power = None }
-          };
-        { split_index = 6; start = 2517; len = 556;
-          stats =
-          { data_points = 556; moving_time = 555; elapsed_time = 555;
-            distance = (Some 999.); elev_gain = (Some 35); elev_loss = (Some 14);
-            elev_high = (Some 147); elev_low = (Some 112);
-            start_latlng = (Some (54.75852, 25.320668));
-            end_latlng = (Some (54.763295, 25.318497));
-            average_speed = (Some 1.803); max_speed = (Some 4.);
-            average_cadence = (Some 70); max_cadence = (Some 81);
-            average_temp = (Some 26); average_heartrate = (Some 172);
-            max_heartrate = (Some 177); average_power = None; max_power = None }
-          };
-        { split_index = 7; start = 3073; len = 351;
-          stats =
-          { data_points = 351; moving_time = 350; elapsed_time = 350;
-            distance = (Some 1000.); elev_gain = (Some 4); elev_loss = (Some 18);
-            elev_high = (Some 149); elev_low = (Some 133);
-            start_latlng = (Some (54.763295, 25.318497));
-            end_latlng = (Some (54.763765, 25.326707));
-            average_speed = (Some 2.865); max_speed = (Some 6.);
-            average_cadence = (Some 79); max_cadence = (Some 82);
-            average_temp = (Some 25); average_heartrate = (Some 174);
-            max_heartrate = (Some 177); average_power = None; max_power = None }
-          };
-        { split_index = 8; start = 3424; len = 455;
-          stats =
-          { data_points = 455; moving_time = 454; elapsed_time = 454;
-            distance = (Some 1000.); elev_gain = (Some 27);
-            elev_loss = (Some 25); elev_high = (Some 136); elev_low = (Some 113);
-            start_latlng = (Some (54.763765, 25.326707));
-            end_latlng = (Some (54.764205, 25.325385));
-            average_speed = (Some 2.208); max_speed = (Some 4.);
-            average_cadence = (Some 73); max_cadence = (Some 89);
-            average_temp = (Some 26); average_heartrate = (Some 175);
-            max_heartrate = (Some 180); average_power = None; max_power = None }
-          };
-        { split_index = 9; start = 3879; len = 435;
-          stats =
-          { data_points = 435; moving_time = 434; elapsed_time = 539;
-            distance = (Some 999.); elev_gain = (Some 17); elev_loss = (Some 7);
-            elev_high = (Some 150); elev_low = (Some 135);
-            start_latlng = (Some (54.76423, 25.32541));
-            end_latlng = (Some (54.769912, 25.325525));
-            average_speed = (Some 2.307); max_speed = (Some 4.6);
-            average_cadence = (Some 75); max_cadence = (Some 83);
-            average_temp = (Some 26); average_heartrate = (Some 170);
-            max_heartrate = (Some 178); average_power = None; max_power = None }
-          };
-        { split_index = 10; start = 4314; len = 301;
-          stats =
-          { data_points = 301; moving_time = 300; elapsed_time = 300;
-            distance = (Some 602.); elev_gain = (Some 8); elev_loss = (Some 7);
-            elev_high = (Some 146); elev_low = (Some 143);
-            start_latlng = (Some (54.769912, 25.325525));
-            end_latlng = (Some (54.77022, 25.326757));
-            average_speed = (Some 2.013); max_speed = (Some 3.2);
-            average_cadence = (Some 79); max_cadence = (Some 80);
-            average_temp = (Some 27); average_heartrate = (Some 151);
-            max_heartrate = (Some 155); average_power = None; max_power = None }
-          }
-        ];
-      streams = <opaque> } |}]
 
 let%expect_test "compress text" =
   let data =

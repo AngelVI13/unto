@@ -1,5 +1,7 @@
 open Core
 open Db_ops
+open Models.Strava_models
+open Models.Stats
 module DB = DbOps (Sqlgg_sqlite3)
 
 type t = { filename : string; handle : Sqlite3.db }
@@ -35,8 +37,7 @@ let add_test_activity { handle; _ } id =
 let to_int64_option (i : int option) =
   match i with None -> None | Some value -> Some (Int64.of_int value)
 
-let add_athlete_if_not_exist { handle; _ }
-    (athlete : Strava_models.StravaAthlete.t) =
+let add_athlete_if_not_exist { handle; _ } (athlete : StravaAthlete.t) =
   let athlete_ids = ref [] in
   DB.list_athlete_ids handle (fun ~id -> athlete_ids := id :: !athlete_ids);
 
@@ -48,7 +49,7 @@ let add_athlete_if_not_exist { handle; _ }
          ~city:athlete.city ~state:athlete.state ~country:athlete.country
          ~sex:athlete.sex ~created_at:athlete.created_at ~weight:athlete.weight)
 
-let add_stats (t : t) (stats : Stats.t) (activity_id : int) =
+let add_stats (t : t) (stats : Models.Stats.t) (activity_id : int) =
   let _ =
     DB.add_stats t.handle ~id:None ~activity_id:(Int64.of_int activity_id)
       ~data_points:(Int64.of_int stats.data_points)
@@ -59,8 +60,10 @@ let add_stats (t : t) (stats : Stats.t) (activity_id : int) =
       ~elev_loss:(to_int64_option stats.elev_loss)
       ~elev_high:(to_int64_option stats.elev_high)
       ~elev_low:(to_int64_option stats.elev_low)
-      ~start_lat:(Stats.start_lat stats) ~start_lng:(Stats.start_lng stats)
-      ~end_lat:(Stats.end_lat stats) ~end_lng:(Stats.end_lng stats)
+      ~start_lat:(Models.Stats.start_lat stats)
+      ~start_lng:(Models.Stats.start_lng stats)
+      ~end_lat:(Models.Stats.end_lat stats)
+      ~end_lng:(Models.Stats.end_lng stats)
       ~average_speed:stats.average_speed ~max_speed:stats.max_speed
       ~average_cadence:(to_int64_option stats.average_cadence)
       ~max_cadence:(to_int64_option stats.max_cadence)
@@ -79,12 +82,12 @@ let add_stats (t : t) (stats : Stats.t) (activity_id : int) =
   (*   t.handle; *)
   !stats_id
 
-let add_activity_aux (t : t) (activity : Activity.t) (athlete_id : int)
+let add_activity_aux (t : t) (activity : Models.Activity.t) (athlete_id : int)
     (stats_id : Int64.t) =
   let _ =
     DB.add_activity t.handle ~id:(Int64.of_int activity.id)
       ~athlete_id:(Int64.of_int athlete_id) ~name:activity.name
-      ~sport_type:(Strava_models.show_sportType activity.sport_type)
+      ~sport_type:(Models.Strava_models.show_sportType activity.sport_type)
       ~start_date:activity.start_date ~timezone:activity.timezone
       ~map_id:activity.map_id
       ~map_summary_polyline:activity.map_summary_polyline ~stats_id
@@ -92,7 +95,7 @@ let add_activity_aux (t : t) (activity : Activity.t) (athlete_id : int)
   (* explain (sprintf "add_activity %d" activity.id) t.handle; *)
   ()
 
-let add_lap (t : t) (lap : Laps.Lap.t) (activity_id : int) =
+let add_lap (t : t) (lap : Models.Laps.Lap.t) (activity_id : int) =
   let stats_id = add_stats t lap.stats activity_id in
   ignore
     (DB.add_lap t.handle ~id:None ~activity_id:(Int64.of_int activity_id)
@@ -100,15 +103,16 @@ let add_lap (t : t) (lap : Laps.Lap.t) (activity_id : int) =
        ~moving_time:(Int64.of_int lap.moving_time)
        ~start:(Int64.of_int lap.start) ~len:(Int64.of_int lap.len) ~stats_id)
 
-let add_split (t : t) (split : Splits.Split.t) (activity_id : int) =
+let add_split (t : t) (split : Models.Splits.Split.t) (activity_id : int) =
   let stats_id = add_stats t split.stats activity_id in
   ignore
     (DB.add_split t.handle ~id:None ~activity_id:(Int64.of_int activity_id)
        ~split_index:(Int64.of_int split.split_index)
        ~start:(Int64.of_int split.start) ~len:(Int64.of_int split.len) ~stats_id)
 
-let add_streams (t : t) (streams : Streams.Streams.t) (activity_id : int) =
-  let streams = Streams.Streams.yojson_of_t streams in
+let add_streams (t : t) (streams : Models.Streams.Streams.t) (activity_id : int)
+    =
+  let streams = Models.Streams.Streams.yojson_of_t streams in
   let streams = Yojson.Safe.to_string streams in
   let streams_bin = Bytes.of_string streams in
   let compressed = LZ4.Bytes.compress streams_bin in
@@ -118,7 +122,7 @@ let add_streams (t : t) (streams : Streams.Streams.t) (activity_id : int) =
          (Bytes.unsafe_to_string ~no_mutation_while_string_reachable:compressed)
        ~data_len:(Int64.of_int @@ String.length streams))
 
-let add_activity (t : t) (activity : Activity.t) (athlete_id : int) =
+let add_activity (t : t) (activity : Models.Activity.t) (athlete_id : int) =
   let stats_id = add_stats t activity.stats activity.id in
   add_activity_aux t activity athlete_id stats_id;
   ignore (List.map ~f:(fun lap -> add_lap t lap activity.id) activity.laps);
@@ -147,8 +151,8 @@ let stream_for_activity { handle; _ } (activity_id : int) =
       Yojson.Safe.to_file
         (sprintf "decompressed_streams_%d.json" (Int64.to_int_exn activity_id))
         json;
-      let streams = Streams.Streams.t_of_yojson json in
-      printf "%s\n" (Streams.Streams.show streams);
+      let streams = Models.Streams.Streams.t_of_yojson json in
+      printf "%s\n" (Models.Streams.Streams.show streams);
       ())
 
 let load filename =

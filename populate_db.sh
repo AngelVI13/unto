@@ -19,8 +19,8 @@ for ((i=1; i<=iterations; i++)); do
   # Wait for 15 minutes if not the last iteration
   if [[ $i -lt iterations ]]; then
     echo "[$(date)] Waiting 15 minutes before next run..."
-    # sleep 960  # 16 minutes in seconds
-    sleep 1
+    sleep 960  # 16 minutes in seconds
+    # sleep 1
   fi
 done
 

@@ -1,0 +1,6 @@
+(library
+ (name utils)
+ (inline_tests)
+ (preprocess 
+   (pps ppx_inline_test ppx_expect ppx_jane))
+ (libraries core core_unix.time_ns_unix yojson))

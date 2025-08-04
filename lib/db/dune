@@ -1,0 +1,5 @@
+(library
+ (name db)
+ (preprocess
+  (pps ppx_jane))
+ (libraries models core core_unix.sys_unix core_unix.time_ns_unix sqlite3 sqlgg.sqlite3 sqlgg.traits lz4))

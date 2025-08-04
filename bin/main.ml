@@ -12,7 +12,7 @@ let command_obtain_access_token auth_client =
      in
      fun () ->
        Or_error.ok_exn
-         (Unto.Auth.obtain_access_token auth_client auth_code filename))
+         (Strava.Auth.obtain_access_token auth_client auth_code filename))
 
 let command_pull_activities auth_client =
   Command.basic ~summary:"Pull latest N activities from your strava"
@@ -28,9 +28,9 @@ let command_pull_activities auth_client =
      fun () ->
        let auth =
          Or_error.ok_exn
-           (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
+           (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       Unto.Strava.pull_activities auth.access_token n)
+       Strava.Api.pull_activities auth.access_token n)
 
 let command_pull_streams auth_client =
   Command.basic ~summary:"Pull streams for a given activity and save to file"
@@ -43,9 +43,9 @@ let command_pull_streams auth_client =
      fun () ->
        let auth =
          Or_error.ok_exn
-           (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
+           (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       Or_error.ok_exn (Unto.Strava.pull_streams auth.access_token id))
+       Or_error.ok_exn (Strava.Api.pull_streams auth.access_token id))
 
 let command_download auth_client =
   Command.basic ~summary:"Download activities"
@@ -61,9 +61,9 @@ let command_download auth_client =
      fun () ->
        let auth =
          Or_error.ok_exn
-           (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
+           (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       Or_error.ok_exn (Unto.Strava.process_activities auth.access_token n))
+       Or_error.ok_exn (Strava.Api.process_activities auth.access_token n))
 
 let command_pull_laps auth_client =
   Command.basic ~summary:"Pull laps for a given activity and save to file"
@@ -76,9 +76,9 @@ let command_pull_laps auth_client =
      fun () ->
        let auth =
          Or_error.ok_exn
-           (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
+           (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       Or_error.ok_exn (Unto.Strava.pull_laps auth.access_token id))
+       Or_error.ok_exn (Strava.Api.pull_laps auth.access_token id))
 
 let command_user_info auth_client =
   Command.basic ~summary:"Get user info"
@@ -90,9 +90,9 @@ let command_user_info auth_client =
      fun () ->
        let auth =
          Or_error.ok_exn
-           (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
+           (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       Or_error.ok_exn (Unto.Strava.process_user auth.access_token))
+       Or_error.ok_exn (Strava.Api.process_user auth.access_token))
 
 let command_zones auth_client =
   Command.basic ~summary:"Get user zones info"
@@ -104,9 +104,9 @@ let command_zones auth_client =
      fun () ->
        let auth =
          Or_error.ok_exn
-           (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
+           (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       Or_error.ok_exn (Unto.Strava.process_zones auth.access_token))
+       Or_error.ok_exn (Strava.Api.process_zones auth.access_token))
 
 let command_test () =
   Command.basic ~summary:"Test things"
@@ -116,12 +116,12 @@ let command_test () =
          ~doc:"DB filename"
      in
      fun () ->
-       let db = Unto.Db.load db_filename in
-       Unto.Db.stream_for_activity db 15310528167;
+       let db = Db.load db_filename in
+       Db.stream_for_activity db 15310528167;
        (* Unto.Db.add_test_activity db 123L; *)
        (* Unto.Db.add_test_activity db 345L; *)
        (* Unto.Db.add_test_activity db 567L; *)
-       let _ = Or_error.ok_exn (Unto.Db.close db) in
+       let _ = Or_error.ok_exn (Db.close db) in
        ())
 
 let command_update_db auth_client =
@@ -140,34 +140,33 @@ let command_update_db auth_client =
          ~doc:"number of activities to fetch"
      in
      fun () ->
-       let db = Unto.Db.load db_filename in
-       let present_activities = Unto.Db.all_activities db in
+       let db = Db.load db_filename in
+       let present_activities = Db.all_activities db in
        Fun.protect
          ~finally:(fun () ->
            printf "Closing the db\n";
-           ignore @@ Unto.Db.close db)
+           ignore @@ Db.close db)
          (fun () ->
            let auth =
              Or_error.ok_exn
-               (Unto.Auth.load_and_refresh_tokens auth_client auth_filename)
+               (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
            in
            let athlete =
-             Or_error.ok_exn
-               (Unto.Strava.fetch_athlete ~token:auth.access_token)
+             Or_error.ok_exn (Strava.Api.fetch_athlete ~token:auth.access_token)
            in
            (* TODO: this should check if athlete details are the same and if
              not it should update athlete details *)
-           Unto.Db.add_athlete_if_not_exist db athlete;
+           Db.add_athlete_if_not_exist db athlete;
            let new_activities =
              Or_error.ok_exn
-               (Unto.Strava.fetch_activities ~token:auth.access_token
+               (Strava.Api.fetch_activities ~token:auth.access_token
                   ~num_activities:n ~exclude:present_activities)
            in
            ignore
              (List.map
                 ~f:(fun activity ->
                   printf "adding activity to db %d\n" activity.id;
-                  Unto.Db.add_activity db activity athlete.id)
+                  Db.add_activity db activity athlete.id)
                 new_activities)))
 
 let command auth_client =
@@ -188,6 +187,6 @@ let () =
   Dotenv.export () |> ignore;
   let client_id = Sys.getenv_exn "CLIENT_ID" in
   let client_secret = Sys.getenv_exn "CLIENT_SECRET" in
-  let auth_client = Unto.Auth.AuthClient.make client_id client_secret in
+  let auth_client = Strava.Auth.AuthClient.make client_id client_secret in
 
   Command_unix.run (command auth_client)
