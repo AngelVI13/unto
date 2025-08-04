@@ -154,7 +154,7 @@ let fetch_athlete ~token =
   in
   Ok strava_athlete
 
-let fetch_one_page ~token ~page ~per_page ~remaining ~exclude =
+let fetch_one_page ~token ~page ~per_page =
   printf "downloading activity page %d (per_page=%d)\n" page per_page;
   let resp = list_activities ~token ~page ~per_page () in
   let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
@@ -164,37 +164,51 @@ let fetch_one_page ~token ~page ~per_page ~remaining ~exclude =
   let activities =
     List.map ~f:Models.Activity.t_of_StravaActivity strava_activities
   in
+  Ok activities
+
+let filter_activities (activities : Models.Activity.t list) exclude =
+  List.filter
+    ~f:(fun activity ->
+      match List.exists ~f:(Int.equal activity.id) exclude with
+      | true ->
+          printf "...skipping activity (%d) - already exists\n" activity.id;
+          false
+      | false -> true)
+    activities
+
+let fetch_activities ~token ~num_activities ~exclude =
+  let per_page = 100 in
+  let max_pages = 5 in
+  let page_list = List.init max_pages ~f:(Int.( + ) 1) in
   let activities =
-    List.filter
-      ~f:(fun activity ->
-        match List.exists ~f:(Int.equal activity.id) exclude with
-        | true ->
-            printf "...skipping activity (%d) - already exists\n" activity.id;
-            false
-        | false -> true)
-      activities
+    List.fold ~init:[]
+      ~f:(fun acc page_num ->
+        if List.length acc >= num_activities then acc
+        else
+          let activities = fetch_one_page ~token ~page:page_num ~per_page in
+          match activities with
+          | Error e ->
+              printf "failed to fetch activities on page=%d per_page=%d:\n%s\n"
+                page_num per_page (Error.to_string_hum e);
+              acc
+          | Ok activities ->
+              let activities =
+                List.filter
+                  ~f:(fun activity ->
+                    match List.exists ~f:(Int.equal activity.id) exclude with
+                    | true ->
+                        printf "...skipping activity (%d) - already exists\n"
+                          activity.id;
+                        false
+                    | false -> true)
+                  activities
+              in
+              List.take activities num_activities)
+      page_list
   in
-  let activities = List.take activities remaining in
   let activities =
     activities |> List.map ~f:(process_activity ~token) |> List.filter_opt
   in
-  Ok activities
-
-let fetch_activities ~token ~num_activities ~exclude =
-  let per_page = min num_activities 100 in
-  let pages = Float.(round_up (of_int num_activities /. of_int per_page)) in
-  let pages = Int.of_float pages in
-  let activities =
-    List.init pages ~f:(fun i ->
-        let remaining =
-          if i > 0 && i = pages - 1 then
-            num_activities - ((pages - 1) * per_page)
-          else per_page
-        in
-        fetch_one_page ~token ~page:(i + 1) ~per_page ~remaining ~exclude)
-  in
-  let%bind activities = Or_error.all activities in
-  let activities = List.join activities in
   Ok activities
 
 let%expect_test "deserialize get_stream.json" =
