@@ -46,22 +46,26 @@ let t_of_StravaActivity (activity : StravaActivity.t) : t =
 
 let calculate_stats (t : t) (streams : Streams.t) (laps : Laps.t) : t =
   let laps =
-    List.map
-      ~f:(fun l ->
-        let lap_stats = Streams.lap_stats streams l in
-        Lap.set_stats l lap_stats)
-      laps
+    try
+      List.map
+        ~f:(fun l ->
+          let lap_stats = Streams.lap_stats streams l in
+          Lap.set_stats l lap_stats)
+        laps
+    with _ -> []
   in
   let stats = Streams.activity_stats streams in
   let splits = Streams.splits streams in
   let splits =
     match splits with
     | None -> []
-    | Some splits ->
-        List.map
-          ~f:(fun split ->
-            let split_stats = Streams.split_stats streams split in
-            Split.set_stats split split_stats)
-          splits
+    | Some splits -> (
+        try
+          List.map
+            ~f:(fun split ->
+              let split_stats = Streams.split_stats streams split in
+              Split.set_stats split split_stats)
+            splits
+        with _ -> [])
   in
   { t with streams; stats; laps; splits }

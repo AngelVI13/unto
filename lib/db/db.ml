@@ -134,7 +134,7 @@ let all_activities { handle; _ } =
   let activities = ref [] in
   let _ =
     DB.list_activities handle (fun ~id ->
-        printf "Found activity %d in db\n" (Int64.to_int_exn id);
+        (* printf "Found activity %d in db\n" (Int64.to_int_exn id); *)
         activities := Int64.to_int_exn id :: !activities)
   in
   !activities

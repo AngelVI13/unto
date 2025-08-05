@@ -12,6 +12,7 @@ module Time_ns = Time_ns_unix
 
 (* TODO: 3. Visualize the data in a web ui *)
 (* TODO: 4. Analyze the data *)
+(* TODO: what is table index ? do i need to create one ? *)
 
 let pull_activities token num_activities =
   let activities = list_activities ~token ~page:1 ~per_page:num_activities () in
@@ -20,6 +21,8 @@ let pull_activities token num_activities =
 let pull_streams_aux token activity_id =
   let resp = get_streams token activity_id in
   let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
+  (* let filename = sprintf "raw_streams_%d.json" activity_id in *)
+  (* Yojson.Safe.to_file filename json; *)
   Or_error.try_with (fun () -> Streams.t_of_yojson_smoothed json)
 
 (* TODO: try with should raise a specific error otherwise i can't figure out what went wrong *)
@@ -33,6 +36,8 @@ let pull_streams token activity_id =
 let pull_laps_aux token activity_id =
   let resp = get_laps token activity_id in
   let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
+  (* let filename = sprintf "raw_laps_%d.json" activity_id in *)
+  (* Yojson.Safe.to_file filename json; *)
   Or_error.try_with (fun () -> StravaLaps.t_of_yojson json)
 
 let pull_laps token activity_id =
@@ -178,12 +183,15 @@ let filter_activities (activities : Models.Activity.t list) exclude =
 
 let fetch_activities ~token ~num_activities ~exclude =
   let per_page = 100 in
-  let max_pages = 5 in
+  let max_pages = 6 in
   let page_list = List.init max_pages ~f:(Int.( + ) 1) in
   let activities =
     List.fold ~init:[]
       ~f:(fun acc page_num ->
-        if List.length acc >= num_activities then acc
+        if List.length acc >= num_activities then (
+          printf "reached num_activities=%d, skipping page=%d\n" num_activities
+            page_num;
+          acc)
         else
           let activities = fetch_one_page ~token ~page:page_num ~per_page in
           match activities with
@@ -192,6 +200,8 @@ let fetch_activities ~token ~num_activities ~exclude =
                 page_num per_page (Error.to_string_hum e);
               acc
           | Ok activities ->
+              printf "found %d activities on page=%d\n" (List.length activities)
+                page_num;
               let activities =
                 List.filter
                   ~f:(fun activity ->
@@ -203,7 +213,10 @@ let fetch_activities ~token ~num_activities ~exclude =
                     | false -> true)
                   activities
               in
-              List.take activities num_activities)
+              printf "%d activities after filtering\n" (List.length activities);
+              let remaining = num_activities - List.length acc in
+              printf "take %d activities\n" remaining;
+              acc @ List.take activities remaining)
       page_list
   in
   let activities =
