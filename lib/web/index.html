@@ -1,82 +1,11 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Training Log</title>
-    <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: #ac9127;
-    }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    h1 {
-      margin: 0;
-    }
-    .days {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 10px;
-      margin-top: 30px;
-    }
-    .day {
-      padding: 10px;
-      min-height: 120px;
-    }
-    .activities {
-      min-height: 120px;
-      box-shadow: 0 0 4px rgba(0,0,0,0.1);
-    }
-
-    .dayOfTheWeek {
-      background: white;
-      font-weight: bold;
-      border-radius: 8px;
-      margin: 10px;
-      padding: 5px;
-      box-shadow: 0 0 4px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-
-    .activity {
-      background: white;
-      border-radius: 8px;
-      padding: 5px;
-    }
-
-    .activityType {
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-    .stats {
-      background: white;
-      padding: 20px;
-      margin-top: 40px;
-      border-radius: 8px;
-      box-shadow: 0 0 4px rgba(0,0,0,0.1);
-    }
-    .stats h2 {
-      margin-top: 0;
-    }
-    .stats-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      margin-top: 10px;
-    }
-    .stats-grid &gt; div {
-      flex: 1 1 250px;
-    }
-    small {
-      color: #777;
-    }
-  </style>
+    <link rel="stylesheet" type="text/css" href="./styles.css" />
   </head>
   <body>
     <header>
@@ -88,40 +17,65 @@
     </header>
     <div class="days">
       <div class="day">
-        <div class="dayOfTheWeek">Monday</div>
+        <div class="dayOfTheWeek card">Monday</div>
         <div class="activities">
-          <div class="activity">
-            <span class="activityType">Run</span>
-            <br>
-            <span>Time: 35:12</span>
-            <span>Pace: 6:45 min/km</span>
-            <span>Elevation: +120/-55</span>
+          <div class="activity card">
+            <div class="activityHeader">
+              <span class="icon-container icon-running"
+                ><img class="icon-img" src="./running.png"
+              /></span>
+              <span class="activityType">Run</span>
+            </div>
+            <div class="activityCardStats">
+              <div class="activityCardStat">
+                <span class="activityCardStatName">Time: </span>
+                <span class="activityCardStatValue">35:12</span>
+              </div>
+              <div class="activityCardStat">
+                <span class="activityCardStatName">Pace: </span>
+                <span class="activityCardStatValue">6:45 min/km</span>
+              </div>
+              <div class="activityCardStat">
+                <span class="activityCardStatName">Elevation: </span>
+                <span class="activityCardStatValue">+120/-55</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
       <div class="day">
-        <div class="dayOfTheWeek">Tuesday</div>
+        <div class="dayOfTheWeek card">Tuesday</div>
         <div class="activities">
-          <div class="activity">
+          <div class="activity card">
+            <span class="icon-container icon-cycling"
+              ><img class="icon-img" src="./cycling.png"
+            /></span>
             <span class="activityType">Bike</span>
-            <br>
+            <br />
             <span>Time: 63:52</span>
             <span>Speed: 25 km/hr</span>
             <span>Elevation: +120/-55</span>
             <span>Power: 250W</span>
           </div>
+          <div class="activity card">
+            <span class="activityType">Run</span>
+            <br />
+            <span>Time: 13:22</span>
+            <span>Pace: 07:00 min/km</span>
+            <span>Elevation: +20/-25</span>
+          </div>
         </div>
       </div>
       <div class="day">
-        <div class="dayOfTheWeek">Wednesday</div>
+        <div class="dayOfTheWeek card">Wednesday</div>
         <div class="activities"></div>
       </div>
       <div class="day">
-        <div class="dayOfTheWeek">Thursday</div>
+        <div class="dayOfTheWeek card">Thursday</div>
         <div class="activities">
-          <div class="activity">
+          <div class="activity card">
             <span class="activityType">Run</span>
-            <br>
+            <br />
             <span>Time: 27:12</span>
             <span>Pace: 6:49 min/km</span>
             <span>Elevation: +10/-15</span>
@@ -129,11 +83,11 @@
         </div>
       </div>
       <div class="day">
-        <div class="dayOfTheWeek">Friday</div>
+        <div class="dayOfTheWeek card">Friday</div>
         <div class="activities">
-          <div class="activity">
+          <div class="activity card">
             <span class="activityType">Rollerblading</span>
-            <br>
+            <br />
             <span>Time: 29:22</span>
             <span>Speed: 16 km/hr</span>
             <span>Elevation: +10/-15</span>
@@ -141,11 +95,11 @@
         </div>
       </div>
       <div class="day">
-        <div class="dayOfTheWeek">Saturday</div>
+        <div class="dayOfTheWeek card">Saturday</div>
         <div class="activities">
-          <div class="activity">
+          <div class="activity card">
             <span class="activityType">CrossTraining</span>
-            <br>
+            <br />
             <span>Time: 34:20</span>
             <span>Calories: 278</span>
             <span>Heart rate: 140</span>
@@ -153,13 +107,13 @@
         </div>
       </div>
       <div class="day">
-        <div class="dayOfTheWeek">Sunday</div>
+        <div class="dayOfTheWeek card">Sunday</div>
         <div class="activities"></div>
       </div>
     </div>
-    <div class="stats">
+    <div class="stats card">
       <h2>Week Stats</h2>
-      <div class="stats-grid">
+      <div class="statsGrid">
         <div>
           <div>Total time: 6:45 (avg 5:58)</div>
           <div>Distance: 94km (avg 59km)</div>
