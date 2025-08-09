@@ -3,7 +3,6 @@ body {
   margin: 0;
   padding: 20px;
   background: white;
-  /* background: #ac9127; */
 }
 header {
   display: flex;
@@ -56,7 +55,8 @@ h1 {
 }
 
 .activity .icon-cycling {
-  background: red;
+  /* background: red; */
+  background: orangered;
 }
 
 .activity .icon-running {
@@ -88,6 +88,7 @@ h1 {
 
 .activity .activityCardStats .activityCardStatValue {
   text-align: right;
+  font-style: italic;
 }
 
 .stats {
