@@ -68,6 +68,11 @@ h1 {
   height: 16px;
 }
 
+.activity .stat-icon-img {
+  width: 20px;
+  height: auto;
+}
+
 .activity .activityType {
   font-weight: bold;
   border-bottom: 2px solid black;
