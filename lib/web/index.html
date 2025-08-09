@@ -9,9 +9,7 @@
   </head>
   <body>
     <!-- TODO: 1. Make the header similar as ELT -->
-    <!-- TODO: 2. Separate the dayOfTheWeek header from activities -->
-    <!-- TODO: 3. Make the activities section scrollable -->
-    <!-- TODO: 4. Prettify the stats footer section -->
+    <!-- TODO: 2. Prettify the stats footer section -->
     <header>
       <h1>Training Log</h1>
       <div>
@@ -19,9 +17,17 @@
         <span>??</span>
       </div>
     </header>
-    <div class="days">
-      <div class="day">
-        <div class="dayOfTheWeek card">Monday</div>
+    <div class="days headerMargin">
+      <div class="dayOfTheWeek card">Monday</div>
+      <div class="dayOfTheWeek card">Tuesday</div>
+      <div class="dayOfTheWeek card">Wednesday</div>
+      <div class="dayOfTheWeek card">Thursday</div>
+      <div class="dayOfTheWeek card">Friday</div>
+      <div class="dayOfTheWeek card">Saturday</div>
+      <div class="dayOfTheWeek card">Sunday</div>
+    </div>
+    <div class="days scrollable">
+      <div class="day dayWithColor">
         <div class="activities">
           <div class="activity card">
             <div class="activityHeader">
@@ -33,19 +39,31 @@
             <div class="activityCardStats">
               <div class="activityCardStat">
                 <span class="activityCardStatName">
-                  <img class="stat-icon-img" src="./duration.png" />
+                  <img
+                    class="stat-icon-img"
+                    title="Duration"
+                    src="./duration.png"
+                  />
                 </span>
                 <span class="activityCardStatValue">35:12</span>
               </div>
               <div class="activityCardStat">
                 <span class="activityCardStatName">
-                  <img class="stat-icon-img" src="./pace.png" />
+                  <img
+                    class="stat-icon-img"
+                    title="Pace (min/km)"
+                    src="./pace.png"
+                  />
                 </span>
                 <span class="activityCardStatValue">6:45</span>
               </div>
               <div class="activityCardStat">
                 <span class="activityCardStatName">
-                  <img class="stat-icon-img" src="./elevation.png" />
+                  <img
+                    class="stat-icon-img"
+                    title="Elevation gain & loss (m)"
+                    src="./elevation.png"
+                  />
                 </span>
                 <span class="activityCardStatValue">+120/-55</span>
               </div>
@@ -54,34 +72,57 @@
         </div>
       </div>
       <div class="day">
-        <div class="dayOfTheWeek card">Tuesday</div>
         <div class="activities">
           <div class="activity card">
-            <span class="icon-container icon-cycling"
-              ><img class="icon-img" src="./cycling.png"
-            /></span>
-            <span class="activityType">Bike</span>
-            <br />
-            <span>Time: 63:52</span>
-            <span>Speed: 25 km/hr</span>
-            <span>Elevation: +120/-55</span>
-            <span>Power: 250W</span>
+            <div class="activityHeader">
+              <span class="icon-container icon-cycling"
+                ><img class="icon-img" src="./cycling.png"
+              /></span>
+              <span class="activityType">Bike Ride</span>
+            </div>
+            <div class="activityCardStats">
+              <div class="activityCardStat">
+                <span class="activityCardStatName">Time: </span>
+                <span class="activityCardStatValue">35:12</span>
+              </div>
+              <div class="activityCardStat">
+                <span class="activityCardStatName">Speed (kph): </span>
+                <span class="activityCardStatValue">21.7</span>
+              </div>
+              <div class="activityCardStat">
+                <span class="activityCardStatName">Elev. (m): </span>
+                <span class="activityCardStatValue">+120/-55</span>
+              </div>
+            </div>
           </div>
           <div class="activity card">
-            <span class="activityType">Run</span>
-            <br />
-            <span>Time: 13:22</span>
-            <span>Pace: 07:00 min/km</span>
-            <span>Elevation: +20/-25</span>
+            <div class="activityHeader">
+              <span class="icon-container icon-running"
+                ><img class="icon-img" src="./running.png"
+              /></span>
+              <span class="activityType">Run</span>
+            </div>
+            <div class="activityCardStats">
+              <div class="activityCardStat">
+                <span class="activityCardStatName">Time: </span>
+                <span class="activityCardStatValue">35:12</span>
+              </div>
+              <div class="activityCardStat">
+                <span class="activityCardStatName">Pace (/km): </span>
+                <span class="activityCardStatValue">5:30</span>
+              </div>
+              <div class="activityCardStat">
+                <span class="activityCardStatName">Elev. (m): </span>
+                <span class="activityCardStatValue">+120/-55</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div class="day">
-        <div class="dayOfTheWeek card">Wednesday</div>
+      <div class="day dayWithColor">
         <div class="activities"></div>
       </div>
       <div class="day">
-        <div class="dayOfTheWeek card">Thursday</div>
         <div class="activities">
           <div class="activity card">
             <span class="activityType">Run</span>
@@ -92,8 +133,7 @@
           </div>
         </div>
       </div>
-      <div class="day">
-        <div class="dayOfTheWeek card">Friday</div>
+      <div class="day dayWithColor">
         <div class="activities">
           <div class="activity card">
             <span class="activityType">Rollerblading</span>
@@ -105,7 +145,6 @@
         </div>
       </div>
       <div class="day">
-        <div class="dayOfTheWeek card">Saturday</div>
         <div class="activities">
           <div class="activity card">
             <span class="activityType">CrossTraining</span>
@@ -116,8 +155,7 @@
           </div>
         </div>
       </div>
-      <div class="day">
-        <div class="dayOfTheWeek card">Sunday</div>
+      <div class="day dayWithColor">
         <div class="activities"></div>
       </div>
     </div>
