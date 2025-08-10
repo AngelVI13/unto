@@ -9,12 +9,32 @@ header {
   justify-content: space-between;
   align-items: center;
 }
-h1 {
+
+.headerTabs {
+  display: flex;
+  gap: 15px; /* space between headings */
+  align-items: center; /* align them vertically */
+}
+
+header h1 {
   margin: 0;
 }
 
 .headerMargin {
-  margin-top: 30px;
+  margin-bottom: 30px;
+}
+
+header .inactive a {
+  color: rgba(110, 110, 110, 0.4);
+}
+
+header .active a {
+  color: black;
+}
+
+header .header-img {
+  width: 24px;
+  height: 24px;
 }
 
 .scrollable {
@@ -61,7 +81,7 @@ h1 {
   margin: 0px 5px 10px 5px;
 }
 
-.activity .icon-container {
+.icon-container {
   padding: 4px;
   border-radius: 12px;
   display: inline-flex;

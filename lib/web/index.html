@@ -10,14 +10,25 @@
   <body>
     <!-- TODO: 1. Make the header similar as ELT -->
     <!-- TODO: 2. Prettify the stats footer section -->
-    <header>
-      <h1>Training Log</h1>
-      <div>
-        <span>??</span>
-        <span>??</span>
+    <header class="headerMargin">
+      <div class="headerTabs">
+        <h1 class="active"><a href="">Training Log</a></h1>
+        <h1 class="inactive"><a href="">Dashboards</a></h1>
+      </div>
+      <div class="headerSettings">
+        <span class="icon-container">
+          <a href="">
+            <img class="header-img" src="./account.png" />
+          </a>
+        </span>
+        <span class="icon-container">
+          <a href="">
+            <img class="header-img" src="./settings.png" />
+          </a>
+        </span>
       </div>
     </header>
-    <div class="days headerMargin">
+    <div class="days">
       <div class="dayOfTheWeek card">Monday</div>
       <div class="dayOfTheWeek card">Tuesday</div>
       <div class="dayOfTheWeek card">Wednesday</div>
