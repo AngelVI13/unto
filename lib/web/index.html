@@ -8,7 +8,6 @@
     <link rel="stylesheet" type="text/css" href="./styles.css" />
   </head>
   <body>
-    <!-- TODO: 1. Make the header similar as ELT -->
     <!-- TODO: 2. Prettify the stats footer section -->
     <header class="headerMargin">
       <div class="headerTabs">
@@ -206,11 +205,23 @@
     <div class="stats card">
       <h2>Week Stats</h2>
       <div class="statsGrid">
-        <div>
-          <div>Total time: 6:45 (avg 5:58)</div>
-          <div>Distance: 94km (avg 59km)</div>
-          <div>Ascent: 1230m (avg 439m)</div>
-          <div>Training Load: 457 (avg 372)</div>
+        <div class="weekTotals">
+          <div class="weekTotalStat">
+            <span class="weekStatName">Time: </span>
+            <span>6:45 (avg 5:58)</span>
+          </div>
+          <div class="weekTotalStat">
+            <span class="weekStatName">Distance (km): </span>
+            <span>94.2 (avg 59.7)</span>
+          </div>
+          <div class="weekTotalStat">
+            <span class="weekStatName">Ascent (m): </span>
+            <span>1230m (avg 439)</span>
+          </div>
+          <div class="weekTotalStat">
+            <span class="weekStatName">Training Load: </span>
+            <span>457 (avg 372)</span>
+          </div>
           <small>*avg is calculated from the last 6 weeks</small>
         </div>
         <div>

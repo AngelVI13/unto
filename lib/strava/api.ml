@@ -183,7 +183,7 @@ let filter_activities (activities : Models.Activity.t list) exclude =
 
 let fetch_activities ~token ~num_activities ~exclude =
   let per_page = 100 in
-  let max_pages = 6 in
+  let max_pages = 3 in
   let page_list = List.init max_pages ~f:(Int.( + ) 1) in
   let activities =
     List.fold ~init:[]
