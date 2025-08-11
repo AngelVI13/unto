@@ -37,19 +37,20 @@
       <div class="dayOfTheWeek card">Saturday</div>
       <div class="dayOfTheWeek card">Sunday</div>
     </div>
-    <div class="days scrollable">
+    <div class="days scrollable calendarHeight">
       <div class="day dayWithColor">
         <div class="activities">
           <div class="activity card">
             <div class="activityHeader">
-              <span class="icon-container icon-running"
-                ><img class="icon-img" src="./running.png"
-              /></span>
+              <span class="icon-container icon-running">
+                <img class="icon-img" src="./running.png" />
+              </span>
               <span class="activityType">Run</span>
             </div>
             <div class="activityCardStats">
               <div class="activityCardStat">
-                <span class="activityCardStatName">
+                <span class="activityCardStatName statNameText">Time: </span>
+                <span class="activityCardStatName statNameIcon">
                   <img
                     class="stat-icon-img"
                     title="Duration"
@@ -59,7 +60,10 @@
                 <span class="activityCardStatValue">35:12</span>
               </div>
               <div class="activityCardStat">
-                <span class="activityCardStatName">
+                <span class="activityCardStatName statNameText"
+                  >Pace (/km):
+                </span>
+                <span class="activityCardStatName statNameIcon">
                   <img
                     class="stat-icon-img"
                     title="Pace (min/km)"
@@ -69,7 +73,10 @@
                 <span class="activityCardStatValue">6:45</span>
               </div>
               <div class="activityCardStat">
-                <span class="activityCardStatName">
+                <span class="activityCardStatName statNameText"
+                  >Elev. (m):
+                </span>
+                <span class="activityCardStatName statNameIcon">
                   <img
                     class="stat-icon-img"
                     title="Elevation gain & loss (m)"
@@ -86,22 +93,47 @@
         <div class="activities">
           <div class="activity card">
             <div class="activityHeader">
-              <span class="icon-container icon-cycling"
-                ><img class="icon-img" src="./cycling.png"
-              /></span>
+              <span class="icon-container icon-cycling">
+                <img class="icon-img" src="./cycling.png" />
+              </span>
               <span class="activityType">Bike Ride</span>
             </div>
             <div class="activityCardStats">
               <div class="activityCardStat">
-                <span class="activityCardStatName">Time: </span>
+                <span class="activityCardStatName statNameText">Time: </span>
+                <span class="activityCardStatName statNameIcon">
+                  <img
+                    class="stat-icon-img"
+                    title="Duration"
+                    src="./duration.png"
+                  />
+                </span>
                 <span class="activityCardStatValue">35:12</span>
               </div>
               <div class="activityCardStat">
-                <span class="activityCardStatName">Speed (kph): </span>
+                <span class="activityCardStatName statNameText"
+                  >Speed (kph):
+                </span>
+                <span class="activityCardStatName statNameIcon">
+                  <img
+                    class="stat-icon-img"
+                    title="Speed (kph)"
+                    src="./speed.png"
+                  />
+                </span>
                 <span class="activityCardStatValue">21.7</span>
               </div>
               <div class="activityCardStat">
-                <span class="activityCardStatName">Elev. (m): </span>
+                <span class="activityCardStatName statNameText"
+                  >Elev. (m):
+                </span>
+                <span class="activityCardStatName statNameIcon">
+                  <img
+                    class="stat-icon-img"
+                    title="Elevation gain & loss (m)"
+                    src="./elevation.png"
+                  />
+                </span>
                 <span class="activityCardStatValue">+120/-55</span>
               </div>
             </div>
@@ -115,15 +147,40 @@
             </div>
             <div class="activityCardStats">
               <div class="activityCardStat">
-                <span class="activityCardStatName">Time: </span>
+                <span class="activityCardStatName statNameText">Time: </span>
+                <span class="activityCardStatName statNameIcon">
+                  <img
+                    class="stat-icon-img"
+                    title="Duration"
+                    src="./duration.png"
+                  />
+                </span>
                 <span class="activityCardStatValue">35:12</span>
               </div>
               <div class="activityCardStat">
-                <span class="activityCardStatName">Pace (/km): </span>
-                <span class="activityCardStatValue">5:30</span>
+                <span class="activityCardStatName statNameText"
+                  >Pace (/km):
+                </span>
+                <span class="activityCardStatName statNameIcon">
+                  <img
+                    class="stat-icon-img"
+                    title="Pace (min/km)"
+                    src="./pace.png"
+                  />
+                </span>
+                <span class="activityCardStatValue">6:45</span>
               </div>
               <div class="activityCardStat">
-                <span class="activityCardStatName">Elev. (m): </span>
+                <span class="activityCardStatName statNameText"
+                  >Elev. (m):
+                </span>
+                <span class="activityCardStatName statNameIcon">
+                  <img
+                    class="stat-icon-img"
+                    title="Elevation gain & loss (m)"
+                    src="./elevation.png"
+                  />
+                </span>
                 <span class="activityCardStatValue">+120/-55</span>
               </div>
             </div>
@@ -134,37 +191,13 @@
         <div class="activities"></div>
       </div>
       <div class="day">
-        <div class="activities">
-          <div class="activity card">
-            <span class="activityType">Run</span>
-            <br />
-            <span>Time: 27:12</span>
-            <span>Pace: 6:49 min/km</span>
-            <span>Elevation: +10/-15</span>
-          </div>
-        </div>
+        <div class="activities"></div>
       </div>
       <div class="day dayWithColor">
-        <div class="activities">
-          <div class="activity card">
-            <span class="activityType">Rollerblading</span>
-            <br />
-            <span>Time: 29:22</span>
-            <span>Speed: 16 km/hr</span>
-            <span>Elevation: +10/-15</span>
-          </div>
-        </div>
+        <div class="activities"></div>
       </div>
       <div class="day">
-        <div class="activities">
-          <div class="activity card">
-            <span class="activityType">CrossTraining</span>
-            <br />
-            <span>Time: 34:20</span>
-            <span>Calories: 278</span>
-            <span>Heart rate: 140</span>
-          </div>
-        </div>
+        <div class="activities"></div>
       </div>
       <div class="day dayWithColor">
         <div class="activities"></div>

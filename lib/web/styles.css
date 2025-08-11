@@ -40,7 +40,10 @@ header .header-img {
 .scrollable {
   padding: 5px;
   overflow: auto;
-  height: 270px;
+}
+
+.calendarHeight {
+  height: 45vh; /* 45% of the viewport height */
 }
 
 .days {
@@ -120,6 +123,24 @@ header .header-img {
 .activity .activityCardStats .activityCardStat {
   display: flex;
   justify-content: space-between;
+}
+
+.activity .activityCardStats .activityCardStat .statNameText {
+  display: inline;
+}
+
+.activity .activityCardStats .activityCardStat .statNameIcon {
+  display: none;
+}
+
+/* Small screens (<= 1366px): show icon, hide text */
+@media screen and (max-width: 1366px) {
+  .activity .activityCardStats .activityCardStat .statNameText {
+    display: none;
+  }
+  .activity .activityCardStats .activityCardStat .statNameIcon {
+    display: inline;
+  }
 }
 
 .activity .activityCardStats .activityCardStatName {
