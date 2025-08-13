@@ -1,0 +1,11 @@
+let render (athlete: Models.Strava_models.StravaAthlete.t option) =
+<html>
+  <body>
+%   begin match athlete with 
+%   | Some athl ->
+    <h1>Hello <%s athl.firstname %></h1>
+%   | None ->
+    <h1>Hello</h1>
+%   end;
+  </body>
+</html>

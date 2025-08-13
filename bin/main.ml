@@ -138,6 +138,12 @@ let command_update_db auth_client =
        flag "-n"
          (optional_with_default 10 int)
          ~doc:"number of activities to fetch"
+     and start_page =
+       flag "-s"
+         (optional_with_default 1 int)
+         ~doc:
+           "Activity page to start from. This can be used to skip the first N \
+            pages of activities."
      in
      fun () ->
        let db = Db.load db_filename in
@@ -160,7 +166,7 @@ let command_update_db auth_client =
            let new_activities =
              Or_error.ok_exn
                (Strava.Api.fetch_activities ~token:auth.access_token
-                  ~num_activities:n ~exclude:present_activities)
+                  ~num_activities:n ~start_page ~exclude:present_activities)
            in
            ignore
              (List.map

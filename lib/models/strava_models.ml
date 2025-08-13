@@ -121,7 +121,7 @@ module StravaAthlete = struct
     created_at : string;
     weight : float;
   }
-  [@@deriving yojson] [@@yojson.allow_extra_fields]
+  [@@deriving yojson, fields] [@@yojson.allow_extra_fields]
 end
 
 module StravaZones = struct

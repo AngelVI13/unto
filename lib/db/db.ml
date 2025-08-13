@@ -49,6 +49,18 @@ let add_athlete_if_not_exist { handle; _ } (athlete : StravaAthlete.t) =
          ~city:athlete.city ~state:athlete.state ~country:athlete.country
          ~sex:athlete.sex ~created_at:athlete.created_at ~weight:athlete.weight)
 
+let get_athlete { handle; _ } : StravaAthlete.t option =
+  let athletes = ref [] in
+  DB.list_athletes handle
+    (fun
+      ~id ~firstname ~lastname ~city ~state ~country ~sex ~created_at ~weight ->
+      let athlete =
+        StravaAthlete.Fields.create ~id:(Int64.to_int_exn id) ~firstname
+          ~lastname ~city ~state ~country ~sex ~created_at ~weight
+      in
+      athletes := athlete :: !athletes);
+  List.hd !athletes
+
 let add_stats (t : t) (stats : Models.Stats.t) (activity_id : int) =
   let _ =
     DB.add_stats t.handle ~id:None ~activity_id:(Int64.of_int activity_id)

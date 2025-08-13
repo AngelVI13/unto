@@ -13,6 +13,10 @@ module Time_ns = Time_ns_unix
 (* TODO: 3. Visualize the data in a web ui *)
 (* TODO: 4. Analyze the data *)
 (* TODO: what is table index ? do i need to create one ? *)
+(* TODO: activity 1419970951 is marked as Threadmill run but strava only shows
+   it as RUN is the API giving correct type *)
+(* TODO: there is a gap in activities from 2016-09-19T18:22:17Z =>
+   2016-11-23T14:40:56Z for some reason *)
 
 let pull_activities token num_activities =
   let activities = list_activities ~token ~page:1 ~per_page:num_activities () in
@@ -163,6 +167,9 @@ let fetch_one_page ~token ~page ~per_page =
   printf "downloading activity page %d (per_page=%d)\n" page per_page;
   let resp = list_activities ~token ~page ~per_page () in
   let%bind json = Or_error.try_with (fun () -> Yojson.Safe.from_string resp) in
+  (* Yojson.Safe.to_file *)
+  (*   (sprintf "activities_page_%d_per_%d.json" page per_page) *)
+  (*   json; *)
   let%bind strava_activities =
     Or_error.try_with (fun () -> StravaActivities.t_of_yojson json)
   in
@@ -181,9 +188,9 @@ let filter_activities (activities : Models.Activity.t list) exclude =
       | false -> true)
     activities
 
-let fetch_activities ~token ~num_activities ~exclude =
+let fetch_activities ~token ~num_activities ~start_page ~exclude =
   let per_page = 100 in
-  let max_pages = 3 in
+  let max_pages = 20 in
   let page_list = List.init max_pages ~f:(Int.( + ) 1) in
   let activities =
     List.fold ~init:[]
@@ -191,6 +198,9 @@ let fetch_activities ~token ~num_activities ~exclude =
         if List.length acc >= num_activities then (
           printf "reached num_activities=%d, skipping page=%d\n" num_activities
             page_num;
+          acc)
+        else if page_num < start_page then (
+          printf "skipping page=%d (start_page=%d)\n" page_num start_page;
           acc)
         else
           let activities = fetch_one_page ~token ~page:page_num ~per_page in
