@@ -2,7 +2,6 @@ open Core
 open Core_bench
 
 let () =
-  let open Unto in
   let data =
     In_channel.read_all "/home/angel/Documents/ocaml/unto/get_streams_test.json"
   in
