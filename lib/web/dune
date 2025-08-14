@@ -2,9 +2,4 @@
  (name web)
  (preprocess
   (pps ppx_jane))
- (libraries models db dream core core_unix.sys_unix core_unix.time_ns_unix lz4))
-
-(rule
- (targets template.ml)
- (deps template.eml.html)
- (action (run dream_eml %{deps} --workspace %{workspace_root})))
+ (libraries models db dream core core_unix.sys_unix core_unix.time_ns_unix lz4 dream-html))

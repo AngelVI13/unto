@@ -37,6 +37,11 @@ header .header-img {
   height: 24px;
 }
 
+header .athlete-txt {
+  font-size: 24px;
+  font-family: system-ui;
+}
+
 .scrollable {
   padding: 5px;
   overflow: auto;
