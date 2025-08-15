@@ -1,3 +1,5 @@
+open Core
+
 let head_elems () =
   let open Dream_html in
   let open HTML in
@@ -48,10 +50,33 @@ let header_ (athlete_name : string) =
         ];
     ]
 
+let weekTableHeader () =
+  let open Dream_html in
+  let open HTML in
+  let days_of_the_week =
+    [
+      "Monday";
+      "Tuesday";
+      "Wednesday";
+      "Thursday";
+      "Friday";
+      "Saturday";
+      "Sunday";
+    ]
+  in
+  let divs =
+    List.map
+      ~f:(fun name -> div [ class_ "dayOfTheWeek card" ] [ txt "%s" name ])
+      days_of_the_week
+  in
+  div [ class_ "days" ] divs
+
 let page (athlete : Models.Strava_models.StravaAthlete.t option) =
   let open Dream_html in
   let open HTML in
   let athlete =
     match athlete with None -> "Unknown" | Some athl -> athl.firstname
   in
-  html [ lang "en" ] [ head [] (head_elems ()); body [] [ header_ athlete ] ]
+  html
+    [ lang "en" ]
+    [ head [] (head_elems ()); body [] [ header_ athlete; weekTableHeader () ] ]
