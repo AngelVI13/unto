@@ -2,6 +2,7 @@ let head_elems () =
   let open Dream_html in
   let open HTML in
   [
+    Dream_html.Livereload.script;
     meta [ http_equiv `content_type; content "text/html; charset=UTF-8" ];
     meta [ charset "UTF-8" ];
     meta [ name "viewport"; content "width=device-width, initial-scale=1.0" ];
