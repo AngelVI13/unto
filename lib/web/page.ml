@@ -71,7 +71,95 @@ let weekTableHeader () =
   in
   div [ class_ "days" ] divs
 
-let page (athlete : Models.Strava_models.StravaAthlete.t option) =
+(* <div class="day dayWithColor"> *)
+(*   <div class="activities"> *)
+(*     <div class="activity card"> *)
+(*       <div class="activityCardStats"> *)
+(*         <div class="activityCardStat"> *)
+(*           <span class="activityCardStatName statNameText">Time: </span> *)
+(*           <span class="activityCardStatName statNameIcon"> *)
+(*             <img *)
+(*               class="stat-icon-img" *)
+(*               title="Duration" *)
+(*               src="./duration.png" *)
+(*             /> *)
+(*           </span> *)
+(*           <span class="activityCardStatValue">35:12</span> *)
+(*         </div> *)
+(*         <div class="activityCardStat"> *)
+(*           <span class="activityCardStatName statNameText" *)
+(*             >Pace (/km): *)
+(*           </span> *)
+(*           <span class="activityCardStatName statNameIcon"> *)
+(*             <img *)
+(*               class="stat-icon-img" *)
+(*               title="Pace (min/km)" *)
+(*               src="./pace.png" *)
+(*             /> *)
+(*           </span> *)
+(*           <span class="activityCardStatValue">6:45</span> *)
+(*         </div> *)
+(*         <div class="activityCardStat"> *)
+(*           <span class="activityCardStatName statNameText" *)
+(*             >Elev. (m): *)
+(*           </span> *)
+(*           <span class="activityCardStatName statNameIcon"> *)
+(*             <img *)
+(*               class="stat-icon-img" *)
+(*               title="Elevation gain & loss (m)" *)
+(*               src="./elevation.png" *)
+(*             /> *)
+(*           </span> *)
+(*           <span class="activityCardStatValue">+120/-55</span> *)
+(*         </div> *)
+(*       </div> *)
+(*     </div> *)
+(*   </div> *)
+(* </div> *)
+
+let activity_header (activity : Models.Activity.t) =
+  let open Dream_html in
+  let open HTML in
+  let icon_color, img_src =
+    match activity.sport_type with
+    | Run -> ("gold", "/static/assets/running.png")
+    | Ride -> ("coral", "/static/assets/cycling.png")
+    | Crossfit -> ("greenyellow", "/static/assets/crosstrain.png")
+    | _ -> ("", "")
+  in
+  let icon_background = sprintf "background: %s;" icon_color in
+  div
+    [ class_ "activityHeader" ]
+    [
+      span
+        [ class_ "icon-container"; style_ "%s" icon_background ]
+        [ img [ class_ "icon-img"; src "%s" img_src ] ];
+      span
+        [ class_ "activityType" ]
+        [ txt "%s" (Models.Strava_models.show_sportType activity.sport_type) ];
+    ]
+
+let activity_div (activity : Models.Activity.t) =
+  let open Dream_html in
+  let open HTML in
+  div [ class_ "activity card" ] [ activity_header activity ]
+
+let weekTableActivities (activities : Models.Activity.t list list) =
+  let open Dream_html in
+  let open HTML in
+  let days =
+    List.mapi
+      ~f:(fun i day_activities ->
+        let activity_divs = List.map ~f:activity_div day_activities in
+        div
+          [ class_ (if i mod 2 = 0 then "day dayWithColor" else "day") ]
+          [ div [ class_ "activities" ] activity_divs ])
+      activities
+  in
+  div [ class_ "days scrollable calendarHeight" ] days
+
+let training_log (athlete : Models.Strava_models.StravaAthlete.t option)
+    (activities : Models.Activity.t list list) =
   let open Dream_html in
   let open HTML in
   let athlete =
@@ -79,4 +167,8 @@ let page (athlete : Models.Strava_models.StravaAthlete.t option) =
   in
   html
     [ lang "en" ]
-    [ head [] (head_elems ()); body [] [ header_ athlete; weekTableHeader () ] ]
+    [
+      head [] (head_elems ());
+      body []
+        [ header_ athlete; weekTableHeader (); weekTableActivities activities ];
+    ]

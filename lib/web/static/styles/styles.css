@@ -97,14 +97,6 @@ header .athlete-txt {
   justify-content: center;
 }
 
-.activity .icon-cycling {
-  background: orangered;
-}
-
-.activity .icon-running {
-  background: lawngreen;
-}
-
 .activity .icon-img {
   width: 16px;
   height: 16px;

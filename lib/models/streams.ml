@@ -156,6 +156,8 @@ module Streams = struct
     let streams = t_of_yojson_strava json in
     smoothe_altitude_if_present streams
 
+  let empty () : t = []
+
   let length (streams : t) : int =
     let s =
       List.find_map

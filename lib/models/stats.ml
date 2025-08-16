@@ -22,7 +22,7 @@ type t = {
   average_power : int option;
   max_power : int option;
 }
-[@@deriving show { with_path = false }, yojson]
+[@@deriving show { with_path = false }, fields, yojson]
 
 let empty () =
   {

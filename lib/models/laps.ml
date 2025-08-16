@@ -36,4 +36,6 @@ module Laps = struct
         strava_laps
     in
     laps
+
+  let empty () : t = []
 end

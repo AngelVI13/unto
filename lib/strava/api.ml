@@ -100,7 +100,7 @@ let process_activities token num_activities =
   let activities =
     List.map
       ~f:(fun activity ->
-        printf "processing activity=%d\n" activity.id;
+        printf "processing activity=%d %s\n" activity.id activity.start_date;
         printf "downloading streams\n";
         let streams = pull_streams_aux token activity.id in
         printf "downloading laps\n";
@@ -126,7 +126,7 @@ let process_activities token num_activities =
   Ok ()
 
 let process_activity ~token (activity : Models.Activity.t) =
-  printf "\tprocessing activity=%d\n" activity.id;
+  printf "\tprocessing activity=%d %s\n" activity.id activity.start_date;
 
   Time_ns.pause (Time_ns.Span.create ~ms:500 ());
   printf "\t\tdownloading streams\n";
@@ -190,7 +190,7 @@ let filter_activities (activities : Models.Activity.t list) exclude =
 
 let fetch_activities ~token ~num_activities ~start_page ~exclude =
   let per_page = 100 in
-  let max_pages = 25 in
+  let max_pages = 1 in
   let page_list = List.init max_pages ~f:(Int.( + ) 1) in
   let activities =
     List.fold ~init:[]
