@@ -139,10 +139,102 @@ let activity_header (activity : Models.Activity.t) =
         [ txt "%s" (Models.Strava_models.show_sportType activity.sport_type) ];
     ]
 
+(*         <div class="activityCardStat"> *)
+(*           <span class="activityCardStatName statNameText">Time: </span> *)
+(*           <span class="activityCardStatName statNameIcon"> *)
+(*             <img *)
+(*               class="stat-icon-img" *)
+(*               title="Duration" *)
+(*               src="./duration.png" *)
+(*             /> *)
+(*           </span> *)
+(*           <span class="activityCardStatValue">35:12</span> *)
+(*         </div> *)
+let activity_stat ~stat_name ~stat_description ~stat_icon_path ~stat_value =
+  let open Dream_html in
+  let open HTML in
+  div
+    [ class_ "activityCardStat" ]
+    [
+      span
+        [ class_ "activityCardStatName statNameText" ]
+        [ txt "%s: " stat_name ];
+      span
+        [ class_ "activityCardStatName statNameIcon" ]
+        [
+          img
+            [
+              class_ "stat-icon-img";
+              title_ stat_description;
+              src stat_icon_path;
+            ];
+        ];
+      span [ class_ "activityCardStatValue" ] [ txt "%s" stat_value ];
+    ]
+
+let format_activity_duration duration_secs =
+  let secs = duration_secs mod 60 in
+  let mins = duration_secs / 60 in
+  let mins_left = mins mod 60 in
+  let hours = mins / 60 in
+  sprintf "%d:%02d:%02d" hours mins_left secs
+
+let activity_stats ~sport_type (stats : Models.Stats.t) =
+  let duration =
+    Some
+      (activity_stat ~stat_name:"Time" ~stat_description:"Duration"
+         ~stat_icon_path:"/static/assets/duration.png"
+         ~stat_value:(format_activity_duration stats.moving_time))
+  in
+  let heartrate =
+    match stats.average_heartrate with
+    | None -> None
+    | Some avg ->
+        Some
+          (activity_stat ~stat_name:"Heartrate"
+             ~stat_description:"Beats per min"
+             ~stat_icon_path:"/static/assets/heartrate.png"
+             ~stat_value:(Int.to_string avg))
+  in
+
+  let speed_pace =
+    match stats.average_speed with
+    | None -> None
+    | Some avg -> (
+        match sport_type with
+        | Models.Strava_models.Run | Models.Strava_models.TrailRun
+        | Models.Strava_models.VirtualRun ->
+            let secs_per_km = Int.of_float (Float.round (1000.0 /. avg)) in
+            let secs = secs_per_km mod 60 in
+            let mins = secs_per_km / 60 in
+            Some
+              (activity_stat ~stat_name:"Pace" ~stat_description:"Mins per km"
+                 ~stat_icon_path:"/static/assets/pace.png"
+                 ~stat_value:(sprintf "%02d:%02d" mins secs))
+        | _ ->
+            Some
+              (activity_stat ~stat_name:"Speed" ~stat_description:"km/hr"
+                 ~stat_icon_path:"/static/assets/speed.png"
+                 ~stat_value:
+                   (sprintf "%.1f"
+                      Float.(
+                        round_significant ~significant_digits:2 (avg * 3.6)))))
+  in
+  List.filter_opt [ duration; heartrate; speed_pace ]
+
+let activity_stats_div (activity : Models.Activity.t) =
+  let open Dream_html in
+  let open HTML in
+  div
+    [ class_ "activityCardStats" ]
+    (activity_stats ~sport_type:activity.sport_type activity.stats)
+
 let activity_div (activity : Models.Activity.t) =
   let open Dream_html in
   let open HTML in
-  div [ class_ "activity card" ] [ activity_header activity ]
+  div
+    [ class_ "activity card" ]
+    [ activity_header activity; activity_stats_div activity ]
 
 let weekTableActivities (activities : Models.Activity.t list list) =
   let open Dream_html in
