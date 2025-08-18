@@ -11,12 +11,6 @@ let last_monday ~zone =
   in
   Date.add_days today (-days_since_monday)
 
-let iso8601_of_date date =
-  let now =
-    Time_ns.of_date_ofday ~zone:Timezone.utc date (Time_ns.Ofday.create ())
-  in
-  Time_ns.to_string_iso8601_basic ~zone:Timezone.utc now ^ "Z"
-
 let group_activities ~(start_date : Date.t)
     (activities : Models.Activity.t list) =
   List.init 7 ~f:(fun offset ->
@@ -35,8 +29,9 @@ let group_activities ~(start_date : Date.t)
 
 let handle_training_log ~db request =
   let _ = request in
+  (* TODO: get query param from request and load activities based on start date *)
   let monday = last_monday ~zone:Timezone.utc in
-  let monday_timestamp = iso8601_of_date monday in
+  let monday_timestamp = Utils.iso8601_of_date monday in
   let weeks_activities =
     Db.get_weeks_activities db ~start_date:monday_timestamp
   in
@@ -44,7 +39,7 @@ let handle_training_log ~db request =
     group_activities ~start_date:monday weeks_activities
   in
   let athlete = Db.get_athlete db in
-  let page = Page.training_log athlete grouped_activities in
+  let page = Page.training_log monday athlete grouped_activities in
   Dream_html.respond page
 
 (* TODO activity fails to download streams 113217900 *)
@@ -69,7 +64,7 @@ let%expect_test "fetch weeks activities from db" =
   let db = Db.load "/home/angel/Documents/ocaml/unto/app.db" in
 
   let monday = last_monday ~zone:Timezone.utc in
-  let monday_timestamp = iso8601_of_date monday in
+  let monday_timestamp = Utils.iso8601_of_date monday in
   let weeks_activities =
     Db.get_weeks_activities db ~start_date:monday_timestamp
   in

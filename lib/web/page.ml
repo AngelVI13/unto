@@ -250,7 +250,22 @@ let weekTableActivities (activities : Models.Activity.t list list) =
   in
   div [ class_ "days scrollable calendarHeight" ] days
 
-let training_log (athlete : Models.Strava_models.StravaAthlete.t option)
+let nav_buttons (monday_date : Date.t) =
+  let next_monday = Date.add_days monday_date 7 in
+  let next_monday_str = Utils.iso8601_of_date next_monday in
+  let prev_monday = Date.add_days monday_date (-7) in
+  let prev_monday_str = Utils.iso8601_of_date prev_monday in
+  let open Dream_html in
+  let open HTML in
+  div
+    [ class_ "navButtons" ]
+    [
+      span [] [ a [ href "/?monday=%s" prev_monday_str ] [ txt "Prev" ] ];
+      span [] [ a [ href "/?monday=%s" next_monday_str ] [ txt "Next" ] ];
+    ]
+
+let training_log (monday_date : Date.t)
+    (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list list) =
   let open Dream_html in
   let open HTML in
@@ -262,5 +277,10 @@ let training_log (athlete : Models.Strava_models.StravaAthlete.t option)
     [
       head [] (head_elems ());
       body []
-        [ header_ athlete; weekTableHeader (); weekTableActivities activities ];
+        [
+          header_ athlete;
+          nav_buttons monday_date;
+          weekTableHeader ();
+          weekTableActivities activities;
+        ];
     ]

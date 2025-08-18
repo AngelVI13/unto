@@ -42,6 +42,19 @@ header .athlete-txt {
   font-family: system-ui;
 }
 
+.navButtons {
+  padding-left: 10px;
+  padding-bottom: 5px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.navButtons a {
+  font-weight: bold;
+  color: black;
+}
+
 .scrollable {
   padding: 5px;
   overflow: auto;
