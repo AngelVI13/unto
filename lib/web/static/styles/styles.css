@@ -104,6 +104,10 @@ header .athlete-txt {
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
 }
 
+.cardToday {
+  border-color: darkolivegreen;
+}
+
 .activity {
   background: white;
   padding: 5px;

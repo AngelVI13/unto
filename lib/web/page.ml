@@ -1,4 +1,5 @@
 open Core
+module Time_ns = Time_ns_unix
 
 let head_elems () =
   let open Dream_html in
@@ -50,7 +51,8 @@ let header_ (athlete_name : string) =
         ];
     ]
 
-let weekTableHeader () =
+let week_table_header (monday_date : Date.t) =
+  let today = Time_ns.now () |> Time_ns.to_date ~zone:Timezone.utc in
   let open Dream_html in
   let open HTML in
   let days_of_the_week =
@@ -65,8 +67,11 @@ let weekTableHeader () =
     ]
   in
   let divs =
-    List.map
-      ~f:(fun name -> div [ class_ "dayOfTheWeek card" ] [ txt "%s" name ])
+    List.mapi
+      ~f:(fun i name ->
+        let date = Date.add_days monday_date i in
+        let today_class = if Date.equal today date then "cardToday" else "" in
+        div [ class_ "dayOfTheWeek card %s" today_class ] [ txt "%s" name ])
       days_of_the_week
   in
   div [ class_ "days" ] divs
@@ -294,7 +299,7 @@ let training_log (monday_date : Date.t)
         [
           header_ athlete;
           nav_buttons monday_date;
-          weekTableHeader ();
+          week_table_header monday_date;
           week_table_activities activities;
         ];
     ]
