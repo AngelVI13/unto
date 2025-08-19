@@ -42,6 +42,11 @@ header .athlete-txt {
   font-family: system-ui;
 }
 
+.navHeader {
+  display: inline-flex;
+  gap: 15px;
+}
+
 .navButtons {
   padding-left: 10px;
   padding-bottom: 5px;
@@ -53,6 +58,10 @@ header .athlete-txt {
 .navButtons a {
   font-weight: bold;
   color: black;
+}
+
+.navDates {
+  font-style: italic;
 }
 
 .scrollable {
@@ -72,7 +81,6 @@ header .athlete-txt {
 
 .day {
   padding: 5px 0px 5px;
-  min-height: 120px;
 }
 
 .dayWithColor {

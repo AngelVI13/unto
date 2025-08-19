@@ -22,7 +22,7 @@ let header_ (athlete_name : string) =
       div
         [ class_ "headerTabs" ]
         [
-          h1 [ class_ "active" ] [ a [ href "" ] [ txt "Training Log" ] ];
+          h1 [ class_ "active" ] [ a [ href "/" ] [ txt "Training Log" ] ];
           h1 [ class_ "inactive" ] [ a [ href "" ] [ txt "Dashboards" ] ];
         ];
       div
@@ -204,7 +204,7 @@ let activity_stats ~sport_type (stats : Models.Stats.t) =
         match sport_type with
         | Models.Strava_models.Run | Models.Strava_models.TrailRun
         | Models.Strava_models.VirtualRun ->
-            let secs_per_km = Int.of_float (Float.round (1000.0 /. avg)) in
+            let secs_per_km = Int.of_float (Float.round_down (1000.0 /. avg)) in
             let secs = secs_per_km mod 60 in
             let mins = secs_per_km / 60 in
             Some
@@ -218,7 +218,7 @@ let activity_stats ~sport_type (stats : Models.Stats.t) =
                  ~stat_value:
                    (sprintf "%.1f"
                       Float.(
-                        round_significant ~significant_digits:2 (avg * 3.6)))))
+                        round_significant ~significant_digits:3 (avg * 3.6)))))
   in
   List.filter_opt [ duration; heartrate; speed_pace ]
 
@@ -236,7 +236,7 @@ let activity_div (activity : Models.Activity.t) =
     [ class_ "activity card" ]
     [ activity_header activity; activity_stats_div activity ]
 
-let weekTableActivities (activities : Models.Activity.t list list) =
+let week_table_activities (activities : Models.Activity.t list list) =
   let open Dream_html in
   let open HTML in
   let days =
@@ -258,10 +258,24 @@ let nav_buttons (monday_date : Date.t) =
   let open Dream_html in
   let open HTML in
   div
-    [ class_ "navButtons" ]
+    [ class_ "navHeader" ]
     [
-      span [] [ a [ href "/?monday=%s" prev_monday_str ] [ txt "Prev" ] ];
-      span [] [ a [ href "/?monday=%s" next_monday_str ] [ txt "Next" ] ];
+      div
+        [ class_ "navButtons" ]
+        [
+          span [] [ a [ href "/?monday=%s" prev_monday_str ] [ txt "Prev" ] ];
+          span [] [ a [ href "/?monday=%s" next_monday_str ] [ txt "Next" ] ];
+        ];
+      div
+        [ class_ "navDates" ]
+        [
+          span []
+            [
+              txt "(%s - %s)"
+                (Date.to_string monday_date)
+                Date.(to_string (add_days monday_date 6));
+            ];
+        ];
     ]
 
 let training_log (monday_date : Date.t)
@@ -281,6 +295,6 @@ let training_log (monday_date : Date.t)
           header_ athlete;
           nav_buttons monday_date;
           weekTableHeader ();
-          weekTableActivities activities;
+          week_table_activities activities;
         ];
     ]

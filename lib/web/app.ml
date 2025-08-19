@@ -28,9 +28,13 @@ let group_activities ~(start_date : Date.t)
       day_activities)
 
 let handle_training_log ~db request =
-  let _ = request in
-  (* TODO: get query param from request and load activities based on start date *)
-  let monday = last_monday ~zone:Timezone.utc in
+  let monday =
+    match Dream.query request "monday" with
+    | None -> last_monday ~zone:Timezone.utc
+    (* TODO: if this is not monday then get latest monday before the date *)
+    (* TODO: this is also missing error handling if timestamp fails to be parsed *)
+    | Some timestamp -> Utils.iso8601_to_date timestamp
+  in
   let monday_timestamp = Utils.iso8601_of_date monday in
   let weeks_activities =
     Db.get_weeks_activities db ~start_date:monday_timestamp
