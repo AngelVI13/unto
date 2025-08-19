@@ -24,6 +24,8 @@ let group_activities ~(start_date : Date.t)
             in
             Date.equal day_date activity_date)
           activities
+        |> List.sort ~compare:(fun act1 act2 ->
+               String.compare act1.start_date act2.start_date)
       in
       day_activities)
 
