@@ -76,52 +76,6 @@ let week_table_header (monday_date : Date.t) =
   in
   div [ class_ "days" ] divs
 
-(* <div class="day dayWithColor"> *)
-(*   <div class="activities"> *)
-(*     <div class="activity card"> *)
-(*       <div class="activityCardStats"> *)
-(*         <div class="activityCardStat"> *)
-(*           <span class="activityCardStatName statNameText">Time: </span> *)
-(*           <span class="activityCardStatName statNameIcon"> *)
-(*             <img *)
-(*               class="stat-icon-img" *)
-(*               title="Duration" *)
-(*               src="./duration.png" *)
-(*             /> *)
-(*           </span> *)
-(*           <span class="activityCardStatValue">35:12</span> *)
-(*         </div> *)
-(*         <div class="activityCardStat"> *)
-(*           <span class="activityCardStatName statNameText" *)
-(*             >Pace (/km): *)
-(*           </span> *)
-(*           <span class="activityCardStatName statNameIcon"> *)
-(*             <img *)
-(*               class="stat-icon-img" *)
-(*               title="Pace (min/km)" *)
-(*               src="./pace.png" *)
-(*             /> *)
-(*           </span> *)
-(*           <span class="activityCardStatValue">6:45</span> *)
-(*         </div> *)
-(*         <div class="activityCardStat"> *)
-(*           <span class="activityCardStatName statNameText" *)
-(*             >Elev. (m): *)
-(*           </span> *)
-(*           <span class="activityCardStatName statNameIcon"> *)
-(*             <img *)
-(*               class="stat-icon-img" *)
-(*               title="Elevation gain & loss (m)" *)
-(*               src="./elevation.png" *)
-(*             /> *)
-(*           </span> *)
-(*           <span class="activityCardStatValue">+120/-55</span> *)
-(*         </div> *)
-(*       </div> *)
-(*     </div> *)
-(*   </div> *)
-(* </div> *)
-
 let activity_header (activity : Models.Activity.t) =
   let open Dream_html in
   let open HTML in
@@ -144,17 +98,6 @@ let activity_header (activity : Models.Activity.t) =
         [ txt "%s" (Models.Strava_models.show_sportType activity.sport_type) ];
     ]
 
-(*         <div class="activityCardStat"> *)
-(*           <span class="activityCardStatName statNameText">Time: </span> *)
-(*           <span class="activityCardStatName statNameIcon"> *)
-(*             <img *)
-(*               class="stat-icon-img" *)
-(*               title="Duration" *)
-(*               src="./duration.png" *)
-(*             /> *)
-(*           </span> *)
-(*           <span class="activityCardStatValue">35:12</span> *)
-(*         </div> *)
 let activity_stat ~stat_name ~stat_description ~stat_icon_path ~stat_value =
   let open Dream_html in
   let open HTML in
@@ -187,7 +130,8 @@ let format_activity_duration duration_secs =
 let activity_stats ~sport_type (stats : Models.Stats.t) =
   let duration =
     Some
-      (activity_stat ~stat_name:"Time" ~stat_description:"Duration"
+      (activity_stat ~stat_name:"Duration"
+         ~stat_description:"Duration (hh:mm:ss)"
          ~stat_icon_path:"/static/assets/duration.png"
          ~stat_value:(format_activity_duration stats.moving_time))
   in
@@ -197,9 +141,22 @@ let activity_stats ~sport_type (stats : Models.Stats.t) =
     | Some avg ->
         Some
           (activity_stat ~stat_name:"Heartrate"
-             ~stat_description:"Beats per min"
+             ~stat_description:"Heartrate (bpm)"
              ~stat_icon_path:"/static/assets/heartrate.png"
              ~stat_value:(Int.to_string avg))
+  in
+
+  let distance =
+    match stats.distance with
+    | None -> None
+    | Some distance ->
+        let distance =
+          Float.round_significant ~significant_digits:3 (distance /. 1000.0)
+        in
+        Some
+          (activity_stat ~stat_name:"Distance" ~stat_description:"Distance (km)"
+             ~stat_icon_path:"/static/assets/distance.png"
+             ~stat_value:(sprintf "%.2f" distance))
   in
 
   let speed_pace =
@@ -213,19 +170,19 @@ let activity_stats ~sport_type (stats : Models.Stats.t) =
             let secs = secs_per_km mod 60 in
             let mins = secs_per_km / 60 in
             Some
-              (activity_stat ~stat_name:"Pace" ~stat_description:"Mins per km"
+              (activity_stat ~stat_name:"Pace" ~stat_description:"Pace (min/km)"
                  ~stat_icon_path:"/static/assets/pace.png"
                  ~stat_value:(sprintf "%02d:%02d" mins secs))
         | _ ->
             Some
-              (activity_stat ~stat_name:"Speed" ~stat_description:"km/hr"
+              (activity_stat ~stat_name:"Speed" ~stat_description:"Speed (kph)"
                  ~stat_icon_path:"/static/assets/speed.png"
                  ~stat_value:
                    (sprintf "%.1f"
                       Float.(
                         round_significant ~significant_digits:3 (avg * 3.6)))))
   in
-  List.filter_opt [ duration; heartrate; speed_pace ]
+  List.filter_opt [ duration; heartrate; distance; speed_pace ]
 
 let activity_stats_div (activity : Models.Activity.t) =
   let open Dream_html in
