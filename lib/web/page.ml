@@ -127,36 +127,94 @@ let format_activity_duration duration_secs =
   let hours = mins / 60 in
   sprintf "%d:%02d:%02d" hours mins_left secs
 
-let activity_stats ~sport_type (stats : Models.Stats.t) =
+let duration_stat moving_time = format_activity_duration moving_time
+let avg_hr_stat avg = Int.to_string avg
+
+let distance_stat distance =
+  let distance =
+    Float.round_significant ~significant_digits:3 (distance /. 1000.0)
+  in
+  sprintf "%.2f" distance
+
+let pace_stat avg =
+  let secs_per_km = Int.of_float (Float.round_down (1000.0 /. avg)) in
+  let secs = secs_per_km mod 60 in
+  let mins = secs_per_km / 60 in
+  sprintf "%02d:%02d" mins secs
+
+let speed_stat avg =
+  sprintf "%.1f" Float.(round_significant ~significant_digits:3 (avg * 3.6))
+
+let calories_stat (athlete : Models.Strava_models.StravaAthlete.t)
+    (avg_hr : int) (duration : int) =
+  let mins = Float.of_int duration /. 60.0 in
+
+  (* TODO: get these 2 values from user. Multiplier is used to scale down
+     calories so they better match with suunto numbers. You should start with
+     multiplier 1 and then take the suunto calories and divide them by the
+     calories from Unto and then this is your multiplier. For example 320
+     (suunto) / 400 (unto) -> 0.80 multiplier *)
+  let age = Float.of_int 31 in
+  let multiplier = 0.80 in
+
+  let calories =
+    match athlete.sex with
+    | "M" ->
+        mins
+        *. ((0.6309 *. Float.of_int avg_hr)
+           +. (0.1988 *. athlete.weight) +. (0.2017 *. age) -. 55.0969)
+        /. 4.184
+    | "F" ->
+        mins
+        *. ((0.4472 *. Float.of_int avg_hr)
+           +. (0.1263 *. athlete.weight) +. (0.0074 *. age) -. 20.4022)
+        /. 4.184
+    | _ -> assert false
+  in
+  Int.to_string (Float.to_int (Float.round_nearest (calories *. multiplier)))
+
+let activity_stats ~sport_type
+    (athlete : Models.Strava_models.StravaAthlete.t option)
+    (stats : Models.Stats.t) =
   let duration =
     Some
       (activity_stat ~stat_name:"Duration"
          ~stat_description:"Duration (hh:mm:ss)"
          ~stat_icon_path:"/static/assets/duration.png"
-         ~stat_value:(format_activity_duration stats.moving_time))
+         ~stat_value:(duration_stat stats.moving_time))
   in
-  let heartrate =
+  let heartrate, calories =
     match stats.average_heartrate with
-    | None -> None
+    | None -> (None, None)
     | Some avg ->
-        Some
-          (activity_stat ~stat_name:"Heartrate"
-             ~stat_description:"Heartrate (bpm)"
-             ~stat_icon_path:"/static/assets/heartrate.png"
-             ~stat_value:(Int.to_string avg))
+        let hr =
+          Some
+            (activity_stat ~stat_name:"Heartrate"
+               ~stat_description:"Avg Heartrate (bpm)"
+               ~stat_icon_path:"/static/assets/heartrate.png"
+               ~stat_value:(avg_hr_stat avg))
+        in
+        let calories =
+          match athlete with
+          | None -> None
+          | Some athl ->
+              Some
+                (activity_stat ~stat_name:"Calories"
+                   ~stat_description:"Calories"
+                   ~stat_icon_path:"/static/assets/calories.png"
+                   ~stat_value:(calories_stat athl avg stats.moving_time))
+        in
+        (hr, calories)
   in
 
   let distance =
     match stats.distance with
     | None -> None
     | Some distance ->
-        let distance =
-          Float.round_significant ~significant_digits:3 (distance /. 1000.0)
-        in
         Some
           (activity_stat ~stat_name:"Distance" ~stat_description:"Distance (km)"
              ~stat_icon_path:"/static/assets/distance.png"
-             ~stat_value:(sprintf "%.2f" distance))
+             ~stat_value:(distance_stat distance))
   in
 
   let speed_pace =
@@ -166,45 +224,43 @@ let activity_stats ~sport_type (stats : Models.Stats.t) =
         match sport_type with
         | Models.Strava_models.Run | Models.Strava_models.TrailRun
         | Models.Strava_models.VirtualRun ->
-            let secs_per_km = Int.of_float (Float.round_down (1000.0 /. avg)) in
-            let secs = secs_per_km mod 60 in
-            let mins = secs_per_km / 60 in
             Some
               (activity_stat ~stat_name:"Pace" ~stat_description:"Pace (min/km)"
                  ~stat_icon_path:"/static/assets/pace.png"
-                 ~stat_value:(sprintf "%02d:%02d" mins secs))
+                 ~stat_value:(pace_stat avg))
         | _ ->
             Some
               (activity_stat ~stat_name:"Speed" ~stat_description:"Speed (kph)"
                  ~stat_icon_path:"/static/assets/speed.png"
-                 ~stat_value:
-                   (sprintf "%.1f"
-                      Float.(
-                        round_significant ~significant_digits:3 (avg * 3.6)))))
+                 ~stat_value:(speed_stat avg)))
   in
-  List.filter_opt [ duration; heartrate; distance; speed_pace ]
+  List.filter_opt [ duration; heartrate; distance; speed_pace; calories ]
 
-let activity_stats_div (activity : Models.Activity.t) =
+let activity_stats_div (athlete : Models.Strava_models.StravaAthlete.t option)
+    (activity : Models.Activity.t) =
   let open Dream_html in
   let open HTML in
   div
     [ class_ "activityCardStats" ]
-    (activity_stats ~sport_type:activity.sport_type activity.stats)
+    (activity_stats ~sport_type:activity.sport_type athlete activity.stats)
 
-let activity_div (activity : Models.Activity.t) =
+let activity_div (athlete : Models.Strava_models.StravaAthlete.t option)
+    (activity : Models.Activity.t) =
   let open Dream_html in
   let open HTML in
   div
     [ class_ "activity card" ]
-    [ activity_header activity; activity_stats_div activity ]
+    [ activity_header activity; activity_stats_div athlete activity ]
 
-let week_table_activities (activities : Models.Activity.t list list) =
+let week_table_activities
+    (athlete : Models.Strava_models.StravaAthlete.t option)
+    (activities : Models.Activity.t list list) =
   let open Dream_html in
   let open HTML in
   let days =
     List.mapi
       ~f:(fun i day_activities ->
-        let activity_divs = List.map ~f:activity_div day_activities in
+        let activity_divs = List.map ~f:(activity_div athlete) day_activities in
         div
           [ class_ (if i mod 2 = 0 then "day dayWithColor" else "day") ]
           [ div [ class_ "activities" ] activity_divs ])
@@ -245,7 +301,7 @@ let training_log (monday_date : Date.t)
     (activities : Models.Activity.t list list) =
   let open Dream_html in
   let open HTML in
-  let athlete =
+  let athlete_name =
     match athlete with None -> "Unknown" | Some athl -> athl.firstname
   in
   html
@@ -254,9 +310,9 @@ let training_log (monday_date : Date.t)
       head [] (head_elems ());
       body []
         [
-          header_ athlete;
+          header_ athlete_name;
           nav_buttons monday_date;
           week_table_header monday_date;
-          week_table_activities activities;
+          week_table_activities athlete activities;
         ];
     ]

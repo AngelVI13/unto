@@ -29,6 +29,7 @@ let group_activities ~(start_date : Date.t)
       in
       day_activities)
 
+(* TODO: All activities from beginning until 2016-09-19  are completely wrong -> DELTE THEM *)
 let handle_training_log ~db request =
   let monday =
     match Dream.query request "monday" with
