@@ -154,6 +154,9 @@ let calories_stat (athlete : Models.Strava_models.StravaAthlete.t)
      multiplier 1 and then take the suunto calories and divide them by the
      calories from Unto and then this is your multiplier. For example 320
      (suunto) / 400 (unto) -> 0.80 multiplier *)
+  (* TODO: those values should get stored for the activity ? Or better, we
+     should store the user's birthyear so we can calculate his age for each
+     activity so then we don't have to store the calories data to stats *)
   let age = Float.of_int 31 in
   let multiplier = 0.80 in
 
@@ -296,6 +299,40 @@ let nav_buttons (monday_date : Date.t) =
         ];
     ]
 
+let week_stat ~stat_label ~stat_value =
+  let open Dream_html in
+  let open HTML in
+  div
+    [ class_ "weekTotalStat" ]
+    [
+      span [ class_ "weekStatName" ] [ txt "%s" stat_label ];
+      span [] [ txt "%s" stat_value ];
+    ]
+
+let week_summary (activities : Models.Activity.t list list) =
+  let open Dream_html in
+  let open HTML in
+  let activities = List.concat activities in
+  let total_secs =
+    List.fold ~init:0
+      ~f:(fun secs activity -> secs + activity.stats.moving_time)
+      activities
+  in
+  let duration = duration_stat total_secs in
+  (* TODO: training load is just calories/10 *)
+  div
+    [ class_ "stats card" ]
+    [
+      h2 [] [ txt "Week Stats" ];
+      div
+        [ class_ "statsGrid" ]
+        [
+          div
+            [ class_ "weekTotals" ]
+            [ week_stat ~stat_label:"Duration: " ~stat_value:duration ];
+        ];
+    ]
+
 let training_log (monday_date : Date.t)
     (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list list) =
@@ -314,5 +351,6 @@ let training_log (monday_date : Date.t)
           nav_buttons monday_date;
           week_table_header monday_date;
           week_table_activities athlete activities;
+          week_summary activities;
         ];
     ]
