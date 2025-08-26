@@ -145,8 +145,8 @@ let pace_stat avg =
 let speed_stat avg =
   sprintf "%.1f" Float.(round_significant ~significant_digits:3 (avg * 3.6))
 
-let calories_stat (athlete : Models.Strava_models.StravaAthlete.t)
-    (avg_hr : int) (duration : int) =
+let calculate_calories ~(athlete : Models.Strava_models.StravaAthlete.t)
+    ?(multiplier = 0.80) ~(avg_hr : int) ~(duration : int) () =
   let mins = Float.of_int duration /. 60.0 in
 
   (* TODO: get these 2 values from user. Multiplier is used to scale down
@@ -158,8 +158,9 @@ let calories_stat (athlete : Models.Strava_models.StravaAthlete.t)
      should store the user's birthyear so we can calculate his age for each
      activity so then we don't have to store the calories data to stats *)
   let age = Float.of_int 31 in
-  let multiplier = 0.80 in
 
+  (* NOTE: this formula was taken from here:
+    https://www.omnicalculator.com/sports/calories-burned-by-heart-rate *)
   let calories =
     match athlete.sex with
     | "M" ->
@@ -174,7 +175,11 @@ let calories_stat (athlete : Models.Strava_models.StravaAthlete.t)
         /. 4.184
     | _ -> assert false
   in
-  Int.to_string (Float.to_int (Float.round_nearest (calories *. multiplier)))
+  Float.to_int (Float.round_nearest (calories *. multiplier))
+
+let calories_stat ~(athlete : Models.Strava_models.StravaAthlete.t)
+    ?(multiplier = 0.80) ~(avg_hr : int) ~(duration : int) () =
+  Int.to_string (calculate_calories ~athlete ~multiplier ~avg_hr ~duration ())
 
 let activity_stats ~sport_type
     (athlete : Models.Strava_models.StravaAthlete.t option)
@@ -205,7 +210,9 @@ let activity_stats ~sport_type
                 (activity_stat ~stat_name:"Calories"
                    ~stat_description:"Calories"
                    ~stat_icon_path:"/static/assets/calories.png"
-                   ~stat_value:(calories_stat athl avg stats.moving_time))
+                   ~stat_value:
+                     (calories_stat ~athlete:athl ~avg_hr:avg
+                        ~duration:stats.moving_time ()))
         in
         (hr, calories)
   in
@@ -309,17 +316,33 @@ let week_stat ~stat_label ~stat_value =
       span [] [ txt "%s" stat_value ];
     ]
 
-let week_summary (activities : Models.Activity.t list list) =
+let week_summary (athlete : Models.Strava_models.StravaAthlete.t option)
+    (activities : Models.Activity.t list list) =
   let open Dream_html in
   let open HTML in
   let activities = List.concat activities in
-  let total_secs =
-    List.fold ~init:0
-      ~f:(fun secs activity -> secs + activity.stats.moving_time)
+  let total_secs, total_calories =
+    List.fold ~init:(0, 0)
+      ~f:(fun (secs, calories) activity ->
+        let duration = activity.stats.moving_time in
+        let secs = secs + duration in
+
+        let calories =
+          calories
+          +
+          match activity.stats.average_heartrate with
+          | None -> calories
+          | Some avg_hr -> (
+              match athlete with
+              | None -> calories
+              | Some athlete -> calculate_calories ~athlete ~avg_hr ~duration ()
+              )
+        in
+        (secs, calories))
       activities
   in
   let duration = duration_stat total_secs in
-  (* TODO: training load is just calories/10 *)
+  (* TODO: training load is just calories/10 -> its not but calories are part of it *)
   div
     [ class_ "stats card" ]
     [
@@ -329,7 +352,11 @@ let week_summary (activities : Models.Activity.t list list) =
         [
           div
             [ class_ "weekTotals" ]
-            [ week_stat ~stat_label:"Duration: " ~stat_value:duration ];
+            [
+              week_stat ~stat_label:"Duration: " ~stat_value:duration;
+              week_stat ~stat_label:"Calories: "
+                ~stat_value:(Int.to_string total_calories);
+            ];
         ];
     ]
 
@@ -351,6 +378,6 @@ let training_log (monday_date : Date.t)
           nav_buttons monday_date;
           week_table_header monday_date;
           week_table_activities athlete activities;
-          week_summary activities;
+          week_summary athlete activities;
         ];
     ]
