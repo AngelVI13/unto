@@ -84,7 +84,7 @@ let activity_header (activity : Models.Activity.t) =
     | Run -> ("gold", "/static/assets/running.png")
     | Ride -> ("coral", "/static/assets/cycling.png")
     | Crossfit -> ("greenyellow", "/static/assets/crosstrain.png")
-    | _ -> ("", "")
+    | _ -> ("gray", "/static/assets/unknown.png")
   in
   let icon_background = sprintf "background: %s;" icon_color in
   div
