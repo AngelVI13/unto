@@ -1,4 +1,5 @@
 open Core
+module Time_ns = Time_ns_unix
 
 (* Exponential Moving Average *)
 (* NOTE: The smoothing works as follows: each data point is represented as %X
@@ -82,3 +83,15 @@ let parse_json_from_bytes_lexbuf (b : bytes) : Yojson.Safe.t =
 let parse_json_from_bytes (b : bytes) : Yojson.Safe.t =
   let s = Bytes.unsafe_to_string ~no_mutation_while_string_reachable:b in
   Yojson.Safe.from_string s
+
+let iso8601_of_date date =
+  let now =
+    Time_ns.of_date_ofday ~zone:Timezone.utc date (Time_ns.Ofday.create ())
+  in
+  Time_ns.to_string_iso8601_basic ~zone:Timezone.utc now
+
+let iso8601_to_date timestamp =
+  let time = Time_ns.of_string timestamp in
+  (* let time = Time_ns.of_string_with_utc_offset timestamp in *)
+  let date, _ = Time_ns.to_date_ofday ~zone:Timezone.utc time in
+  date

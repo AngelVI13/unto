@@ -70,9 +70,13 @@ let get_athlete { handle; _ } : StravaAthlete.t option =
       athletes := athlete :: !athletes);
   List.hd !athletes
 
-let get_weeks_activities { handle; _ } ~start_date : Models.Activity.t list =
+let get_weeks_activities { handle; _ } ~(start_date : Date.t) :
+    Models.Activity.t list =
+  let end_date = Date.add_days start_date 7 in
+  let end_date = Utils.iso8601_of_date end_date in
+  let start_date = Utils.iso8601_of_date start_date in
   let activities = ref [] in
-  DB.activities_after handle ~start_date
+  DB.activities_between handle ~start_date ~end_date
     (fun
       ~id
       ~athlete_id

@@ -3,4 +3,4 @@
  (inline_tests)
  (preprocess
   (pps ppx_jane ppx_inline_test ppx_expect))
- (libraries models db dream core core_unix.sys_unix core_unix.time_ns_unix lz4 dream-html))
+ (libraries models db utils dream core core_unix.sys_unix core_unix.time_ns_unix lz4 dream-html))

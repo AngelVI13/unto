@@ -38,10 +38,7 @@ let handle_training_log ~db request =
     (* TODO: this is also missing error handling if timestamp fails to be parsed *)
     | Some timestamp -> Utils.iso8601_to_date timestamp
   in
-  let monday_timestamp = Utils.iso8601_of_date monday in
-  let weeks_activities =
-    Db.get_weeks_activities db ~start_date:monday_timestamp
-  in
+  let weeks_activities = Db.get_weeks_activities db ~start_date:monday in
   let grouped_activities =
     group_activities ~start_date:monday weeks_activities
   in
@@ -71,10 +68,7 @@ let%expect_test "fetch weeks activities from db" =
   let db = Db.load "/home/angel/Documents/ocaml/unto/app.db" in
 
   let monday = last_monday ~zone:Timezone.utc in
-  let monday_timestamp = Utils.iso8601_of_date monday in
-  let weeks_activities =
-    Db.get_weeks_activities db ~start_date:monday_timestamp
-  in
+  let weeks_activities = Db.get_weeks_activities db ~start_date:monday in
 
   ignore (Db.close db);
 
