@@ -365,6 +365,7 @@ let week_total_summary (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list) =
   let open Dream_html in
   let open HTML in
+  (* TODO: training load is just calories/10 -> its not but calories are part of it *)
   let total_secs, total_calories = activities_totals athlete activities in
   let duration = duration_stat total_secs in
   div
@@ -403,7 +404,7 @@ let week_summary (athlete : Models.Strava_models.StravaAthlete.t option)
     [ week_total_summary athlete activities ]
     @ List.map ~f:(week_activity_stat athlete) activities_grouped
   in
-  (* TODO: training load is just calories/10 -> its not but calories are part of it *)
+  (* TODO: make this summary scrollable horizontally *)
   div [ class_ "stats card statsGrid" ] all_sumarries
 
 let training_log (monday_date : Date.t)
