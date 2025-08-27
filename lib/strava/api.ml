@@ -10,8 +10,6 @@ open Or_error.Let_syntax
 (* alias to Time_ns *)
 module Time_ns = Time_ns_unix
 
-(* TODO: 3. Visualize the data in a web ui *)
-(* TODO: 4. Analyze the data *)
 (* TODO: what is table index ? do i need to create one ? *)
 (* TODO: activity 1419970951 is marked as Threadmill run but strava only shows
    it as RUN is the API giving correct type *)

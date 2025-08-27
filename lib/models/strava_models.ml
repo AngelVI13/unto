@@ -52,7 +52,7 @@ type sportType =
   | Windsurf
   | Workout
   | Yoga
-[@@deriving yojson, show { with_path = false }, sexp]
+[@@deriving yojson, show { with_path = false }, sexp, ord]
 
 let sportType_of_string s = sportType_of_sexp (Sexp.of_string s)
 

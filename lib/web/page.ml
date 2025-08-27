@@ -316,39 +316,39 @@ let week_stat ~stat_label ~stat_value =
       span [] [ txt "%s" stat_value ];
     ]
 
-let week_summary (athlete : Models.Strava_models.StravaAthlete.t option)
-    (activities : Models.Activity.t list list) =
+let activities_totals (athlete : Models.Strava_models.StravaAthlete.t option)
+    (activities : Models.Activity.t list) =
+  List.fold ~init:(0, 0)
+    ~f:(fun (secs, calories) activity ->
+      let duration = activity.stats.moving_time in
+      let secs = secs + duration in
+
+      let calories =
+        calories
+        +
+        match activity.stats.average_heartrate with
+        | None -> calories
+        | Some avg_hr -> (
+            match athlete with
+            | None -> calories
+            | Some athlete -> calculate_calories ~athlete ~avg_hr ~duration ())
+      in
+      (secs, calories))
+    activities
+
+let week_activity_stat (athlete : Models.Strava_models.StravaAthlete.t option)
+    (activities : Models.Activity.t list) =
   let open Dream_html in
   let open HTML in
-  let activities = List.concat activities in
-  let total_secs, total_calories =
-    List.fold ~init:(0, 0)
-      ~f:(fun (secs, calories) activity ->
-        let duration = activity.stats.moving_time in
-        let secs = secs + duration in
-
-        let calories =
-          calories
-          +
-          match activity.stats.average_heartrate with
-          | None -> calories
-          | Some avg_hr -> (
-              match athlete with
-              | None -> calories
-              | Some athlete -> calculate_calories ~athlete ~avg_hr ~duration ()
-              )
-        in
-        (secs, calories))
-      activities
-  in
+  let hd = List.hd_exn activities in
+  let activity_name = Models.Strava_models.show_sportType hd.sport_type in
+  let total_secs, total_calories = activities_totals athlete activities in
   let duration = duration_stat total_secs in
-  (* TODO: training load is just calories/10 -> its not but calories are part of it *)
   div
-    [ class_ "stats card" ]
+    [ class_ "summaryContainer" ]
     [
-      h2 [] [ txt "Week Stats" ];
-      div
-        [ class_ "statsGrid" ]
+      h2 [] [ txt "%s" activity_name ];
+      div []
         [
           div
             [ class_ "weekTotals" ]
@@ -359,6 +359,52 @@ let week_summary (athlete : Models.Strava_models.StravaAthlete.t option)
             ];
         ];
     ]
+
+(* TODO: this is the same as week_activity_stat - figure out how to combine it *)
+let week_total_summary (athlete : Models.Strava_models.StravaAthlete.t option)
+    (activities : Models.Activity.t list) =
+  let open Dream_html in
+  let open HTML in
+  let total_secs, total_calories = activities_totals athlete activities in
+  let duration = duration_stat total_secs in
+  div
+    [ class_ "summaryContainer" ]
+    [
+      h2 [] [ txt "Week Stats" ];
+      div []
+        [
+          div
+            [ class_ "weekTotals" ]
+            [
+              week_stat ~stat_label:"Duration: " ~stat_value:duration;
+              week_stat ~stat_label:"Calories: "
+                ~stat_value:(Int.to_string total_calories);
+            ];
+        ];
+    ]
+
+let week_summary (athlete : Models.Strava_models.StravaAthlete.t option)
+    (activities : Models.Activity.t list list) =
+  let open Dream_html in
+  let open HTML in
+  let activities = List.concat activities in
+  let activities_grouped =
+    activities
+    |> List.sort_and_group ~compare:(fun act1 act2 ->
+           Models.Strava_models.compare_sportType act1.sport_type
+             act2.sport_type)
+    |> List.sort ~compare:(fun act_group1 act_group2 ->
+           let total_secs1, _ = activities_totals athlete act_group1 in
+           let total_secs2, _ = activities_totals athlete act_group2 in
+           Int.compare total_secs1 total_secs2)
+    |> List.rev
+  in
+  let all_sumarries =
+    [ week_total_summary athlete activities ]
+    @ List.map ~f:(week_activity_stat athlete) activities_grouped
+  in
+  (* TODO: training load is just calories/10 -> its not but calories are part of it *)
+  div [ class_ "stats card statsGrid" ] all_sumarries
 
 let training_log (monday_date : Date.t)
     (athlete : Models.Strava_models.StravaAthlete.t option)
