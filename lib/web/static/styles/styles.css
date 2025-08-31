@@ -122,7 +122,7 @@ header .athlete-txt {
   justify-content: center;
 }
 
-.activity .icon-img {
+.icon-img {
   width: 16px;
   height: 16px;
 }
@@ -133,12 +133,12 @@ header .athlete-txt {
   height: auto;
 }
 
-.activity .activityType {
+.activityType {
   font-weight: bold;
   border-bottom: 2px solid black;
 }
 
-.activity .activityHeader {
+.activityHeader {
   margin-bottom: 10px;
 }
 
@@ -197,6 +197,10 @@ header .athlete-txt {
   flex: 1 1 250px;
 }
 
+.summaryContainer {
+  padding-right: 10px;
+}
+
 .weekStatName {
   font-weight: bold;
 }
@@ -205,6 +209,10 @@ header .athlete-txt {
   display: flex;
   gap: 10px;
   justify-content: space-between;
+}
+
+.verticalLine {
+  border-left: solid #000000;
 }
 
 small {

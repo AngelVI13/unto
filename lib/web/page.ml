@@ -341,18 +341,19 @@ let week_activity_stat (athlete : Models.Strava_models.StravaAthlete.t option)
   let open Dream_html in
   let open HTML in
   let hd = List.hd_exn activities in
-  let activity_name = Models.Strava_models.show_sportType hd.sport_type in
+  (* let activity_name = Models.Strava_models.show_sportType hd.sport_type in *)
   let total_secs, total_calories = activities_totals athlete activities in
   let duration = duration_stat total_secs in
   div
     [ class_ "summaryContainer" ]
     [
-      h2 [] [ txt "%s" activity_name ];
+      activity_header hd;
       div []
         [
           div
             [ class_ "weekTotals" ]
             [
+              (* TODO: replace with activity_card_stat ?? *)
               week_stat ~stat_label:"Duration: " ~stat_value:duration;
               week_stat ~stat_label:"Calories: "
                 ~stat_value:(Int.to_string total_calories);
@@ -391,17 +392,20 @@ let week_summary (athlete : Models.Strava_models.StravaAthlete.t option)
   let activities = List.concat activities in
   let activities_grouped =
     activities
+    (* group by sport type *)
     |> List.sort_and_group ~compare:(fun act1 act2 ->
            Models.Strava_models.compare_sportType act1.sport_type
              act2.sport_type)
+    (* sort by duration of group *)
     |> List.sort ~compare:(fun act_group1 act_group2 ->
            let total_secs1, _ = activities_totals athlete act_group1 in
            let total_secs2, _ = activities_totals athlete act_group2 in
            Int.compare total_secs1 total_secs2)
+    (* longest duration group first *)
     |> List.rev
   in
   let all_sumarries =
-    [ week_total_summary athlete activities ]
+    [ week_total_summary athlete activities; div [ class_ "verticalLine" ] [] ]
     @ List.map ~f:(week_activity_stat athlete) activities_grouped
   in
   (* TODO: make this summary scrollable horizontally *)
