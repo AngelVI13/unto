@@ -321,32 +321,44 @@ let week_stat ~stat_label ~stat_value =
       span [] [ txt "%s" stat_value ];
     ]
 
-let activities_totals (athlete : Models.Strava_models.StravaAthlete.t option)
-    (activities : Models.Activity.t list) =
-  List.fold ~init:(0, 0)
-    ~f:(fun (secs, calories) activity ->
-      let duration = activity.stats.moving_time in
-      let secs = secs + duration in
+module Totals = struct
+  type t = { duration : int; calories : int }
 
-      let calories =
-        calories
-        +
-        match activity.stats.average_heartrate with
-        | None -> calories
-        | Some avg_hr -> (
-            match athlete with
-            | None -> calories
-            | Some athlete -> calculate_calories ~athlete ~avg_hr ~duration ())
-      in
-      (secs, calories))
-    activities
+  let empty = { duration = 0; calories = 0 }
+
+  (* let add_calories (calories : int) (t : t) = *)
+  (*   { *)
+  (*     t with *)
+  (*     calories = *)
+  (*       (match t.calories with *)
+  (*       | None -> Some calories *)
+  (*       | Some cal -> Some (cal + calories)); *)
+  (*   } *)
+
+  let add_activity (athlete : Models.Strava_models.StravaAthlete.t option)
+      (acc : t) (activity : Models.Activity.t) =
+    let duration = activity.stats.moving_time in
+
+    let calories =
+      match activity.stats.average_heartrate with
+      | None -> 0
+      | Some avg_hr -> (
+          match athlete with
+          | None -> 0
+          | Some athlete -> calculate_calories ~athlete ~avg_hr ~duration ())
+    in
+    { duration = acc.duration + duration; calories = acc.calories + calories }
+
+  let of_activities athlete activities =
+    List.fold ~init:empty ~f:(add_activity athlete) activities
+end
 
 let week_activity_stat (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list) =
   let open Dream_html in
   let open HTML in
   let hd = List.hd_exn activities in
-  let total_secs, total_calories = activities_totals athlete activities in
+  let totals = Totals.of_activities athlete activities in
   div
     [ class_ "summaryContainer" ]
     [
@@ -356,7 +368,8 @@ let week_activity_stat (athlete : Models.Strava_models.StravaAthlete.t option)
           div
             [ class_ "weekTotals" ]
             [
-              duration_stat total_secs; calories_stat_from_total total_calories;
+              duration_stat totals.duration;
+              calories_stat_from_total totals.calories;
             ];
         ];
     ]
@@ -366,8 +379,8 @@ let week_total_summary (athlete : Models.Strava_models.StravaAthlete.t option)
   let open Dream_html in
   let open HTML in
   (* TODO: training load is just calories/10 -> its not but calories are part of it *)
-  let total_secs, total_calories = activities_totals athlete activities in
-  let duration = duration_stat_value total_secs in
+  let totals = Totals.of_activities athlete activities in
+  let duration = duration_stat_value totals.duration in
   div
     [ class_ "totalsSummaryContainer" ]
     [
@@ -379,7 +392,7 @@ let week_total_summary (athlete : Models.Strava_models.StravaAthlete.t option)
             [
               week_stat ~stat_label:"Duration: " ~stat_value:duration;
               week_stat ~stat_label:"Calories: "
-                ~stat_value:(Int.to_string total_calories);
+                ~stat_value:(Int.to_string totals.calories);
             ];
         ];
     ]
@@ -397,9 +410,9 @@ let week_summary (athlete : Models.Strava_models.StravaAthlete.t option)
              act2.sport_type)
     (* sort by duration of group *)
     |> List.sort ~compare:(fun act_group1 act_group2 ->
-           let total_secs1, _ = activities_totals athlete act_group1 in
-           let total_secs2, _ = activities_totals athlete act_group2 in
-           Int.compare total_secs1 total_secs2)
+           let totals1 = Totals.of_activities athlete act_group1 in
+           let totals2 = Totals.of_activities athlete act_group2 in
+           Int.compare totals1.duration totals2.duration)
     (* longest duration group first *)
     |> List.rev
   in
@@ -407,7 +420,7 @@ let week_summary (athlete : Models.Strava_models.StravaAthlete.t option)
     [ week_total_summary athlete activities; div [ class_ "verticalLine" ] [] ]
     @ List.map ~f:(week_activity_stat athlete) activities_grouped
   in
-  div [ class_ "stats card statsGrid" ] all_sumarries
+  div [ class_ "stats card statsGrid summaryHeight" ] all_sumarries
 
 let training_log (monday_date : Date.t)
     (athlete : Models.Strava_models.StravaAthlete.t option)

@@ -197,7 +197,7 @@ header .athlete-txt {
   flex: 1 1 250px;
 }
 
-.summaryContainer {
+.totalsSummaryContainer {
   padding-right: 10px;
 }
 
@@ -218,6 +218,10 @@ header .athlete-txt {
 
 .verticalLine {
   border-left: solid #000000;
+}
+
+.summaryHeight {
+  height: 20vh; /* 20% of the viewport height */
 }
 
 small {
