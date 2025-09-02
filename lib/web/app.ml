@@ -46,7 +46,7 @@ let handle_training_log ~db request =
   let page = Page.training_log monday athlete grouped_activities in
   Dream_html.respond page
 
-(* TODO activity fails to download streams 113217900 *)
+(* TODO: activity fails to download streams 113217900 *)
 (* processing activity=113217900 2014-02-12T16:00:00Z *)
 (*   downloading streams *)
 (*   downloading laps *)

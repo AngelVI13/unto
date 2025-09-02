@@ -218,6 +218,12 @@ let calories_stat ~(athlete : Models.Strava_models.StravaAthlete.t)
     ~(avg_hr : int) ~(duration : int) () =
   calories_stat_from_total (calories_stat_value ~athlete ~avg_hr ~duration ())
 
+let elevation_stat elev_gain elev_loss =
+  activity_stat ~stat_name:"Elevation"
+    ~stat_description:"Elevation gain & loss (m)"
+    ~stat_icon_path:"/static/assets/elevation.png"
+    ~stat_value:(sprintf "+%d/-%d" elev_gain elev_loss)
+
 let activity_stats ~sport_type
     (athlete : Models.Strava_models.StravaAthlete.t option)
     (stats : Models.Stats.t) =
@@ -238,10 +244,23 @@ let activity_stats ~sport_type
         (hr, calories)
   in
 
-  let distance =
+  let distance, elevation =
     match stats.distance with
-    | None -> None
-    | Some distance -> Some (distance_stat distance)
+    | None -> (None, None)
+    | Some distance ->
+        let distance = Some (distance_stat distance) in
+        (* NOTE: elevation data can be available for all activities that are
+           recorded with a watch with a barometer but we only want to show
+           elevation gain/loss data in the case of activities with recorded
+           distance (runs, bike rides etc.) and not for gym or other related
+           activities *)
+        let elevation =
+          match (stats.elev_gain, stats.elev_loss) with
+          | None, None -> None
+          | Some gain, Some loss -> Some (elevation_stat gain loss)
+          | _, _ -> assert false
+        in
+        (distance, elevation)
   in
 
   let speed_pace =
@@ -249,7 +268,9 @@ let activity_stats ~sport_type
     | None -> None
     | Some avg -> Some (speed_pace_stat sport_type avg)
   in
-  List.filter_opt [ duration; heartrate; distance; speed_pace; calories ]
+
+  List.filter_opt
+    [ duration; heartrate; distance; speed_pace; elevation; calories ]
 
 let activity_stats_div (athlete : Models.Strava_models.StravaAthlete.t option)
     (activity : Models.Activity.t) =
@@ -322,18 +343,53 @@ let week_stat ~stat_label ~stat_value =
     ]
 
 module Totals = struct
-  type t = { duration : int; calories : int }
+  type t = {
+    duration : int;
+    calories : int;
+    distance : float option;
+    elev_gain : int option;
+    elev_loss : int option;
+  }
 
-  let empty = { duration = 0; calories = 0 }
+  let empty =
+    {
+      duration = 0;
+      calories = 0;
+      distance = None;
+      elev_gain = None;
+      elev_loss = None;
+    }
 
-  (* let add_calories (calories : int) (t : t) = *)
-  (*   { *)
-  (*     t with *)
-  (*     calories = *)
-  (*       (match t.calories with *)
-  (*       | None -> Some calories *)
-  (*       | Some cal -> Some (cal + calories)); *)
-  (*   } *)
+  let add_elev_data (elev_gain : int option) (elev_loss : int option) (t : t) =
+    {
+      t with
+      elev_gain =
+        (match t.elev_gain with
+        | None -> elev_gain
+        | Some gain -> (
+            match elev_gain with
+            | None -> Some gain
+            | Some act_gain -> Some (gain + act_gain)));
+      elev_loss =
+        (match t.elev_loss with
+        | None -> elev_loss
+        | Some loss -> (
+            match elev_loss with
+            | None -> Some loss
+            | Some act_loss -> Some (loss + act_loss)));
+    }
+
+  let add_distance (distance : float option) (t : t) =
+    {
+      t with
+      distance =
+        (match t.distance with
+        | None -> distance
+        | Some dist -> (
+            match distance with
+            | None -> Some dist
+            | Some act_dist -> Some (dist +. act_dist)));
+    }
 
   let add_activity (athlete : Models.Strava_models.StravaAthlete.t option)
       (acc : t) (activity : Models.Activity.t) =
@@ -347,7 +403,13 @@ module Totals = struct
           | None -> 0
           | Some athlete -> calculate_calories ~athlete ~avg_hr ~duration ())
     in
-    { duration = acc.duration + duration; calories = acc.calories + calories }
+    {
+      acc with
+      duration = acc.duration + duration;
+      calories = acc.calories + calories;
+    }
+    |> add_elev_data activity.stats.elev_gain activity.stats.elev_loss
+    |> add_distance activity.stats.distance
 
   let of_activities athlete activities =
     List.fold ~init:empty ~f:(add_activity athlete) activities
@@ -359,20 +421,27 @@ let week_activity_stat (athlete : Models.Strava_models.StravaAthlete.t option)
   let open HTML in
   let hd = List.hd_exn activities in
   let totals = Totals.of_activities athlete activities in
+
+  let duration = Some (duration_stat totals.duration) in
+  let calories = Some (calories_stat_from_total totals.calories) in
+  let distance, elevation =
+    match totals.distance with
+    | None -> (None, None)
+    | Some distance ->
+        let distance = Some (distance_stat distance) in
+        let elevation =
+          match (totals.elev_gain, totals.elev_loss) with
+          | None, None -> None
+          | Some gain, Some loss -> Some (elevation_stat gain loss)
+          | _, _ -> assert false
+        in
+        (distance, elevation)
+  in
+  let stats = [ duration; distance; elevation; calories ] in
+  let stats = List.filter_opt stats in
   div
     [ class_ "summaryContainer" ]
-    [
-      activity_header hd;
-      div []
-        [
-          div
-            [ class_ "weekTotals" ]
-            [
-              duration_stat totals.duration;
-              calories_stat_from_total totals.calories;
-            ];
-        ];
-    ]
+    [ activity_header hd; div [] [ div [ class_ "weekTotals" ] stats ] ]
 
 let week_total_summary (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list) =
