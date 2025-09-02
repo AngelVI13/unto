@@ -127,23 +127,51 @@ let format_activity_duration duration_secs =
   let hours = mins / 60 in
   sprintf "%d:%02d:%02d" hours mins_left secs
 
-let duration_stat moving_time = format_activity_duration moving_time
-let avg_hr_stat avg = Int.to_string avg
+let duration_stat_value moving_time = format_activity_duration moving_time
 
-let distance_stat distance =
+let duration_stat duration =
+  activity_stat ~stat_name:"Duration" ~stat_description:"Duration (hh:mm:ss)"
+    ~stat_icon_path:"/static/assets/duration.png"
+    ~stat_value:(duration_stat_value duration)
+
+let avg_hr_stat_value avg = Int.to_string avg
+
+let avg_hr_stat avg =
+  activity_stat ~stat_name:"Heartrate" ~stat_description:"Avg Heartrate (bpm)"
+    ~stat_icon_path:"/static/assets/heartrate.png"
+    ~stat_value:(avg_hr_stat_value avg)
+
+let distance_stat_value distance =
   let distance =
     Float.round_significant ~significant_digits:3 (distance /. 1000.0)
   in
   sprintf "%.2f" distance
 
-let pace_stat avg =
+let distance_stat distance =
+  activity_stat ~stat_name:"Distance" ~stat_description:"Distance (km)"
+    ~stat_icon_path:"/static/assets/distance.png"
+    ~stat_value:(distance_stat_value distance)
+
+let pace_stat_value avg =
   let secs_per_km = Int.of_float (Float.round_down (1000.0 /. avg)) in
   let secs = secs_per_km mod 60 in
   let mins = secs_per_km / 60 in
   sprintf "%02d:%02d" mins secs
 
-let speed_stat avg =
+let speed_stat_value avg =
   sprintf "%.1f" Float.(round_significant ~significant_digits:3 (avg * 3.6))
+
+let speed_pace_stat activity_type avg =
+  match activity_type with
+  | Models.Strava_models.Run | Models.Strava_models.TrailRun
+  | Models.Strava_models.VirtualRun ->
+      activity_stat ~stat_name:"Pace" ~stat_description:"Pace (min/km)"
+        ~stat_icon_path:"/static/assets/pace.png"
+        ~stat_value:(pace_stat_value avg)
+  | _ ->
+      activity_stat ~stat_name:"Speed" ~stat_description:"Speed (kph)"
+        ~stat_icon_path:"/static/assets/speed.png"
+        ~stat_value:(speed_stat_value avg)
 
 let calculate_calories ~(athlete : Models.Strava_models.StravaAthlete.t)
     ?(multiplier = 0.80) ~(avg_hr : int) ~(duration : int) () =
@@ -177,42 +205,35 @@ let calculate_calories ~(athlete : Models.Strava_models.StravaAthlete.t)
   in
   Float.to_int (Float.round_nearest (calories *. multiplier))
 
-let calories_stat ~(athlete : Models.Strava_models.StravaAthlete.t)
+let calories_stat_value ~(athlete : Models.Strava_models.StravaAthlete.t)
     ?(multiplier = 0.80) ~(avg_hr : int) ~(duration : int) () =
-  Int.to_string (calculate_calories ~athlete ~multiplier ~avg_hr ~duration ())
+  calculate_calories ~athlete ~multiplier ~avg_hr ~duration ()
+
+let calories_stat_from_total calories =
+  activity_stat ~stat_name:"Calories" ~stat_description:"Calories"
+    ~stat_icon_path:"/static/assets/calories.png"
+    ~stat_value:(Int.to_string calories)
+
+let calories_stat ~(athlete : Models.Strava_models.StravaAthlete.t)
+    ~(avg_hr : int) ~(duration : int) () =
+  calories_stat_from_total (calories_stat_value ~athlete ~avg_hr ~duration ())
 
 let activity_stats ~sport_type
     (athlete : Models.Strava_models.StravaAthlete.t option)
     (stats : Models.Stats.t) =
-  let duration =
-    Some
-      (activity_stat ~stat_name:"Duration"
-         ~stat_description:"Duration (hh:mm:ss)"
-         ~stat_icon_path:"/static/assets/duration.png"
-         ~stat_value:(duration_stat stats.moving_time))
-  in
+  let duration = Some (duration_stat stats.moving_time) in
   let heartrate, calories =
     match stats.average_heartrate with
     | None -> (None, None)
     | Some avg ->
-        let hr =
-          Some
-            (activity_stat ~stat_name:"Heartrate"
-               ~stat_description:"Avg Heartrate (bpm)"
-               ~stat_icon_path:"/static/assets/heartrate.png"
-               ~stat_value:(avg_hr_stat avg))
-        in
+        let hr = Some (avg_hr_stat avg) in
         let calories =
           match athlete with
           | None -> None
           | Some athl ->
               Some
-                (activity_stat ~stat_name:"Calories"
-                   ~stat_description:"Calories"
-                   ~stat_icon_path:"/static/assets/calories.png"
-                   ~stat_value:
-                     (calories_stat ~athlete:athl ~avg_hr:avg
-                        ~duration:stats.moving_time ()))
+                (calories_stat ~athlete:athl ~avg_hr:avg
+                   ~duration:stats.moving_time ())
         in
         (hr, calories)
   in
@@ -220,29 +241,13 @@ let activity_stats ~sport_type
   let distance =
     match stats.distance with
     | None -> None
-    | Some distance ->
-        Some
-          (activity_stat ~stat_name:"Distance" ~stat_description:"Distance (km)"
-             ~stat_icon_path:"/static/assets/distance.png"
-             ~stat_value:(distance_stat distance))
+    | Some distance -> Some (distance_stat distance)
   in
 
   let speed_pace =
     match stats.average_speed with
     | None -> None
-    | Some avg -> (
-        match sport_type with
-        | Models.Strava_models.Run | Models.Strava_models.TrailRun
-        | Models.Strava_models.VirtualRun ->
-            Some
-              (activity_stat ~stat_name:"Pace" ~stat_description:"Pace (min/km)"
-                 ~stat_icon_path:"/static/assets/pace.png"
-                 ~stat_value:(pace_stat avg))
-        | _ ->
-            Some
-              (activity_stat ~stat_name:"Speed" ~stat_description:"Speed (kph)"
-                 ~stat_icon_path:"/static/assets/speed.png"
-                 ~stat_value:(speed_stat avg)))
+    | Some avg -> Some (speed_pace_stat sport_type avg)
   in
   List.filter_opt [ duration; heartrate; distance; speed_pace; calories ]
 
@@ -341,9 +346,7 @@ let week_activity_stat (athlete : Models.Strava_models.StravaAthlete.t option)
   let open Dream_html in
   let open HTML in
   let hd = List.hd_exn activities in
-  (* let activity_name = Models.Strava_models.show_sportType hd.sport_type in *)
   let total_secs, total_calories = activities_totals athlete activities in
-  let duration = duration_stat total_secs in
   div
     [ class_ "summaryContainer" ]
     [
@@ -353,24 +356,20 @@ let week_activity_stat (athlete : Models.Strava_models.StravaAthlete.t option)
           div
             [ class_ "weekTotals" ]
             [
-              (* TODO: replace with activity_card_stat ?? *)
-              week_stat ~stat_label:"Duration: " ~stat_value:duration;
-              week_stat ~stat_label:"Calories: "
-                ~stat_value:(Int.to_string total_calories);
+              duration_stat total_secs; calories_stat_from_total total_calories;
             ];
         ];
     ]
 
-(* TODO: this is the same as week_activity_stat - figure out how to combine it *)
 let week_total_summary (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list) =
   let open Dream_html in
   let open HTML in
   (* TODO: training load is just calories/10 -> its not but calories are part of it *)
   let total_secs, total_calories = activities_totals athlete activities in
-  let duration = duration_stat total_secs in
+  let duration = duration_stat_value total_secs in
   div
-    [ class_ "summaryContainer" ]
+    [ class_ "totalsSummaryContainer" ]
     [
       h2 [] [ txt "Week Stats" ];
       div []
@@ -408,7 +407,6 @@ let week_summary (athlete : Models.Strava_models.StravaAthlete.t option)
     [ week_total_summary athlete activities; div [ class_ "verticalLine" ] [] ]
     @ List.map ~f:(week_activity_stat athlete) activities_grouped
   in
-  (* TODO: make this summary scrollable horizontally *)
   div [ class_ "stats card statsGrid" ] all_sumarries
 
 let training_log (monday_date : Date.t)

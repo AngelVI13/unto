@@ -127,7 +127,7 @@ header .athlete-txt {
   height: 16px;
 }
 
-.activity .stat-icon-img {
+.stat-icon-img {
   padding-left: 5px;
   width: 20px;
   height: auto;
@@ -142,35 +142,35 @@ header .athlete-txt {
   margin-bottom: 10px;
 }
 
-.activity .activityCardStats .activityCardStat {
+.activityCardStat {
   display: flex;
   justify-content: space-between;
 }
 
-.activity .activityCardStats .activityCardStat .statNameText {
+.activityCardStat .statNameText {
   display: inline;
 }
 
-.activity .activityCardStats .activityCardStat .statNameIcon {
+.activityCardStat .statNameIcon {
   display: none;
 }
 
 /* Small screens (<= 1366px): show icon, hide text */
 @media screen and (max-width: 1366px) {
-  .activity .activityCardStats .activityCardStat .statNameText {
+  .activityCardStat .statNameText {
     display: none;
   }
-  .activity .activityCardStats .activityCardStat .statNameIcon {
+  .activityCardStat .statNameIcon {
     display: inline;
   }
 }
 
-.activity .activityCardStats .activityCardStatName {
+.activityCardStatName {
   font-weight: bold;
   padding-left: 5px;
 }
 
-.activity .activityCardStats .activityCardStatValue {
+.activityCardStatValue {
   padding-right: 5px;
   text-align: right;
   font-style: italic;
@@ -199,6 +199,11 @@ header .athlete-txt {
 
 .summaryContainer {
   padding-right: 10px;
+}
+
+.summaryContainer {
+  padding-right: 10px;
+  width: 100px;
 }
 
 .weekStatName {
