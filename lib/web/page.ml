@@ -71,7 +71,17 @@ let week_table_header (monday_date : Date.t) =
       ~f:(fun i name ->
         let date = Date.add_days monday_date i in
         let today_class = if Date.equal today date then "cardToday" else "" in
-        div [ class_ "dayOfTheWeek card %s" today_class ] [ txt "%s" name ])
+        div
+          [ class_ "dayOfTheWeek card %s" today_class ]
+          [
+            span
+              [ class_ "dayOfTheWeekShort" ]
+              [ txt "%s" (Str.first_chars name 1) ];
+            span
+              [ class_ "dayOfTheWeekMedium" ]
+              [ txt "%s" (Str.first_chars name 3) ];
+            span [ class_ "dayOfTheWeekLong" ] [ txt "%s" name ];
+          ])
       days_of_the_week
   in
   div [ class_ "days" ] divs
@@ -459,6 +469,7 @@ let week_total_summary (athlete : Models.Strava_models.StravaAthlete.t option)
           div
             [ class_ "weekTotals" ]
             [
+              (* TODO: add averages somehow ? *)
               week_stat ~stat_label:"Duration: " ~stat_value:duration;
               week_stat ~stat_label:"Calories: "
                 ~stat_value:(Int.to_string totals.calories);

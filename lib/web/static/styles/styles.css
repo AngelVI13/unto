@@ -147,6 +147,69 @@ header .athlete-txt {
   justify-content: space-between;
 }
 
+.dayOfTheWeekLong {
+  display: inline;
+}
+
+.dayOfTheWeekMedium {
+  display: none;
+}
+
+.dayOfTheWeekShort {
+  display: none;
+}
+
+@media screen and (max-width: 1100px) {
+  .dayOfTheWeekLong {
+    display: none;
+  }
+
+  .dayOfTheWeekMedium {
+    display: inline;
+  }
+  .dayOfTheWeekShort {
+    display: none;
+  }
+}
+
+/* NOTE: iphone 16 viewport: 393px x 852px */
+/* NOTE: ipad mini viewport: 768px x 1024px */
+@media screen and (max-width: 500px) {
+  .dayOfTheWeekLong {
+    display: none;
+  }
+
+  .dayOfTheWeekMedium {
+    display: none;
+  }
+  .dayOfTheWeekShort {
+    display: inline;
+  }
+
+  .calendarHeight {
+    height: 20vh;
+  }
+
+  .activityCardStats {
+    display: none;
+  }
+
+  .activityHeader {
+    margin-bottom: 0px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .activityHeader .activityType {
+    display: none;
+  }
+
+  .dayOfTheWeek {
+    margin: 3px;
+  }
+}
+
 .activityCardStat .statNameText {
   display: inline;
 }
