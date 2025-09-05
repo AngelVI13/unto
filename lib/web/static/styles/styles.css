@@ -34,7 +34,7 @@ header .active a {
 
 header .header-img {
   width: 24px;
-  height: 24px;
+  height: auto;
 }
 
 header .athlete-txt {
@@ -159,6 +159,20 @@ header .athlete-txt {
   display: none;
 }
 
+.headerTxt {
+  font-weight: bold;
+}
+
+.headerTxtBig {
+  font-size: 30px;
+  display: inline;
+}
+
+.headerTxtSmall {
+  font-size: 16px;
+  display: none;
+}
+
 @media screen and (max-width: 1100px) {
   .dayOfTheWeekLong {
     display: none;
@@ -175,6 +189,7 @@ header .athlete-txt {
 /* NOTE: iphone 16 viewport: 393px x 852px */
 /* NOTE: ipad mini viewport: 768px x 1024px */
 @media screen and (max-width: 500px) {
+  /* TODO: use variables for the font-size here!! */
   .dayOfTheWeekLong {
     display: none;
   }
@@ -184,6 +199,26 @@ header .athlete-txt {
   }
   .dayOfTheWeekShort {
     display: inline;
+  }
+
+  .headerMargin {
+    margin-bottom: 10px;
+  }
+
+  header .headerTxtBig {
+    display: none;
+  }
+
+  header .headerTxtSmall {
+    display: inline;
+  }
+
+  header .header-img {
+    width: 16px;
+  }
+
+  header .athlete-txt {
+    font-size: 16px;
   }
 
   .calendarHeight {

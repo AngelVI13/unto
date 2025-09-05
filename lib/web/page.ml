@@ -23,8 +23,18 @@ let header_ (athlete_name : string) =
       div
         [ class_ "headerTabs" ]
         [
-          h1 [ class_ "active" ] [ a [ href "/" ] [ txt "Training Log" ] ];
-          h1 [ class_ "inactive" ] [ a [ href "" ] [ txt "Dashboards" ] ];
+          span
+            [ class_ "headerTxt headerTxtBig active" ]
+            [ a [ href "/" ] [ txt "Training Log" ] ];
+          span
+            [ class_ "headerTxt headerTxtSmall active" ]
+            [ a [ href "/" ] [ txt "Training Log" ] ];
+          span
+            [ class_ "headerTxt headerTxtBig inactive" ]
+            [ a [ href "" ] [ txt "Dashboards" ] ];
+          span
+            [ class_ "headerTxt headerTxtSmall inactive" ]
+            [ a [ href "" ] [ txt "Dashboards" ] ];
         ];
       div
         [ class_ "headerSettings" ]
