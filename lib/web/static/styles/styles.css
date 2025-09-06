@@ -1,3 +1,8 @@
+:root {
+  --mobile-font-size: 16px;
+  --light-highlight: rgba(110, 110, 110, 0.1);
+}
+
 body {
   font-family: Arial, sans-serif;
   margin: 0;
@@ -65,7 +70,6 @@ header .athlete-txt {
 }
 
 .scrollable {
-  padding: 5px;
   overflow: auto;
 }
 
@@ -84,7 +88,8 @@ header .athlete-txt {
 }
 
 .dayWithColor {
-  background: rgba(110, 110, 110, 0.1);
+  border-radius: 8px;
+  background: var(--light-highlight);
 }
 .activities {
   min-height: 120px;
@@ -124,7 +129,7 @@ header .athlete-txt {
 
 .icon-img {
   width: 16px;
-  height: 16px;
+  height: auto;
 }
 
 .stat-icon-img {
@@ -169,80 +174,8 @@ header .athlete-txt {
 }
 
 .headerTxtSmall {
-  font-size: 16px;
+  font-size: var(--mobile-font-size);
   display: none;
-}
-
-@media screen and (max-width: 1100px) {
-  .dayOfTheWeekLong {
-    display: none;
-  }
-
-  .dayOfTheWeekMedium {
-    display: inline;
-  }
-  .dayOfTheWeekShort {
-    display: none;
-  }
-}
-
-/* NOTE: iphone 16 viewport: 393px x 852px */
-/* NOTE: ipad mini viewport: 768px x 1024px */
-@media screen and (max-width: 500px) {
-  /* TODO: use variables for the font-size here!! */
-  .dayOfTheWeekLong {
-    display: none;
-  }
-
-  .dayOfTheWeekMedium {
-    display: none;
-  }
-  .dayOfTheWeekShort {
-    display: inline;
-  }
-
-  .headerMargin {
-    margin-bottom: 10px;
-  }
-
-  header .headerTxtBig {
-    display: none;
-  }
-
-  header .headerTxtSmall {
-    display: inline;
-  }
-
-  header .header-img {
-    width: 16px;
-  }
-
-  header .athlete-txt {
-    font-size: 16px;
-  }
-
-  .calendarHeight {
-    height: 20vh;
-  }
-
-  .activityCardStats {
-    display: none;
-  }
-
-  .activityHeader {
-    margin-bottom: 0px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .activityHeader .activityType {
-    display: none;
-  }
-
-  .dayOfTheWeek {
-    margin: 3px;
-  }
 }
 
 .activityCardStat .statNameText {
@@ -251,16 +184,6 @@ header .athlete-txt {
 
 .activityCardStat .statNameIcon {
   display: none;
-}
-
-/* Small screens (<= 1366px): show icon, hide text */
-@media screen and (max-width: 1366px) {
-  .activityCardStat .statNameText {
-    display: none;
-  }
-  .activityCardStat .statNameIcon {
-    display: inline;
-  }
 }
 
 .activityCardStatName {
@@ -291,17 +214,15 @@ header .athlete-txt {
   margin-top: 10px;
 }
 
-.statsGrid &gt div {
-  flex: 1 1 250px;
-}
-
 .totalsSummaryContainer {
   padding-right: 10px;
 }
 
 .summaryContainer {
   padding-right: 10px;
-  width: 130px;
+  /* this is for big screens for laptop or smaller this is
+   * adjusted */
+  width: 190px;
 }
 
 .weekStatName {
@@ -314,14 +235,126 @@ header .athlete-txt {
   justify-content: space-between;
 }
 
-.verticalLine {
+.stats .verticalLine {
   border-left: solid #000000;
 }
 
-.summaryHeight {
-  height: 20vh; /* 20% of the viewport height */
+.stats .horizontalLine {
+  display: none;
+  border-bottom: solid #000000;
 }
 
 small {
   color: #777;
+}
+
+@media screen and (max-width: 1100px) {
+  .dayOfTheWeekLong {
+    display: none;
+  }
+
+  .dayOfTheWeekMedium {
+    display: inline;
+  }
+  .dayOfTheWeekShort {
+    display: none;
+  }
+}
+
+/* TODO: add tablet support or anything from 500 to 800px */
+
+/* NOTE: iphone 16 viewport: 393px x 852px */
+/* NOTE: ipad mini viewport: 768px x 1024px */
+@media screen and (max-width: 500px) {
+  .dayOfTheWeekLong {
+    display: none;
+  }
+
+  .dayOfTheWeekMedium {
+    display: none;
+  }
+  .dayOfTheWeekShort {
+    display: inline;
+  }
+
+  .headerMargin {
+    margin-bottom: 10px;
+  }
+
+  header .headerTxtBig {
+    display: none;
+  }
+
+  header .headerTxtSmall {
+    display: inline;
+  }
+
+  header .header-img {
+    width: var(--mobile-font-size);
+  }
+
+  header .athlete-txt {
+    font-size: var(--mobile-font-size);
+  }
+
+  .calendarHeight {
+    height: 20vh;
+  }
+
+  .activityCardStats {
+    display: none;
+  }
+
+  .day .activityHeader {
+    margin-bottom: 0px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .day .activityHeader .activityType {
+    display: none;
+  }
+
+  .dayOfTheWeek {
+    margin: 3px;
+  }
+
+  .stats .verticalLine {
+    display: none;
+  }
+
+  .stats .horizontalLine {
+    display: inline;
+  }
+
+  .statsGrid {
+    overflow-y: auto;
+    gap: 5px;
+    justify-content: center;
+  }
+
+  .statsGrid > div {
+    padding: 5px 15vw;
+    flex: 1 1 100%;
+  }
+
+  .summaryContainer:nth-child(2n + 1) {
+    border-radius: 8px;
+    background: var(--light-highlight);
+  }
+}
+
+/* Small screens (<= 1366px): show icon, hide text */
+@media screen and (max-width: 1366px) {
+  .activityCardStat .statNameText {
+    display: none;
+  }
+  .activityCardStat .statNameIcon {
+    display: inline;
+  }
+
+  .summaryContainer {
+    width: 130px;
+  }
 }

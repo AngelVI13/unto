@@ -507,10 +507,14 @@ let week_summary (athlete : Models.Strava_models.StravaAthlete.t option)
     |> List.rev
   in
   let all_sumarries =
-    [ week_total_summary athlete activities; div [ class_ "verticalLine" ] [] ]
+    [
+      week_total_summary athlete activities;
+      div [ class_ "verticalLine" ] [];
+      div [ class_ "horizontalLine" ] [];
+    ]
     @ List.map ~f:(week_activity_stat athlete) activities_grouped
   in
-  div [ class_ "stats card statsGrid summaryHeight" ] all_sumarries
+  div [ class_ "stats card statsGrid" ] all_sumarries
 
 let training_log (monday_date : Date.t)
     (athlete : Models.Strava_models.StravaAthlete.t option)
