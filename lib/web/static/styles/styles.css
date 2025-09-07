@@ -261,11 +261,9 @@ small {
   }
 }
 
-/* TODO: add tablet support or anything from 500 to 800px */
-
 /* NOTE: iphone 16 viewport: 393px x 852px */
 /* NOTE: ipad mini viewport: 768px x 1024px */
-@media screen and (max-width: 500px) {
+@media screen and (max-width: 930px) {
   .dayOfTheWeekLong {
     display: none;
   }
@@ -335,13 +333,19 @@ small {
   }
 
   .statsGrid > div {
-    padding: 5px 15vw;
+    padding: 5px 30vw;
     flex: 1 1 100%;
   }
 
   .summaryContainer:nth-child(2n + 1) {
     border-radius: 8px;
     background: var(--light-highlight);
+  }
+}
+
+@media screen and (max-width: 550px) {
+  .statsGrid > div {
+    padding: 5px 20vw;
   }
 }
 
