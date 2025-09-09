@@ -1,9 +1,9 @@
 open Core
+open Dream_html
+open HTML
 
 let week_table_header (monday_date : Date.t) =
   let today = Time_ns.now () |> Time_ns.to_date ~zone:Timezone.utc in
-  let open Dream_html in
-  let open HTML in
   let days_of_the_week =
     [
       "Monday";
@@ -35,9 +35,7 @@ let week_table_header (monday_date : Date.t) =
   in
   div [ class_ "days" ] divs
 
-let activity_header (activity : Models.Activity.t) =
-  let open Dream_html in
-  let open HTML in
+let activity_header ?(clickable = true) (activity : Models.Activity.t) =
   let icon_color, img_src =
     match activity.sport_type with
     | Run -> ("gold", "/static/assets/running.png")
@@ -46,20 +44,26 @@ let activity_header (activity : Models.Activity.t) =
     | _ -> ("gray", "/static/assets/unknown.png")
   in
   let icon_background = sprintf "background: %s;" icon_color in
+  let icon_node = img [ class_ "icon-img"; src "%s" img_src ] in
   div
     [ class_ "activityHeader" ]
     [
       span
         [ class_ "icon-container"; style_ "%s" icon_background ]
-        [ img [ class_ "icon-img"; src "%s" img_src ] ];
+        [
+          (if clickable then
+             (* TODO: the `a` element adds some wonkines to the activity icon - FIX THIS *)
+             a
+               [ class_ "activityBtn"; href "/activity/%d" activity.id ]
+               [ icon_node ]
+           else icon_node);
+        ];
       span
         [ class_ "activityType" ]
         [ txt "%s" (Models.Strava_models.show_sportType activity.sport_type) ];
     ]
 
 let activity_stat ~stat_name ~stat_description ~stat_icon_path ~stat_value =
-  let open Dream_html in
-  let open HTML in
   div
     [ class_ "activityCardStat" ]
     [
@@ -233,16 +237,12 @@ let activity_stats ~sport_type
 
 let activity_stats_div (athlete : Models.Strava_models.StravaAthlete.t option)
     (activity : Models.Activity.t) =
-  let open Dream_html in
-  let open HTML in
   div
     [ class_ "activityCardStats" ]
     (activity_stats ~sport_type:activity.sport_type athlete activity.stats)
 
 let activity_div (athlete : Models.Strava_models.StravaAthlete.t option)
     (activity : Models.Activity.t) =
-  let open Dream_html in
-  let open HTML in
   div
     [ class_ "activity card" ]
     [ activity_header activity; activity_stats_div athlete activity ]
@@ -250,8 +250,6 @@ let activity_div (athlete : Models.Strava_models.StravaAthlete.t option)
 let week_table_activities
     (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list list) =
-  let open Dream_html in
-  let open HTML in
   let days =
     List.mapi
       ~f:(fun i day_activities ->
@@ -268,8 +266,6 @@ let nav_buttons (monday_date : Date.t) =
   let next_monday_str = Utils.iso8601_of_date next_monday in
   let prev_monday = Date.add_days monday_date (-7) in
   let prev_monday_str = Utils.iso8601_of_date prev_monday in
-  let open Dream_html in
-  let open HTML in
   div
     [ class_ "navHeader" ]
     [
@@ -292,8 +288,6 @@ let nav_buttons (monday_date : Date.t) =
     ]
 
 let week_stat ~stat_label ~stat_value =
-  let open Dream_html in
-  let open HTML in
   div
     [ class_ "weekTotalStat" ]
     [
@@ -376,8 +370,6 @@ end
 
 let week_activity_stat (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list) =
-  let open Dream_html in
-  let open HTML in
   let hd = List.hd_exn activities in
   let totals = Totals.of_activities athlete activities in
 
@@ -400,12 +392,13 @@ let week_activity_stat (athlete : Models.Strava_models.StravaAthlete.t option)
   let stats = List.filter_opt stats in
   div
     [ class_ "summaryContainer" ]
-    [ activity_header hd; div [] [ div [ class_ "weekTotals" ] stats ] ]
+    [
+      activity_header ~clickable:false hd;
+      div [] [ div [ class_ "weekTotals" ] stats ];
+    ]
 
 let week_total_summary (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list) =
-  let open Dream_html in
-  let open HTML in
   (* TODO: training load is just calories/10 -> its not but calories are part of it *)
   let totals = Totals.of_activities athlete activities in
   let duration = duration_stat_value totals.duration in
@@ -428,8 +421,6 @@ let week_total_summary (athlete : Models.Strava_models.StravaAthlete.t option)
 
 let week_summary (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list list) =
-  let open Dream_html in
-  let open HTML in
   let activities = List.concat activities in
   let activities_grouped =
     activities
@@ -456,8 +447,6 @@ let week_summary (athlete : Models.Strava_models.StravaAthlete.t option)
   div [ class_ "stats card statsGrid" ] all_sumarries
 
 let head_elems () =
-  let open Dream_html in
-  let open HTML in
   [
     Dream_html.Livereload.script;
     meta [ http_equiv `content_type; content "text/html; charset=UTF-8" ];
@@ -479,8 +468,6 @@ let head_elems () =
 let page (monday_date : Date.t)
     (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list list) =
-  let open Dream_html in
-  let open HTML in
   let athlete_name =
     match athlete with None -> "Unknown" | Some athl -> athl.firstname
   in

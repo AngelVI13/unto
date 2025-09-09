@@ -90,6 +90,10 @@
   margin-bottom: 10px;
 }
 
+.activityBtn {
+  /* display: none; */
+}
+
 .activityCardStat {
   display: flex;
   justify-content: space-between;
