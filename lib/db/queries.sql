@@ -131,6 +131,33 @@ WHERE a.start_date > @start_date AND a.start_date < @end_date;
 -- @list_activities
 SELECT id FROM activities;
 
+-- @activity_by_id
+SELECT 
+    a.*,
+    s.moving_time,
+    s.elapsed_time,
+    s.distance,
+    s.elev_gain,
+    s.elev_loss,
+    s.elev_high,
+    s.elev_low,
+    s.start_lat,
+    s.start_lng,
+    s.end_lat,
+    s.end_lng,
+    s.average_speed,
+    s.max_speed,
+    s.average_cadence,
+    s.max_cadence,
+    s.average_temp,
+    s.average_heartrate,
+    s.max_heartrate,
+    s.average_power,
+    s.max_power
+FROM activities a
+JOIN stats s ON a.stats_id = s.id
+WHERE a.id == @activity_id;
+
 -- @create_laps
 CREATE TABLE IF NOT EXISTS laps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

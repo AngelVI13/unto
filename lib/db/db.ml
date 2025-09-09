@@ -141,6 +141,74 @@ let get_weeks_activities { handle; _ } ~(start_date : Date.t) :
       activities := activity :: !activities);
   !activities
 
+(* NOTE: currently this is the same as other activity methods but it will change with addition of laps and splits *)
+let get_activity { handle; _ } ~(activity_id : int) : Models.Activity.t option =
+  let activities = ref [] in
+  DB.activity_by_id handle ~activity_id:(Int64.of_int activity_id)
+    (fun
+      ~id
+      ~athlete_id
+      ~name
+      ~sport_type
+      ~start_date
+      ~timezone
+      ~map_id
+      ~map_summary_polyline
+      ~stats_id
+      ~moving_time
+      ~elapsed_time
+      ~distance
+      ~elev_gain
+      ~elev_loss
+      ~elev_high
+      ~elev_low
+      ~start_lat
+      ~start_lng
+      ~end_lat
+      ~end_lng
+      ~average_speed
+      ~max_speed
+      ~average_cadence
+      ~max_cadence
+      ~average_temp
+      ~average_heartrate
+      ~max_heartrate
+      ~average_power
+      ~max_power
+    ->
+      let _ = stats_id in
+      let stats =
+        Models.Stats.Fields.create ~data_points:(-1)
+          ~moving_time:(Int64.to_int_exn moving_time)
+          ~elapsed_time:(Int64.to_int_exn elapsed_time)
+          ~distance ~elev_gain:(to_int_option elev_gain)
+          ~elev_loss:(to_int_option elev_loss)
+          ~elev_high:(to_int_option elev_high)
+          ~elev_low:(to_int_option elev_low)
+          ~start_latlng:(to_loc_option start_lat start_lng)
+          ~end_latlng:(to_loc_option end_lat end_lng)
+          ~average_speed ~max_speed
+          ~average_cadence:(to_int_option average_cadence)
+          ~max_cadence:(to_int_option max_cadence)
+          ~average_temp:(to_int_option average_temp)
+          ~average_heartrate:(to_int_option average_heartrate)
+          ~max_heartrate:(to_int_option max_heartrate)
+          ~average_power:(to_int_option average_power)
+          ~max_power:(to_int_option max_power)
+      in
+      let activity =
+        Models.Activity.Fields.create ~id:(Int64.to_int_exn id)
+          ~athlete_id:(Int64.to_int_exn athlete_id)
+          ~name
+          ~sport_type:(Models.Strava_models.sportType_of_string sport_type)
+          ~start_date ~timezone ~map_id ~map_summary_polyline ~stats
+          ~laps:(Models.Laps.Laps.empty ())
+          ~splits:(Models.Splits.Splits.empty ())
+          ~streams:(Models.Streams.Streams.empty ())
+      in
+      activities := activity :: !activities);
+  List.hd !activities
+
 let add_stats (t : t) (stats : Models.Stats.t) (activity_id : int) =
   let _ =
     DB.add_stats t.handle ~id:None ~activity_id:(Int64.of_int activity_id)

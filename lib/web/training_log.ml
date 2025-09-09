@@ -1,65 +1,4 @@
 open Core
-module Time_ns = Time_ns_unix
-
-let head_elems () =
-  let open Dream_html in
-  let open HTML in
-  [
-    Dream_html.Livereload.script;
-    meta [ http_equiv `content_type; content "text/html; charset=UTF-8" ];
-    meta [ charset "UTF-8" ];
-    meta [ name "viewport"; content "width=device-width, initial-scale=1.0" ];
-    title [] "Unto";
-    link
-      [ rel "stylesheet"; type_ "text/css"; href "/static/styles/styles.css" ];
-  ]
-
-let header_ (athlete_name : string) =
-  let open Dream_html in
-  let open HTML in
-  header
-    [ class_ "headerMargin" ]
-    [
-      div
-        [ class_ "headerTabs" ]
-        [
-          span
-            [ class_ "headerTxt headerTxtBig active" ]
-            [ a [ href "/" ] [ txt "Training Log" ] ];
-          span
-            [ class_ "headerTxt headerTxtSmall active" ]
-            [ a [ href "/" ] [ txt "Training Log" ] ];
-          span
-            [ class_ "headerTxt headerTxtBig inactive" ]
-            [ a [ href "" ] [ txt "Dashboards" ] ];
-          span
-            [ class_ "headerTxt headerTxtSmall inactive" ]
-            [ a [ href "" ] [ txt "Dashboards" ] ];
-        ];
-      div
-        [ class_ "headerSettings" ]
-        [
-          span
-            [ class_ "icon-container" ]
-            [
-              a
-                [ href "" ]
-                [
-                  img [ class_ "header-img"; src "/static/assets/account.png" ];
-                ];
-            ];
-          span [ class_ "icon-container athlete-txt" ] [ txt "%s" athlete_name ];
-          span
-            [ class_ "icon-container" ]
-            [
-              a
-                [ href "" ]
-                [
-                  img [ class_ "header-img"; src "/static/assets/settings.png" ];
-                ];
-            ];
-        ];
-    ]
 
 let week_table_header (monday_date : Date.t) =
   let today = Time_ns.now () |> Time_ns.to_date ~zone:Timezone.utc in
@@ -516,7 +455,28 @@ let week_summary (athlete : Models.Strava_models.StravaAthlete.t option)
   in
   div [ class_ "stats card statsGrid" ] all_sumarries
 
-let training_log (monday_date : Date.t)
+let head_elems () =
+  let open Dream_html in
+  let open HTML in
+  [
+    Dream_html.Livereload.script;
+    meta [ http_equiv `content_type; content "text/html; charset=UTF-8" ];
+    meta [ charset "UTF-8" ];
+    meta [ name "viewport"; content "width=device-width, initial-scale=1.0" ];
+    title [] "Unto";
+    link
+      [ rel "stylesheet"; type_ "text/css"; href "/static/styles/common.css" ];
+    link
+      [ rel "stylesheet"; type_ "text/css"; href "/static/styles/header.css" ];
+    link
+      [
+        rel "stylesheet";
+        type_ "text/css";
+        href "/static/styles/training_log.css";
+      ];
+  ]
+
+let page (monday_date : Date.t)
     (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list list) =
   let open Dream_html in
@@ -530,7 +490,7 @@ let training_log (monday_date : Date.t)
       head [] (head_elems ());
       body []
         [
-          header_ athlete_name;
+          Header.header_ athlete_name;
           nav_buttons monday_date;
           week_table_header monday_date;
           week_table_activities athlete activities;

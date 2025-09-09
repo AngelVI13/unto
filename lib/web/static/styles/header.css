@@ -1,0 +1,73 @@
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.headerTabs {
+  display: flex;
+  gap: 15px; /* space between headings */
+  align-items: center; /* align them vertically */
+}
+
+header h1 {
+  margin: 0;
+}
+
+.headerMargin {
+  margin-bottom: 30px;
+}
+
+header .inactive a {
+  color: rgba(110, 110, 110, 0.4);
+}
+
+header .active a {
+  color: black;
+}
+
+header .header-img {
+  width: 24px;
+  height: auto;
+}
+
+header .athlete-txt {
+  font-size: 24px;
+  font-family: system-ui;
+}
+
+.headerTxt {
+  font-weight: bold;
+}
+
+.headerTxtBig {
+  font-size: 30px;
+  display: inline;
+}
+
+.headerTxtSmall {
+  font-size: var(--mobile-font-size);
+  display: none;
+}
+
+@media screen and (max-width: 930px) {
+  .headerMargin {
+    margin-bottom: 10px;
+  }
+
+  header .headerTxtBig {
+    display: none;
+  }
+
+  header .headerTxtSmall {
+    display: inline;
+  }
+
+  header .header-img {
+    width: var(--mobile-font-size);
+  }
+
+  header .athlete-txt {
+    font-size: var(--mobile-font-size);
+  }
+}

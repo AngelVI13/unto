@@ -43,7 +43,18 @@ let handle_training_log ~db request =
     group_activities ~start_date:monday weeks_activities
   in
   let athlete = Db.get_athlete db in
-  let page = Page.training_log monday athlete grouped_activities in
+  let page = Training_log.page monday athlete grouped_activities in
+  Dream_html.respond page
+
+let handle_activity ~db request =
+  let activity_id = Dream.param request "id" |> Int.of_string_opt in
+  let activity =
+    Option.bind activity_id ~f:(fun activity_id ->
+        Db.get_activity db ~activity_id)
+  in
+
+  let athlete = Db.get_athlete db in
+  let page = Activity.activity_page athlete activity in
   Dream_html.respond page
 
 (* TODO: activity fails to download streams 113217900 *)
@@ -61,6 +72,7 @@ let run (db : Db.t) =
        [
          Dream_html.Livereload.route;
          Dream.get "/" (handle_training_log ~db);
+         Dream.get "/activity/:id" (handle_activity ~db);
          Dream.get "/static/**" (Dream.static "./lib/web/static");
        ]
 
