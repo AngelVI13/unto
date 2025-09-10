@@ -1,10 +1,30 @@
 open Dream_html
 open HTML
 
-let activity_details (activity : Models.Activity.t option) =
+(* TODO: this is the same as in training_log.ml -> so move to utils or sth *)
+let activity_header (activity : Models.Activity.t) =
+  let icon_background, img_src = Helpers.activity_icon_and_color activity in
+  div
+    [ class_ "activityHeader" ]
+    [
+      span
+        [ class_ "icon-container"; style_ "%s" icon_background ]
+        [ img [ class_ "icon-img"; src "%s" img_src ] ];
+      span
+        [ class_ "activityType" ]
+        [ txt "%s" (Models.Strava_models.show_sportType activity.sport_type) ];
+    ]
+
+let activity_details (activity : Models.Activity.t) =
+  div [] [ txt "%s: %s" activity.name activity.start_date ]
+
+let activity_grid (activity : Models.Activity.t option) =
   match activity with
   | None -> div [] [ txt "no such activity" ]
-  | Some activity -> div [] [ txt "%s: %s" activity.name activity.start_date ]
+  | Some activity ->
+      div
+        [ class_ "activityGrid" ]
+        [ activity_header activity; activity_details activity ]
 
 let head_elems () =
   [
@@ -30,5 +50,5 @@ let activity_page (athlete : Models.Strava_models.StravaAthlete.t option)
     [ lang "en" ]
     [
       head [] (head_elems ());
-      body [] [ Header.header_ athlete_name; activity_details activity ];
+      body [] [ Header.header_ athlete_name; activity_grid activity ];
     ]

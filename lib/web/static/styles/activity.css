@@ -1,0 +1,27 @@
+.activityGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+/* .activityHeader { */
+/*   margin-bottom: 0px; */
+/*   display: flex; */
+/*   justify-content: center; */
+/*   align-items: center; */
+/* } */
+
+.activityType {
+  font-weight: bold;
+  border-bottom: 2px solid black;
+}
+
+@media screen and (max-width: 930px) {
+}
+
+@media screen and (max-width: 550px) {
+  .activityGrid > div {
+    padding: 5px 20vw;
+  }
+}

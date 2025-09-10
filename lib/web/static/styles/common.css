@@ -17,3 +17,8 @@ body {
   align-items: center;
   justify-content: center;
 }
+
+.icon-img {
+  width: 16px;
+  height: auto;
+}
