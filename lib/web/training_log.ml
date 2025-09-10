@@ -35,7 +35,7 @@ let week_table_header (monday_date : Date.t) =
   in
   div [ class_ "days" ] divs
 
-let activity_header ?(clickable = true) (activity : Models.Activity.t) =
+let activity_header (activity : Models.Activity.t) =
   let icon_color, img_src =
     match activity.sport_type with
     | Run -> ("gold", "/static/assets/running.png")
@@ -44,20 +44,12 @@ let activity_header ?(clickable = true) (activity : Models.Activity.t) =
     | _ -> ("gray", "/static/assets/unknown.png")
   in
   let icon_background = sprintf "background: %s;" icon_color in
-  let icon_node = img [ class_ "icon-img"; src "%s" img_src ] in
   div
     [ class_ "activityHeader" ]
     [
       span
         [ class_ "icon-container"; style_ "%s" icon_background ]
-        [
-          (if clickable then
-             (* TODO: the `a` element adds some wonkines to the activity icon - FIX THIS *)
-             a
-               [ class_ "activityBtn"; href "/activity/%d" activity.id ]
-               [ icon_node ]
-           else icon_node);
-        ];
+        [ img [ class_ "icon-img"; src "%s" img_src ] ];
       span
         [ class_ "activityType" ]
         [ txt "%s" (Models.Strava_models.show_sportType activity.sport_type) ];
@@ -244,7 +236,11 @@ let activity_stats_div (athlete : Models.Strava_models.StravaAthlete.t option)
 let activity_div (athlete : Models.Strava_models.StravaAthlete.t option)
     (activity : Models.Activity.t) =
   div
-    [ class_ "activity card" ]
+    [
+      class_ "activity card";
+      onclick "location.href='/activity/%d';" activity.id;
+      style_ "cursor: pointer;";
+    ]
     [ activity_header activity; activity_stats_div athlete activity ]
 
 let week_table_activities
@@ -392,10 +388,7 @@ let week_activity_stat (athlete : Models.Strava_models.StravaAthlete.t option)
   let stats = List.filter_opt stats in
   div
     [ class_ "summaryContainer" ]
-    [
-      activity_header ~clickable:false hd;
-      div [] [ div [ class_ "weekTotals" ] stats ];
-    ]
+    [ activity_header hd; div [] [ div [ class_ "weekTotals" ] stats ] ]
 
 let week_total_summary (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list) =
