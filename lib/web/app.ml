@@ -46,7 +46,7 @@ let handle_training_log ~db request =
   let page = Training_log.page monday athlete grouped_activities in
   Dream_html.respond page
 
-let handle_activity ~db request =
+let handle_activity ~db ~gmaps_key request =
   let activity_id = Dream.param request "id" |> Int.of_string_opt in
   let activity =
     Option.bind activity_id ~f:(fun activity_id ->
@@ -54,7 +54,7 @@ let handle_activity ~db request =
   in
 
   let athlete = Db.get_athlete db in
-  let page = Activity.activity_page athlete activity in
+  let page = Activity.activity_page ~gmaps_key athlete activity in
   Dream_html.respond page
 
 (* TODO: activity fails to download streams 113217900 *)
@@ -66,13 +66,13 @@ let handle_activity ~db request =
 (*   downloading streams *)
 (*   downloading laps *)
 (*   error while downloading/parsing streams: ("Yojson__Safe.Util.Type_error(\"Expected array, got object\", _)") *)
-let run (db : Db.t) =
+let run (db : Db.t) (gmaps_key : string) =
   Dream.run @@ Dream.logger
   @@ Dream.router
        [
          Dream_html.Livereload.route;
          Dream.get "/" (handle_training_log ~db);
-         Dream.get "/activity/:id" (handle_activity ~db);
+         Dream.get "/activity/:id" (handle_activity ~db ~gmaps_key);
          Dream.get "/static/**" (Dream.static "./lib/web/static");
        ]
 

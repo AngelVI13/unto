@@ -1,30 +1,68 @@
+open Core
 open Dream_html
 open HTML
+module Time_ns = Time_ns_unix
 
-(* TODO: this is the same as in training_log.ml -> so move to utils or sth *)
-let activity_header (activity : Models.Activity.t) =
+let activity_start_time (timestamp : string) =
+  let time = Time_ns.of_string timestamp in
+  let time = Time_ns.to_sec_string ~zone:Timezone.utc time in
+  sprintf "%s" time
+
+let activity_details ~gmaps_key (activity : Models.Activity.t) =
   let icon_background, img_src = Helpers.activity_icon_and_color activity in
+
+  (* NOTE: the map is done with Google Maps Static API *)
+  (* More info here: https://stackoverflow.com/a/53377017 *)
+  (* and here: https://developers.google.com/maps/documentation/maps-static *)
+  (* TODO: build this URL with URL builder *)
+  (* TODO: look at the api parameters to make the map nicers *)
+  (* TODO: the map looks a bit blurry, have to make sure the map div is the
+     same size as the requested image from the maps api *)
+  let map_url =
+    "https://maps.googleapis.com/maps/api/staticmap?size=400x400&path=weight:3%7Ccolor:orange%7C"
+  in
+  let map_url = map_url ^ sprintf "enc:%s" activity.map_summary_polyline in
+  let map_url = map_url ^ "&key=" ^ gmaps_key in
   div
     [ class_ "activityHeader" ]
     [
-      span
-        [ class_ "icon-container"; style_ "%s" icon_background ]
-        [ img [ class_ "icon-img"; src "%s" img_src ] ];
-      span
-        [ class_ "activityType" ]
-        [ txt "%s" (Models.Strava_models.show_sportType activity.sport_type) ];
+      div
+        [ class_ "activityNameAndIcon" ]
+        [
+          div
+            [ class_ "big-icon-container"; style_ "%s" icon_background ]
+            [ img [ class_ "big-icon-img"; src "%s" img_src ] ];
+          div
+            [ class_ "activityType" ]
+            [
+              txt "%s" (Models.Strava_models.show_sportType activity.sport_type);
+            ];
+        ];
+      div
+        [ class_ "activityTime" ]
+        [ txt "%s: %s" activity.name (activity_start_time activity.start_date) ];
+      div [] [ img [ src "%s" map_url ] ];
     ]
 
-let activity_details (activity : Models.Activity.t) =
-  div [] [ txt "%s: %s" activity.name activity.start_date ]
+let activity_stats (activity : Models.Activity.t) =
+  let _ = activity in
+  div [] [ txt "Activity Stats" ]
 
-let activity_grid (activity : Models.Activity.t option) =
+let activity_graphs (activity : Models.Activity.t) =
+  let _ = activity in
+  div [] [ txt "Activity Graphs" ]
+
+let activity_grid ~gmaps_key (activity : Models.Activity.t option) =
   match activity with
   | None -> div [] [ txt "no such activity" ]
   | Some activity ->
       div
         [ class_ "activityGrid" ]
-        [ activity_header activity; activity_details activity ]
+        [
+          activity_details ~gmaps_key activity;
+          activity_stats activity;
+          activity_graphs activity;
+        ]
 
 let head_elems () =
   [
@@ -41,7 +79,8 @@ let head_elems () =
       [ rel "stylesheet"; type_ "text/css"; href "/static/styles/activity.css" ];
   ]
 
-let activity_page (athlete : Models.Strava_models.StravaAthlete.t option)
+let activity_page ~gmaps_key
+    (athlete : Models.Strava_models.StravaAthlete.t option)
     (activity : Models.Activity.t option) =
   let athlete_name =
     match athlete with None -> "Unknown" | Some athl -> athl.firstname
@@ -50,5 +89,5 @@ let activity_page (athlete : Models.Strava_models.StravaAthlete.t option)
     [ lang "en" ]
     [
       head [] (head_elems ());
-      body [] [ Header.header_ athlete_name; activity_grid activity ];
+      body [] [ Header.header_ athlete_name; activity_grid ~gmaps_key activity ];
     ]

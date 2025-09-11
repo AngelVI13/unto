@@ -175,7 +175,7 @@ let command_update_db auth_client =
                   Db.add_activity db activity athlete.id)
                 new_activities)))
 
-let command_run_app () =
+let command_run_app gmaps_key =
   Command.basic ~summary:"Run the web app"
     (let%map_open.Command db_filename =
        flag "-d"
@@ -188,9 +188,9 @@ let command_run_app () =
          ~finally:(fun () ->
            printf "Closing the db\n";
            ignore @@ Db.close db)
-         (fun () -> Web.App.run db))
+         (fun () -> Web.App.run db gmaps_key))
 
-let command auth_client =
+let command auth_client gmaps_key =
   Command.group ~summary:"CLI utility to download data from strava"
     [
       ("obtain-access-token", command_obtain_access_token auth_client);
@@ -202,13 +202,14 @@ let command auth_client =
       ("zones", command_zones auth_client);
       ("test", command_test ());
       ("update", command_update_db auth_client);
-      ("run-app", command_run_app ());
+      ("run-app", command_run_app gmaps_key);
     ]
 
 let () =
   Dotenv.export () |> ignore;
   let client_id = Sys.getenv_exn "CLIENT_ID" in
   let client_secret = Sys.getenv_exn "CLIENT_SECRET" in
+  let gmaps_key = Sys.getenv_exn "GMAPS_STATIC_API" in
   let auth_client = Strava.Auth.AuthClient.make client_id client_secret in
 
-  Command_unix.run (command auth_client)
+  Command_unix.run (command auth_client gmaps_key)
