@@ -55,6 +55,11 @@
   height: auto;
 }
 
+#map {
+  height: 380px;
+  width: 380px;
+}
+
 @media screen and (max-width: 930px) {
 }
 
