@@ -175,6 +175,8 @@ let get_activity { handle; _ } ~(activity_id : int) : Models.Activity.t option =
       ~max_heartrate
       ~average_power
       ~max_power
+      ~data
+      ~data_len
     ->
       let _ = stats_id in
       let stats =
@@ -196,6 +198,14 @@ let get_activity { handle; _ } ~(activity_id : int) : Models.Activity.t option =
           ~average_power:(to_int_option average_power)
           ~max_power:(to_int_option max_power)
       in
+      (* decode streams blob into type *)
+      let data_bin = Bytes.of_string data in
+      let data =
+        LZ4.Bytes.decompress ~length:(Int64.to_int_exn data_len) data_bin
+      in
+      let json = Utils.parse_json_from_bytes data in
+      let streams = Models.Streams.Streams.t_of_yojson json in
+
       let activity =
         Models.Activity.Fields.create ~id:(Int64.to_int_exn id)
           ~athlete_id:(Int64.to_int_exn athlete_id)
@@ -204,7 +214,7 @@ let get_activity { handle; _ } ~(activity_id : int) : Models.Activity.t option =
           ~start_date ~timezone ~map_id ~map_summary_polyline ~stats
           ~laps:(Models.Laps.Laps.empty ())
           ~splits:(Models.Splits.Splits.empty ())
-          ~streams:(Models.Streams.Streams.empty ())
+          ~streams
       in
       activities := activity :: !activities);
   List.hd !activities

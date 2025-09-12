@@ -8,7 +8,8 @@ let activity_start_time (timestamp : string) =
   let time = Time_ns.to_sec_string ~zone:Timezone.utc time in
   sprintf "%s" time
 
-(* TODO: this is very very hacky. I can attach a script section instead and load a js file but how to pass attributes to the js?? *)
+(* TODO: this is very very hacky. I can attach a script section instead and
+   load a js file but how to pass attributes to the js?? *)
 let activity_map_script (locations : float list list) : string =
   let latlng_str =
     List.fold ~init:""
@@ -41,30 +42,23 @@ map.fitBounds(polyline.getBounds());
   in
   pretxt ^ latlng_str ^ posttext
 
+let activity_map (locations : float list list option) =
+  match locations with
+  | None -> null []
+  | Some locs ->
+      let map_script = activity_map_script locs in
+      null [ div [ id "map" ] []; script [] "%s" map_script ]
+
 let activity_details (activity : Models.Activity.t) =
   let icon_background, img_src = Helpers.activity_icon_and_color activity in
 
+  (* this is list of lat lng points (to draw a map) if they exist for the activity *)
   let locations =
-    [
-      [ 54.755563; 25.37736 ];
-      [ 54.755556; 25.377336 ];
-      [ 54.75555; 25.377311 ];
-      [ 54.755543; 25.377287 ];
-      [ 54.755536; 25.377263 ];
-      [ 54.755529; 25.377239 ];
-      [ 54.755523; 25.377214 ];
-      [ 54.755516; 25.37719 ];
-      [ 54.755509; 25.377166 ];
-      [ 54.755503; 25.37714 ];
-      [ 54.755492; 25.377107 ];
-      [ 54.755492; 25.377107 ];
-      [ 54.755478; 25.377047 ];
-      [ 54.755468; 25.377017 ];
-      [ 54.75546; 25.376985 ];
-      [ 54.755445; 25.376953 ];
-    ]
+    List.find_map
+      ~f:(fun stream ->
+        match stream with LatLngStream s -> Some s.data | _ -> None)
+      activity.streams
   in
-  let map_script = activity_map_script locations in
   div
     [ class_ "card activityHeader" ]
     [
@@ -83,9 +77,7 @@ let activity_details (activity : Models.Activity.t) =
       div
         [ class_ "activityTime" ]
         [ txt "%s: %s" activity.name (activity_start_time activity.start_date) ];
-      div [ id "map" ] [ (* img [ class_ "mapImg"; src "%s" map_url ]  *) ];
-      (* script [ src "%s" "/static/js/activity_map.js" ] ""; *)
-      script [] "%s" map_script;
+      activity_map locations;
     ]
 
 let activity_stats (activity : Models.Activity.t) =
