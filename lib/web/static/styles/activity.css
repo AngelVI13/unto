@@ -10,6 +10,10 @@
   width: 100%;
 }
 
+.card {
+  padding: 10px;
+}
+
 .activityHeader {
   display: grid;
   gap: 10px;
@@ -44,6 +48,11 @@
 
 .activityTime {
   font-style: italic;
+}
+
+.mapImg {
+  width: 400px;
+  height: auto;
 }
 
 @media screen and (max-width: 930px) {

@@ -55,11 +55,6 @@
   border-bottom: 5px solid black;
 }
 
-.card {
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-}
-
 .cardToday {
   border-color: darkolivegreen;
 }

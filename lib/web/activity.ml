@@ -15,16 +15,13 @@ let activity_details ~gmaps_key (activity : Models.Activity.t) =
   (* More info here: https://stackoverflow.com/a/53377017 *)
   (* and here: https://developers.google.com/maps/documentation/maps-static *)
   (* TODO: build this URL with URL builder *)
-  (* TODO: look at the api parameters to make the map nicers *)
-  (* TODO: the map looks a bit blurry, have to make sure the map div is the
-     same size as the requested image from the maps api *)
   let map_url =
     "https://maps.googleapis.com/maps/api/staticmap?size=400x400&path=weight:3%7Ccolor:orange%7C"
   in
   let map_url = map_url ^ sprintf "enc:%s" activity.map_summary_polyline in
   let map_url = map_url ^ "&key=" ^ gmaps_key in
   div
-    [ class_ "activityHeader" ]
+    [ class_ "card activityHeader" ]
     [
       div
         [ class_ "activityNameAndIcon" ]
@@ -41,7 +38,7 @@ let activity_details ~gmaps_key (activity : Models.Activity.t) =
       div
         [ class_ "activityTime" ]
         [ txt "%s: %s" activity.name (activity_start_time activity.start_date) ];
-      div [] [ img [ src "%s" map_url ] ];
+      div [] [ img [ class_ "mapImg"; src "%s" map_url ] ];
     ]
 
 let activity_stats (activity : Models.Activity.t) =
