@@ -51,18 +51,18 @@ let activity_header (activity : Models.Activity.t) =
 let activity_stats ~sport_type
     (athlete : Models.Strava_models.StravaAthlete.t option)
     (stats : Models.Stats.t) =
-  let duration = Some (Helpers.duration_stat stats.moving_time) in
+  let duration = Some (Helpers.duration_stat_node stats.moving_time) in
   let heartrate, calories =
     match stats.average_heartrate with
     | None -> (None, None)
     | Some avg ->
-        let hr = Some (Helpers.avg_hr_stat avg) in
+        let hr = Some (Helpers.hr_stat_node avg) in
         let calories =
           match athlete with
           | None -> None
           | Some athl ->
               Some
-                (Helpers.calories_stat ~athlete:athl ~avg_hr:avg
+                (Helpers.calories_stat_node ~athlete:athl ~avg_hr:avg
                    ~duration:stats.moving_time ())
         in
         (hr, calories)
@@ -72,7 +72,7 @@ let activity_stats ~sport_type
     match stats.distance with
     | None -> (None, None)
     | Some distance ->
-        let distance = Some (Helpers.distance_stat distance) in
+        let distance = Some (Helpers.distance_stat_node distance) in
         (* NOTE: elevation data can be available for all activities that are
            recorded with a watch with a barometer but we only want to show
            elevation gain/loss data in the case of activities with recorded
@@ -81,7 +81,8 @@ let activity_stats ~sport_type
         let elevation =
           match (stats.elev_gain, stats.elev_loss) with
           | None, None -> None
-          | Some gain, Some loss -> Some (Helpers.elevation_stat gain loss)
+          | Some gain, Some loss ->
+              Some (Helpers.elev_gain_loss_stat_node gain loss)
           | _, _ -> assert false
         in
         (distance, elevation)
@@ -90,7 +91,7 @@ let activity_stats ~sport_type
   let speed_pace =
     match stats.average_speed with
     | None -> None
-    | Some avg -> Some (Helpers.speed_pace_stat sport_type avg)
+    | Some avg -> Some (Helpers.speed_pace_stat_node sport_type avg)
   in
 
   List.filter_opt
@@ -239,17 +240,18 @@ let week_activity_stat (athlete : Models.Strava_models.StravaAthlete.t option)
   let hd = List.hd_exn activities in
   let totals = Totals.of_activities athlete activities in
 
-  let duration = Some (Helpers.duration_stat totals.duration) in
-  let calories = Some (Helpers.calories_stat_from_total totals.calories) in
+  let duration = Some (Helpers.duration_stat_node totals.duration) in
+  let calories = Some (Helpers.calories_stat_from_total_node totals.calories) in
   let distance, elevation =
     match totals.distance with
     | None -> (None, None)
     | Some distance ->
-        let distance = Some (Helpers.distance_stat distance) in
+        let distance = Some (Helpers.distance_stat_node distance) in
         let elevation =
           match (totals.elev_gain, totals.elev_loss) with
           | None, None -> None
-          | Some gain, Some loss -> Some (Helpers.elevation_stat gain loss)
+          | Some gain, Some loss ->
+              Some (Helpers.elev_gain_loss_stat_node gain loss)
           | _, _ -> assert false
         in
         (distance, elevation)

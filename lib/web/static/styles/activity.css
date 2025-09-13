@@ -20,6 +20,8 @@
 }
 
 .big-icon-container {
+  width: 32px;
+  height: 32px;
   padding: 4px;
   border-radius: 20px;
   display: inline-flex;
@@ -29,7 +31,7 @@
 
 .big-icon-img {
   height: 32px;
-  width: auto;
+  width: 32px;
 }
 
 .activityNameAndIcon {
@@ -38,6 +40,7 @@
 }
 
 .activityType {
+  height: 40px;
   font-size: 24px;
   font-weight: bold;
   border-bottom: 2px solid black;
@@ -57,6 +60,23 @@
 
 .activityCardStats {
   width: 30vw;
+}
+
+table {
+  table-layout: fixed;
+  width: 80%;
+  /* min-width: 1000px; */
+  margin: 0 auto;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.6em;
+}
+
+tr {
+  text-align: center;
 }
 
 .activityCardStat .statNameText {

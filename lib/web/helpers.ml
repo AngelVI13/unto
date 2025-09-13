@@ -13,26 +13,54 @@ let activity_icon_and_color (activity : Models.Activity.t) =
   let icon_background = sprintf "background: %s;" icon_color in
   (icon_background, img_src)
 
-let activity_stat ~stat_name ~stat_description ~stat_icon_path ~stat_value =
-  div
-    [ class_ "activityCardStat" ]
-    [
-      (* NOTE: currently the text is not used - maybe remove? *)
-      span
-        [ class_ "activityCardStatName statNameText" ]
-        [ txt "%s: " stat_name ];
-      span
-        [ class_ "activityCardStatName statNameIcon" ]
-        [
-          img
-            [
-              class_ "stat-icon-img";
-              title_ stat_description;
-              src stat_icon_path;
-            ];
-        ];
-      span [ class_ "activityCardStatValue" ] [ txt "%s" stat_value ];
-    ]
+module Stat = struct
+  type t = { name : string; description : string; icon_path : string }
+
+  let make ~name ~description ~icon_path = { name; description; icon_path }
+
+  let activity_stat (t : t) (value : string) =
+    div
+      [ class_ "activityCardStat" ]
+      [
+        (* NOTE: currently the text is not used - maybe remove? *)
+        span
+          [ class_ "activityCardStatName statNameText" ]
+          [ txt "%s: " t.name ];
+        span
+          [ class_ "activityCardStatName statNameIcon" ]
+          [
+            img
+              [
+                class_ "stat-icon-img";
+                title_ "%s" t.description;
+                src "%s" t.icon_path;
+              ];
+          ];
+        span [ class_ "activityCardStatValue" ] [ txt "%s" value ];
+      ]
+
+  let row (t : t) ~(min_value : string) ~(max_value : string)
+      ~(avg_value : string) =
+    tr []
+      [
+        td []
+          [
+            span
+              [ class_ "activityCardStatName statNameIcon" ]
+              [
+                img
+                  [
+                    class_ "stat-icon-img";
+                    title_ "%s" t.description;
+                    src "%s" t.icon_path;
+                  ];
+              ];
+          ];
+        td [] [ txt "%s" avg_value ];
+        td [] [ txt "%s" max_value ];
+        td [] [ txt "%s" min_value ];
+      ]
+end
 
 let format_activity_duration duration_secs =
   let secs = duration_secs mod 60 in
@@ -43,17 +71,64 @@ let format_activity_duration duration_secs =
 
 let duration_stat_value moving_time = format_activity_duration moving_time
 
-let duration_stat duration =
-  activity_stat ~stat_name:"Duration" ~stat_description:"Duration (hh:mm:ss)"
-    ~stat_icon_path:"/static/assets/duration.png"
-    ~stat_value:(duration_stat_value duration)
+let duration_stat =
+  Stat.make ~name:"Duration" ~description:"Duration (hh:mm:ss)"
+    ~icon_path:"/static/assets/duration.png"
 
-let avg_hr_stat_value avg = Int.to_string avg
+let hr_stat =
+  Stat.make ~name:"Heartrate" ~description:"Heartrate (bpm)"
+    ~icon_path:"/static/assets/heartrate.png"
 
-let avg_hr_stat avg =
-  activity_stat ~stat_name:"Heartrate" ~stat_description:"Avg Heartrate (bpm)"
-    ~stat_icon_path:"/static/assets/heartrate.png"
-    ~stat_value:(avg_hr_stat_value avg)
+let distance_stat =
+  Stat.make ~name:"Distance" ~description:"Distance (km)"
+    ~icon_path:"/static/assets/distance.png"
+
+let pace_stat =
+  Stat.make ~name:"Pace" ~description:"Pace (min/km)"
+    ~icon_path:"/static/assets/pace.png"
+
+let speed_stat =
+  Stat.make ~name:"Speed" ~description:"Speed (kph)"
+    ~icon_path:"/static/assets/speed.png"
+
+let calories_stat =
+  Stat.make ~name:"Calories" ~description:"Calories"
+    ~icon_path:"/static/assets/calories.png"
+
+let elev_gain_loss_stat =
+  Stat.make ~name:"Elevation" ~description:"Elevation gain & loss (m)"
+    ~icon_path:"/static/assets/elevation.png"
+
+let power_stat =
+  Stat.make ~name:"Power" ~description:"Power (Watt)"
+    ~icon_path:"/static/assets/power.png"
+
+let cadence_stat =
+  Stat.make ~name:"Cadence" ~description:"Cadence (steps/min or rev/min)"
+    ~icon_path:"/static/assets/cadence.png"
+
+let elevation_stat =
+  Stat.make ~name:"Elevation" ~description:"Elevation (m)"
+    ~icon_path:"/static/assets/elevation.png"
+
+let elevation_stat_value elev = Int.to_string elev
+
+let elevation_stat_node elev =
+  Stat.activity_stat elevation_stat (elevation_stat_value elev)
+
+let cadence_stat_value cad = Int.to_string cad
+
+let cadence_stat_node cad =
+  Stat.activity_stat cadence_stat (cadence_stat_value cad)
+
+let power_stat_value pwr = Int.to_string pwr
+let power_stat_node pwr = Stat.activity_stat power_stat (power_stat_value pwr)
+
+let duration_stat_node duration =
+  Stat.activity_stat duration_stat (duration_stat_value duration)
+
+let hr_stat_value hr = Int.to_string hr
+let hr_stat_node hr = Stat.activity_stat hr_stat (hr_stat_value hr)
 
 let distance_stat_value distance =
   let distance =
@@ -61,10 +136,8 @@ let distance_stat_value distance =
   in
   sprintf "%.2f" distance
 
-let distance_stat distance =
-  activity_stat ~stat_name:"Distance" ~stat_description:"Distance (km)"
-    ~stat_icon_path:"/static/assets/distance.png"
-    ~stat_value:(distance_stat_value distance)
+let distance_stat_node distance =
+  Stat.activity_stat distance_stat (distance_stat_value distance)
 
 let pace_stat_value avg =
   let secs_per_km = Int.of_float (Float.round_down (1000.0 /. avg)) in
@@ -75,17 +148,12 @@ let pace_stat_value avg =
 let speed_stat_value avg =
   sprintf "%.1f" Float.(round_significant ~significant_digits:3 (avg * 3.6))
 
-let speed_pace_stat activity_type avg =
+let speed_pace_stat_node activity_type value =
   match activity_type with
   | Models.Strava_models.Run | Models.Strava_models.TrailRun
   | Models.Strava_models.VirtualRun ->
-      activity_stat ~stat_name:"Pace" ~stat_description:"Pace (min/km)"
-        ~stat_icon_path:"/static/assets/pace.png"
-        ~stat_value:(pace_stat_value avg)
-  | _ ->
-      activity_stat ~stat_name:"Speed" ~stat_description:"Speed (kph)"
-        ~stat_icon_path:"/static/assets/speed.png"
-        ~stat_value:(speed_stat_value avg)
+      Stat.activity_stat pace_stat (pace_stat_value value)
+  | _ -> Stat.activity_stat speed_stat (speed_stat_value value)
 
 let calculate_calories ~(athlete : Models.Strava_models.StravaAthlete.t)
     ?(multiplier = 0.80) ~(avg_hr : int) ~(duration : int) () =
@@ -123,17 +191,13 @@ let calories_stat_value ~(athlete : Models.Strava_models.StravaAthlete.t)
     ?(multiplier = 0.80) ~(avg_hr : int) ~(duration : int) () =
   calculate_calories ~athlete ~multiplier ~avg_hr ~duration ()
 
-let calories_stat_from_total calories =
-  activity_stat ~stat_name:"Calories" ~stat_description:"Calories"
-    ~stat_icon_path:"/static/assets/calories.png"
-    ~stat_value:(Int.to_string calories)
+let calories_stat_from_total_node calories =
+  Stat.activity_stat calories_stat (Int.to_string calories)
 
-let calories_stat ~(athlete : Models.Strava_models.StravaAthlete.t)
+let calories_stat_node ~(athlete : Models.Strava_models.StravaAthlete.t)
     ~(avg_hr : int) ~(duration : int) () =
-  calories_stat_from_total (calories_stat_value ~athlete ~avg_hr ~duration ())
+  calories_stat_from_total_node
+    (calories_stat_value ~athlete ~avg_hr ~duration ())
 
-let elevation_stat elev_gain elev_loss =
-  activity_stat ~stat_name:"Elevation"
-    ~stat_description:"Elevation gain & loss (m)"
-    ~stat_icon_path:"/static/assets/elevation.png"
-    ~stat_value:(sprintf "+%d/-%d" elev_gain elev_loss)
+let elev_gain_loss_stat_node elev_gain elev_loss =
+  Stat.activity_stat elev_gain_loss_stat (sprintf "+%d/-%d" elev_gain elev_loss)
