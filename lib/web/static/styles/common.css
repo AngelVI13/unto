@@ -23,7 +23,37 @@ body {
   height: auto;
 }
 
+.stat-icon-img {
+  padding-left: 5px;
+  width: 20px;
+  height: auto;
+}
+
 .card {
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.activityCardStat {
+  display: flex;
+  justify-content: space-between;
+}
+
+.activityCardStat .statNameText {
+  display: none;
+}
+
+.activityCardStat .statNameIcon {
+  display: inline;
+}
+
+.activityCardStatName {
+  font-weight: bold;
+  padding-left: 5px;
+}
+
+.activityCardStatValue {
+  padding-right: 5px;
+  text-align: right;
+  font-style: italic;
 }

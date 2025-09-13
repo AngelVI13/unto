@@ -70,12 +70,6 @@
   height: auto;
 }
 
-.stat-icon-img {
-  padding-left: 5px;
-  width: 20px;
-  height: auto;
-}
-
 .activityType {
   font-weight: bold;
   border-bottom: 2px solid black;
@@ -83,11 +77,6 @@
 
 .activityHeader {
   margin-bottom: 10px;
-}
-
-.activityCardStat {
-  display: flex;
-  justify-content: space-between;
 }
 
 .dayOfTheWeekLong {
@@ -100,25 +89,6 @@
 
 .dayOfTheWeekShort {
   display: none;
-}
-
-.activityCardStat .statNameText {
-  display: inline;
-}
-
-.activityCardStat .statNameIcon {
-  display: none;
-}
-
-.activityCardStatName {
-  font-weight: bold;
-  padding-left: 5px;
-}
-
-.activityCardStatValue {
-  padding-right: 5px;
-  text-align: right;
-  font-style: italic;
 }
 
 .stats {

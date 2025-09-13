@@ -50,14 +50,18 @@
   font-style: italic;
 }
 
-.mapImg {
-  width: 400px;
-  height: auto;
-}
-
 #map {
   height: 380px;
   width: 380px;
+}
+
+.activityCardStats {
+  width: 30vw;
+}
+
+.activityCardStat .statNameText {
+  /* TODO: should we display both the text and icon here ? */
+  /* display: inline; */
 }
 
 @media screen and (max-width: 930px) {

@@ -49,7 +49,7 @@ let activity_map (locations : float list list option) =
       let map_script = activity_map_script locs in
       null [ div [ id "map" ] []; script [] "%s" map_script ]
 
-let activity_details (activity : Models.Activity.t) =
+let activity_details_card (activity : Models.Activity.t) =
   let icon_background, img_src = Helpers.activity_icon_and_color activity in
 
   (* this is list of lat lng points (to draw a map) if they exist for the activity *)
@@ -80,23 +80,67 @@ let activity_details (activity : Models.Activity.t) =
       activity_map locations;
     ]
 
-let activity_stats (activity : Models.Activity.t) =
-  let _ = activity in
-  div [] [ txt "Activity Stats" ]
+let activity_stats ~sport_type
+    (athlete : Models.Strava_models.StravaAthlete.t option)
+    (stats : Models.Stats.t) =
+  let _ = sport_type in
+  let duration = Some (Helpers.duration_stat stats.moving_time) in
+  let calories =
+    match stats.average_heartrate with
+    | None -> None
+    | Some avg ->
+        let calories =
+          match athlete with
+          | None -> None
+          | Some athl ->
+              Some
+                (Helpers.calories_stat ~athlete:athl ~avg_hr:avg
+                   ~duration:stats.moving_time ())
+        in
+        calories
+  in
+
+  let distance, elevation =
+    match stats.distance with
+    | None -> (None, None)
+    | Some distance ->
+        let distance = Some (Helpers.distance_stat distance) in
+        (* NOTE: elevation data can be available for all activities that are
+           recorded with a watch with a barometer but we only want to show
+           elevation gain/loss data in the case of activities with recorded
+           distance (runs, bike rides etc.) and not for gym or other related
+           activities *)
+        let elevation =
+          match (stats.elev_gain, stats.elev_loss) with
+          | None, None -> None
+          | Some gain, Some loss -> Some (Helpers.elevation_stat gain loss)
+          | _, _ -> assert false
+        in
+        (distance, elevation)
+  in
+
+  List.filter_opt [ duration; distance; elevation; calories ]
+
+let activity_stats_card (athlete : Models.Strava_models.StravaAthlete.t option)
+    (activity : Models.Activity.t) =
+  div
+    [ class_ "card activityCardStats" ]
+    (activity_stats ~sport_type:activity.sport_type athlete activity.stats)
 
 let activity_graphs (activity : Models.Activity.t) =
   let _ = activity in
   div [] [ txt "Activity Graphs" ]
 
-let activity_grid (activity : Models.Activity.t option) =
+let activity_grid (athlete : Models.Strava_models.StravaAthlete.t option)
+    (activity : Models.Activity.t option) =
   match activity with
   | None -> div [] [ txt "no such activity" ]
   | Some activity ->
       div
         [ class_ "activityGrid" ]
         [
-          activity_details activity;
-          activity_stats activity;
+          activity_details_card activity;
+          activity_stats_card athlete activity;
           activity_graphs activity;
         ]
 
@@ -131,5 +175,5 @@ let activity_page (athlete : Models.Strava_models.StravaAthlete.t option)
     [ lang "en" ]
     [
       head [] (head_elems ());
-      body [] [ Header.header_ athlete_name; activity_grid activity ];
+      body [] [ Header.header_ athlete_name; activity_grid athlete activity ];
     ]
