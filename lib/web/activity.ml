@@ -255,9 +255,9 @@ let activity_stats_card (athlete : Models.Strava_models.StravaAthlete.t option)
   in
   div [ class_ "card activityCardStats" ] nodes
 
-let activity_graphs (activity : Models.Activity.t) =
+let activity_graphs_card (activity : Models.Activity.t) =
   let _ = activity in
-  div [] [ txt "Activity Graphs" ]
+  div [ class_ "card" ] [ txt "Activity Graphs" ]
 
 let activity_grid (athlete : Models.Strava_models.StravaAthlete.t option)
     (activity : Models.Activity.t option) =
@@ -269,7 +269,7 @@ let activity_grid (athlete : Models.Strava_models.StravaAthlete.t option)
         [
           activity_details_card activity;
           activity_stats_card athlete activity;
-          activity_graphs activity;
+          activity_graphs_card activity;
         ]
 
 let head_elems () =
