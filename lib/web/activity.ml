@@ -38,6 +38,16 @@ var polyline = L.polyline(latlngs, {color: 'red'}).addTo(map);
 
 // zoom the map to the polyline
 map.fitBounds(polyline.getBounds());
+
+var routeCenter = map.getCenter();
+var routeZoom = map.getZoom();
+
+L.control.resetView({
+    position: "topleft",
+    title: "Reset view",
+    latlng: routeCenter,
+    zoom: routeZoom,
+}).addTo(map);
   |}
   in
   pretxt ^ latlng_str ^ posttext
@@ -83,9 +93,14 @@ let activity_details_card (activity : Models.Activity.t) =
       activity_map locations;
     ]
 
-let activity_stats (athlete : Models.Strava_models.StravaAthlete.t option)
+let activity_base_stats_table
+    (athlete : Models.Strava_models.StravaAthlete.t option)
     (stats : Models.Stats.t) =
-  let duration = Some (Helpers.duration_stat_node stats.moving_time) in
+  let duration =
+    Some
+      (Helpers.Stat.value_row Helpers.duration_stat
+         ~value:(Helpers.duration_stat_value stats.moving_time))
+  in
   let calories =
     match stats.average_heartrate with
     | None -> None
@@ -95,8 +110,11 @@ let activity_stats (athlete : Models.Strava_models.StravaAthlete.t option)
           | None -> None
           | Some athl ->
               Some
-                (Helpers.calories_stat_node ~athlete:athl ~avg_hr:avg
-                   ~duration:stats.moving_time ())
+                (Helpers.Stat.value_row Helpers.calories_stat
+                   ~value:
+                     (Int.to_string
+                        (Helpers.calories_stat_value ~athlete:athl ~avg_hr:avg
+                           ~duration:stats.moving_time ())))
         in
         calories
   in
@@ -105,7 +123,11 @@ let activity_stats (athlete : Models.Strava_models.StravaAthlete.t option)
     match stats.distance with
     | None -> (None, None)
     | Some distance ->
-        let distance = Some (Helpers.distance_stat_node distance) in
+        let distance =
+          Some
+            (Helpers.Stat.value_row Helpers.distance_stat
+               ~value:(Helpers.distance_stat_value distance))
+        in
         (* NOTE: elevation data can be available for all activities that are
            recorded with a watch with a barometer but we only want to show
            elevation gain/loss data in the case of activities with recorded
@@ -115,13 +137,24 @@ let activity_stats (athlete : Models.Strava_models.StravaAthlete.t option)
           match (stats.elev_gain, stats.elev_loss) with
           | None, None -> None
           | Some gain, Some loss ->
-              Some (Helpers.elev_gain_loss_stat_node gain loss)
+              Some
+                (Helpers.Stat.value_row Helpers.elev_gain_loss_stat
+                   ~value:(Helpers.elev_gain_loss_stat_value gain loss))
           | _, _ -> assert false
         in
         (distance, elevation)
   in
 
-  List.filter_opt [ duration; distance; elevation; calories ]
+  let nodes = List.filter_opt [ duration; distance; elevation; calories ] in
+  div
+    [ class_ "baseStatsTable" ]
+    [
+      table []
+        [
+          thead [] [ tr [] [ th [] [ txt "" ]; th [] [ txt "Value" ] ] ];
+          tbody [] nodes;
+        ];
+    ]
 
 let activity_stats_table (activity : Models.Activity.t) =
   let hr_row =
@@ -129,7 +162,7 @@ let activity_stats_table (activity : Models.Activity.t) =
     | None, None -> None
     | Some hr_max, Some hr_avg ->
         Some
-          (Helpers.Stat.row Helpers.hr_stat ~min_value:"-"
+          (Helpers.Stat.min_max_avg_row Helpers.hr_stat ~min_value:"-"
              ~max_value:(Helpers.hr_stat_value hr_max)
              ~avg_value:(Helpers.hr_stat_value hr_avg))
     | _, _ -> assert false
@@ -143,11 +176,11 @@ let activity_stats_table (activity : Models.Activity.t) =
           match activity.sport_type with
           | Models.Strava_models.Run | Models.Strava_models.TrailRun
           | Models.Strava_models.VirtualRun ->
-              Helpers.Stat.row Helpers.pace_stat ~min_value:"-"
+              Helpers.Stat.min_max_avg_row Helpers.pace_stat ~min_value:"-"
                 ~max_value:(Helpers.pace_stat_value speed_max)
                 ~avg_value:(Helpers.pace_stat_value speed_avg)
           | _ ->
-              Helpers.Stat.row Helpers.speed_stat ~min_value:"-"
+              Helpers.Stat.min_max_avg_row Helpers.speed_stat ~min_value:"-"
                 ~max_value:(Helpers.speed_stat_value speed_max)
                 ~avg_value:(Helpers.speed_stat_value speed_avg)
         in
@@ -160,7 +193,7 @@ let activity_stats_table (activity : Models.Activity.t) =
     | None, None -> None
     | Some pwr_max, Some pwr_avg ->
         Some
-          (Helpers.Stat.row Helpers.power_stat ~min_value:"-"
+          (Helpers.Stat.min_max_avg_row Helpers.power_stat ~min_value:"-"
              ~max_value:(Helpers.power_stat_value pwr_max)
              ~avg_value:(Helpers.power_stat_value pwr_avg))
     | _, _ -> assert false
@@ -171,7 +204,7 @@ let activity_stats_table (activity : Models.Activity.t) =
     | None, None -> None
     | Some cad_max, Some cad_avg ->
         Some
-          (Helpers.Stat.row Helpers.cadence_stat ~min_value:"-"
+          (Helpers.Stat.min_max_avg_row Helpers.cadence_stat ~min_value:"-"
              ~max_value:(Helpers.cadence_stat_value cad_max)
              ~avg_value:(Helpers.cadence_stat_value cad_avg))
     | _, _ -> assert false
@@ -182,7 +215,7 @@ let activity_stats_table (activity : Models.Activity.t) =
     | None, None -> None
     | Some elev_max, Some elev_min ->
         Some
-          (Helpers.Stat.row Helpers.elevation_stat
+          (Helpers.Stat.min_max_avg_row Helpers.elevation_stat
              ~min_value:(Helpers.elevation_stat_value elev_min)
              ~max_value:(Helpers.elevation_stat_value elev_max)
              ~avg_value:"-")
@@ -193,9 +226,8 @@ let activity_stats_table (activity : Models.Activity.t) =
     List.filter_opt
       [ hr_row; speed_pace_row; power_row; cadence_row; elevation_row ]
   in
-  (* speed/pace, hr, power, elev,  *)
   div
-    [ class_ "statsTable" ]
+    [ class_ "minMaxAvgStatsTable" ]
     [
       table []
         [
@@ -216,7 +248,10 @@ let activity_stats_table (activity : Models.Activity.t) =
 let activity_stats_card (athlete : Models.Strava_models.StravaAthlete.t option)
     (activity : Models.Activity.t) =
   let nodes =
-    activity_stats athlete activity.stats @ [ activity_stats_table activity ]
+    [
+      activity_base_stats_table athlete activity.stats;
+      activity_stats_table activity;
+    ]
   in
   div [ class_ "card activityCardStats" ] nodes
 
@@ -251,6 +286,15 @@ let head_elems () =
         href "/static/leaflet/dist/leaflet.css";
       ];
     script [ src "%s" "/static/leaflet/dist/leaflet.js" ] "";
+    link
+      [
+        rel "stylesheet";
+        type_ "text/css";
+        href "/static/Leaflet.ResetView/dist/L.Control.ResetView.min.css";
+      ];
+    script
+      [ src "%s" "/static/Leaflet.ResetView/dist/L.Control.ResetView.min.js" ]
+      "";
     link
       [ rel "stylesheet"; type_ "text/css"; href "/static/styles/common.css" ];
     link

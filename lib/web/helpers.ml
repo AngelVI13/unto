@@ -39,7 +39,26 @@ module Stat = struct
         span [ class_ "activityCardStatValue" ] [ txt "%s" value ];
       ]
 
-  let row (t : t) ~(min_value : string) ~(max_value : string)
+  let value_row (t : t) ~(value : string) =
+    tr []
+      [
+        td []
+          [
+            span
+              [ class_ "activityCardStatName statNameIcon" ]
+              [
+                img
+                  [
+                    class_ "stat-icon-img";
+                    title_ "%s" t.description;
+                    src "%s" t.icon_path;
+                  ];
+              ];
+          ];
+        td [] [ txt "%s" value ];
+      ]
+
+  let min_max_avg_row (t : t) ~(min_value : string) ~(max_value : string)
       ~(avg_value : string) =
     tr []
       [
@@ -199,5 +218,9 @@ let calories_stat_node ~(athlete : Models.Strava_models.StravaAthlete.t)
   calories_stat_from_total_node
     (calories_stat_value ~athlete ~avg_hr ~duration ())
 
+let elev_gain_loss_stat_value elev_gain elev_loss =
+  sprintf "+%d/-%d" elev_gain elev_loss
+
 let elev_gain_loss_stat_node elev_gain elev_loss =
-  Stat.activity_stat elev_gain_loss_stat (sprintf "+%d/-%d" elev_gain elev_loss)
+  Stat.activity_stat elev_gain_loss_stat
+    (elev_gain_loss_stat_value elev_gain elev_loss)

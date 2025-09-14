@@ -62,21 +62,34 @@
   width: 30vw;
 }
 
+.baseStatsTable {
+  border-bottom: 2px solid black;
+  padding-bottom: 15px;
+  margin-bottom: 10px;
+}
+
 table {
   table-layout: fixed;
   width: 80%;
-  /* min-width: 1000px; */
   margin: 0 auto;
   border-collapse: collapse;
 }
 
+tbody tr:nth-child(even) {
+  background-color: var(--light-highlight);
+}
+
 th,
 td {
-  padding: 0.6em;
+  padding: 0.2em;
 }
 
 tr {
   text-align: center;
+}
+
+tfoot {
+  border-top: 1px solid #999999;
 }
 
 .activityCardStat .statNameText {
