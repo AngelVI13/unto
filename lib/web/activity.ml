@@ -278,6 +278,12 @@ let head_elems () =
     title [] "Unto";
     link
       [
+        rel "icon";
+        type_ "image/x-icon";
+        href "/static/assets/favicon_32x32.ico";
+      ];
+    link
+      [
         rel "stylesheet";
         type_ "text/css";
         href "/static/leaflet/dist/leaflet.css";
