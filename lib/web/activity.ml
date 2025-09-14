@@ -59,9 +59,6 @@ let activity_map (locations : float list list option) =
       let map_script = activity_map_script locs in
       null [ div [ id "map" ] []; script [] "%s" map_script ]
 
-(* TODO: in cases of crosstrain or elliptical this card stays same size
-   as stats card and it makes each div from it to have a lot of spacing
-   around *)
 let activity_details_card (activity : Models.Activity.t) =
   let icon_background, img_src = Helpers.activity_icon_and_color activity in
 
