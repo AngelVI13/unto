@@ -252,9 +252,140 @@ let activity_stats_card (athlete : Models.Strava_models.StravaAthlete.t option)
   in
   div [ class_ "card activityCardStats" ] nodes
 
+module GraphData = struct
+  let dataset ?(fill = false) ~(label : string) ~(data : string) () =
+    sprintf
+      {|
+        {
+          label: %s,
+          fill: %s,
+          data: [%s],
+          borderWidth: 1,
+          pointStyle: false,
+          yAxisID: %s
+        },
+      |}
+      label (Bool.to_string fill) data label
+
+  let scale ?(to_left = false) ~(y_axis_id : string) () =
+    let position = if to_left then "'left'" else "'right'" in
+    sprintf
+      {|
+      %s: {
+        type: 'linear',
+        display: true,
+        position: %s,
+      },
+      |}
+      y_axis_id position
+
+  let of_streams streams =
+    let streams =
+      List.filter
+        ~f:(fun stream ->
+          match stream with
+          (* TODO: support these as well *)
+          (* | Models.Streams.StreamType.WattsStream  _  *)
+          (* | Models.Streams.StreamType.VelocityStream _ *)
+          | Models.Streams.StreamType.TimeStream _
+          | Models.Streams.StreamType.AltitudeStream _
+          | Models.Streams.StreamType.HeartRateStream _ ->
+              true
+          | _ -> false)
+        streams
+    in
+    (* TODO: this looks really really bad -> fix it somehow *)
+    (* TODO: add fixed colors to each stream *)
+    let x_labels, y_labels, datasets =
+      List.fold ~init:([], [], [])
+        ~f:(fun (x_labels, y_labels, datasets) stream ->
+          let x_labels, y_label, dataset =
+            match stream with
+            | Models.Streams.StreamType.AltitudeStream s ->
+                let label = "'Altitude'" in
+                let data =
+                  List.fold ~init:""
+                    ~f:(fun acc alt -> acc ^ sprintf "%f," alt)
+                    s.data
+                in
+                let dataset = dataset ~fill:true ~label ~data () in
+                (x_labels, [ label ], [ dataset ])
+            | Models.Streams.StreamType.HeartRateStream s ->
+                let label = "'Heartrate'" in
+                let data =
+                  List.fold ~init:""
+                    ~f:(fun acc v -> acc ^ sprintf "%d," v)
+                    s.data
+                in
+                let dataset = dataset ~label ~data () in
+                (x_labels, [ label ], [ dataset ])
+            | Models.Streams.StreamType.TimeStream s ->
+                let labels =
+                  List.init (List.length s.data) ~f:(fun i ->
+                      sprintf "'%s'" (Helpers.format_activity_duration i))
+                in
+                (labels, [], [])
+            | _ -> assert false
+          in
+          (x_labels, y_labels @ y_label, datasets @ dataset))
+        streams
+    in
+
+    let x_labels = String.concat ~sep:"," x_labels in
+    let y_labels =
+      y_labels
+      |> List.mapi ~f:(fun i y_axis_id -> scale ~to_left:(i = 0) ~y_axis_id ())
+      |> String.concat ~sep:""
+    in
+
+    let datasets =
+      List.fold ~init:"" ~f:(fun acc dataset -> acc ^ dataset) datasets
+    in
+    (x_labels, y_labels, datasets)
+end
+
+let activity_graphs (activity : Models.Activity.t) =
+  let x_labels, y_scales, datasets = GraphData.of_streams activity.streams in
+  sprintf
+    {|
+  const ctx = document.getElementById('streamsChart');
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [%s],
+      datasets: [%s]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Chart.js Line Chart'
+        },
+      },
+      stacked: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      scales: { %s },
+    }
+  });
+    |}
+    x_labels datasets y_scales
+
 let activity_graphs_card (activity : Models.Activity.t) =
-  let _ = activity in
-  div [ class_ "card" ] [ txt "Activity Graphs" ]
+  div
+    [ class_ "card" ]
+    [
+      div
+        [ class_ "graphContainer" ]
+        [
+          canvas [ id "streamsChart" ] [];
+          script [] "%s" (activity_graphs activity);
+        ];
+    ]
 
 let activity_grid (athlete : Models.Strava_models.StravaAthlete.t option)
     (activity : Models.Activity.t option) =
@@ -298,6 +429,7 @@ let head_elems () =
     script
       [ src "%s" "/static/Leaflet.ResetView/dist/L.Control.ResetView.min.js" ]
       "";
+    script [ src "%s" "/static/chart.js/dist/chart.umd.min.js" ] "";
     link
       [ rel "stylesheet"; type_ "text/css"; href "/static/styles/common.css" ];
     link

@@ -93,9 +93,9 @@ tfoot {
   border-top: 1px solid #999999;
 }
 
-.activityCardStat .statNameText {
-  /* TODO: should we display both the text and icon here ? */
-  /* display: inline; */
+#streamsChart {
+  height: 50vh;
+  width: 800px;
 }
 
 @media screen and (max-width: 930px) {
