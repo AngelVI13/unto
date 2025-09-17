@@ -253,33 +253,141 @@ let activity_stats_card (athlete : Models.Strava_models.StravaAthlete.t option)
   div [ class_ "card activityCardStats" ] nodes
 
 module GraphData = struct
-  let dataset ?(fill = false) ~(label : string) ~(data : string) () =
+  type t = {
+    is_xaxis : bool;
+    is_altitude : bool;
+    label : string;
+    data : string;
+    data_labels : string option;
+    color : string;
+    fill : bool;
+  }
+
+  let empty () =
+    {
+      is_xaxis = false;
+      is_altitude = false;
+      label = "";
+      data = "";
+      data_labels = None;
+      color = "";
+      fill = false;
+    }
+
+  let of_stream (stream : Models.Streams.StreamType.t) =
+    match stream with
+    | Models.Streams.StreamType.TimeStream s ->
+        let data = List.init (List.length s.data) ~f:(fun v -> v) in
+        let data_labels =
+          List.fold ~init:""
+            ~f:(fun acc v ->
+              sprintf "%s'%s'," acc (Helpers.format_activity_duration v))
+            data
+        in
+        let data =
+          List.fold ~init:"" ~f:(fun acc v -> acc ^ sprintf "%d," v) data
+        in
+        {
+          is_xaxis = true;
+          is_altitude = false;
+          label = "Time";
+          data;
+          data_labels = Some data_labels;
+          (* NOTE: this is the x-axis so no color or fill *)
+          color = "";
+          fill = false;
+        }
+    | Models.Streams.StreamType.AltitudeStream s ->
+        let data =
+          List.fold ~init:""
+            ~f:(fun acc v ->
+              let alt = Float.to_int (Float.round_down v) in
+              acc ^ sprintf "%d," alt)
+            s.data
+        in
+        {
+          is_xaxis = false;
+          is_altitude = true;
+          label = "Altitude";
+          data;
+          data_labels = None;
+          color = "gray";
+          fill = true;
+        }
+    | Models.Streams.StreamType.HeartRateStream s ->
+        let data =
+          List.fold ~init:"" ~f:(fun acc v -> acc ^ sprintf "%d," v) s.data
+        in
+        {
+          is_xaxis = false;
+          is_altitude = false;
+          label = "Heartrate";
+          data;
+          data_labels = None;
+          color = "red";
+          fill = false;
+        }
+    | _ -> assert false
+
+  let dataset (t : t) =
     sprintf
       {|
         {
-          label: %s,
+          label: '%s',
           fill: %s,
           data: [%s],
           borderWidth: 1,
+          backgroundColor: '%s',
+          borderColor: '%s',
           pointStyle: false,
-          yAxisID: %s
+          yAxisID: '%s'
         },
       |}
-      label (Bool.to_string fill) data label
+      t.label (Bool.to_string t.fill) t.data t.color t.color t.label
 
-  let scale ?(to_left = false) ~(y_axis_id : string) () =
-    let position = if to_left then "'left'" else "'right'" in
+  let scale ?(to_left = false) (t : t) =
+    let position = if to_left then "left" else "right" in
+    let grid_lines =
+      if not to_left then
+        {|
+        // grid line settings
+        grid: {
+          drawOnChartArea: false, // only want the grid lines for one axis to show up
+        },
+    |}
+      else ""
+    in
     sprintf
       {|
-      %s: {
+      '%s': {
         type: 'linear',
         display: true,
-        position: %s,
+        position: '%s',
+        %s
       },
       |}
-      y_axis_id position
+      t.label position grid_lines
+end
 
-  let of_streams streams =
+module Graph = struct
+  type t = {
+    show_altitude : bool;
+    x_axis : GraphData.t;
+    lines : GraphData.t list;
+  }
+
+  let empty () =
+    { show_altitude = false; x_axis = GraphData.empty (); lines = [] }
+
+  let add_stream (acc : t) (stream : Models.Streams.StreamType.t) =
+    let line = GraphData.of_stream stream in
+    match stream with
+    | Models.Streams.StreamType.TimeStream _ -> { acc with x_axis = line }
+    | Models.Streams.StreamType.VelocityStream _ ->
+        { acc with show_altitude = true; lines = line :: acc.lines }
+    | _ -> { acc with lines = line :: acc.lines }
+
+  let of_streams (streams : Models.Streams.StreamType.t list) =
     let streams =
       List.filter
         ~f:(fun stream ->
@@ -294,60 +402,34 @@ module GraphData = struct
           | _ -> false)
         streams
     in
-    (* TODO: this looks really really bad -> fix it somehow *)
-    (* TODO: add fixed colors to each stream *)
-    let x_labels, y_labels, datasets =
-      List.fold ~init:([], [], [])
-        ~f:(fun (x_labels, y_labels, datasets) stream ->
-          let x_labels, y_label, dataset =
-            match stream with
-            | Models.Streams.StreamType.AltitudeStream s ->
-                let label = "'Altitude'" in
-                let data =
-                  List.fold ~init:""
-                    ~f:(fun acc alt -> acc ^ sprintf "%f," alt)
-                    s.data
-                in
-                let dataset = dataset ~fill:true ~label ~data () in
-                (x_labels, [ label ], [ dataset ])
-            | Models.Streams.StreamType.HeartRateStream s ->
-                let label = "'Heartrate'" in
-                let data =
-                  List.fold ~init:""
-                    ~f:(fun acc v -> acc ^ sprintf "%d," v)
-                    s.data
-                in
-                let dataset = dataset ~label ~data () in
-                (x_labels, [ label ], [ dataset ])
-            | Models.Streams.StreamType.TimeStream s ->
-                let labels =
-                  List.init (List.length s.data) ~f:(fun i ->
-                      sprintf "'%s'" (Helpers.format_activity_duration i))
-                in
-                (labels, [], [])
-            | _ -> assert false
-          in
-          (x_labels, y_labels @ y_label, datasets @ dataset))
-        streams
+    let graph = List.fold ~init:(empty ()) ~f:add_stream streams in
+    let lines =
+      List.filter
+        ~f:(fun line ->
+          if graph.show_altitude then true
+          else if (not graph.show_altitude) && line.is_altitude then false
+          else true)
+        graph.lines
     in
+    (* TODO: in cases when we only have heart rate date we have to fix the
+       y_axis to something reasonable otherwise it looks like an ECG line  *)
+    (* TODO: have fixed values of x_axis i.e. every 5 mins or sth like that *)
+    { graph with lines }
 
-    let x_labels = String.concat ~sep:"," x_labels in
-    let y_labels =
-      y_labels
-      |> List.mapi ~f:(fun i y_axis_id -> scale ~to_left:(i = 0) ~y_axis_id ())
-      |> String.concat ~sep:""
-    in
+  let x_axis_labels (t : t) = Option.value_exn t.x_axis.data_labels
 
-    let datasets =
-      List.fold ~init:"" ~f:(fun acc dataset -> acc ^ dataset) datasets
-    in
-    (x_labels, y_labels, datasets)
-end
+  let datasets (t : t) =
+    t.lines |> List.map ~f:(fun line -> GraphData.dataset line) |> String.concat
 
-let activity_graphs (activity : Models.Activity.t) =
-  let x_labels, y_scales, datasets = GraphData.of_streams activity.streams in
-  sprintf
-    {|
+  let scales (t : t) =
+    t.lines
+    |> List.mapi ~f:(fun i line -> GraphData.scale ~to_left:(i = 0) line)
+    |> String.concat
+
+  let script_of_activity (activity : Models.Activity.t) =
+    let graph = of_streams activity.streams in
+    sprintf
+      {|
   const ctx = document.getElementById('streamsChart');
 
   new Chart(ctx, {
@@ -373,7 +455,11 @@ let activity_graphs (activity : Models.Activity.t) =
     }
   });
     |}
-    x_labels datasets y_scales
+      (x_axis_labels graph) (datasets graph) (scales graph)
+end
+
+let activity_graphs (activity : Models.Activity.t) =
+  Graph.script_of_activity activity
 
 let activity_graphs_card (activity : Models.Activity.t) =
   div
@@ -387,6 +473,10 @@ let activity_graphs_card (activity : Models.Activity.t) =
         ];
     ]
 
+let activity_laps_splits_card (activity : Models.Activity.t) =
+  let _ = activity in
+  div [ class_ "card" ] [ txt "Activity laps and splits" ]
+
 let activity_grid (athlete : Models.Strava_models.StravaAthlete.t option)
     (activity : Models.Activity.t option) =
   match activity with
@@ -398,6 +488,7 @@ let activity_grid (athlete : Models.Strava_models.StravaAthlete.t option)
           activity_details_card activity;
           activity_stats_card athlete activity;
           activity_graphs_card activity;
+          activity_laps_splits_card activity;
         ]
 
 let head_elems () =
