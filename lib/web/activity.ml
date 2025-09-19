@@ -303,13 +303,6 @@ module GraphData = struct
           data;
           data_labels = Some data_labels;
           display = true;
-          extra_scale_fields =
-            [
-              {| ticks: {
-          // forces step size to be 50 units
-          stepSize: 300
-            },|};
-            ];
         }
     | Models.Streams.StreamType.AltitudeStream s ->
         let smoothing_window = 5 in
@@ -317,11 +310,7 @@ module GraphData = struct
           Utils.moving_average (module Utils.FloatOps) smoothing_window s.data
         in
         let data =
-          List.fold ~init:""
-            ~f:(fun acc v ->
-              let alt = Float.to_int (Float.round_down v) in
-              acc ^ sprintf "%d," alt)
-            data
+          List.fold ~init:"" ~f:(fun acc v -> acc ^ sprintf "%f," v) data
         in
         let t = empty () in
         {
@@ -329,12 +318,12 @@ module GraphData = struct
           is_altitude = true;
           label = "Altitude";
           data;
-          color = "gray";
+          (* gray *)
+          color = "rgba(128, 128, 128)";
           display = true;
           fill = true;
         }
     | Models.Streams.StreamType.HeartRateStream s ->
-        (* TODO: should i keep this smoothing, it makes the data a bit more readable *)
         let smoothing_window = 5 in
         let data =
           Utils.moving_average (module Utils.IntOps) smoothing_window s.data
@@ -347,11 +336,13 @@ module GraphData = struct
           t with
           label = "Heartrate";
           data;
-          color = "#ff6384";
+          (* red *)
+          color = "rgba(255, 99, 132)";
           display = true;
-          extra_dataset_fields =
-            [ "cubicInterpolationMode: 'monotone',"; "tension: 0.8," ];
-          extra_scale_fields = [ sprintf "min: %d," 70; sprintf "max: %d," 200 ];
+          fill = true;
+          extra_dataset_fields = [];
+          extra_scale_fields =
+            [ sprintf "suggestedMin: %d," 90; sprintf "suggestedMax: %d," 190 ];
         }
     | Models.Streams.StreamType.VelocityStream s ->
         let smoothing_window = 15 in
@@ -362,10 +353,24 @@ module GraphData = struct
           List.fold ~init:"" ~f:(fun acc v -> acc ^ sprintf "%f," v) data
         in
         let t = empty () in
-        { t with label = "Velocity"; data; color = "#36a2eb"; display = false }
+        {
+          t with
+          label = "Velocity";
+          data;
+          fill = true;
+          (* blue *)
+          color = "rgba(54, 162, 235)";
+          (* TODO: this display is not doing anything and I need the flag to
+             work because by default we should disable temp and power and
+             others ??? *)
+          display = false;
+        }
     | _ -> assert false
 
   let dataset (t : t) =
+    let fill_color =
+      String.substr_replace_first ~pattern:")" ~with_:", 0.2)" t.color
+    in
     sprintf
       {|
         {
@@ -374,12 +379,13 @@ module GraphData = struct
           data: [%s],
           borderWidth: 1,
           borderColor: '%s',
+          backgroundColor: '%s',
           pointStyle: false,
           yAxisID: '%s',
           %s
         },
       |}
-      t.label (Bool.to_string t.fill) t.data t.color t.label
+      t.label (Bool.to_string t.fill) t.data t.color fill_color t.label
       (String.concat ~sep:"\n" t.extra_dataset_fields)
 
   let scale ?(to_left = false) (t : t) =
@@ -428,17 +434,19 @@ module Graph = struct
         { acc with show_altitude = true; lines = line :: acc.lines }
     | _ -> { acc with lines = line :: acc.lines }
 
-  let of_streams ~(sport_type : Models.Strava_models.sportType)
+  let of_streams ~(activity : Models.Activity.t)
       (streams : Models.Streams.StreamType.t list) =
+    let sport_type = activity.sport_type in
     let streams =
       List.filter
         ~f:(fun stream ->
-          match stream with
           (* TODO: support these as well *)
           (* | Models.Streams.StreamType.WattsStream  _  *)
+          match stream with
           | Models.Streams.StreamType.VelocityStream _
+          | Models.Streams.StreamType.AltitudeStream _ ->
+              Option.is_some activity.stats.average_speed
           | Models.Streams.StreamType.TimeStream _
-          | Models.Streams.StreamType.AltitudeStream _
           | Models.Streams.StreamType.HeartRateStream _ ->
               true
           | _ -> false)
@@ -447,18 +455,8 @@ module Graph = struct
     let graph =
       List.fold ~init:(empty ()) ~f:(add_stream ~sport_type) streams
     in
-    let lines =
-      List.filter
-        ~f:(fun line ->
-          if graph.show_altitude then true
-          else if (not graph.show_altitude) && line.is_altitude then false
-          else true)
-        graph.lines
-    in
-    (* TODO: in cases when we only have heart rate date we have to fix the
-       y_axis to something reasonable otherwise it looks like an ECG line  *)
     (* TODO: have fixed values of x_axis i.e. every 5 mins or sth like that *)
-    { graph with lines }
+    graph
 
   let x_axis_labels (t : t) = Option.value_exn t.x_axis.data_labels
 
@@ -471,7 +469,7 @@ module Graph = struct
     |> String.concat
 
   let script_of_activity (activity : Models.Activity.t) =
-    let graph = of_streams ~sport_type:activity.sport_type activity.streams in
+    let graph = of_streams ~activity activity.streams in
     sprintf
       {|
   const ctx = document.getElementById('streamsChart');
