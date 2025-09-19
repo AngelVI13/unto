@@ -317,6 +317,12 @@ let head_elems () =
     meta [ http_equiv `content_type; content "text/html; charset=UTF-8" ];
     meta [ charset "UTF-8" ];
     meta [ name "viewport"; content "width=device-width, initial-scale=1.0" ];
+    link
+      [
+        rel "icon";
+        type_ "image/x-icon";
+        href "/static/assets/favicon_32x32.ico";
+      ];
     title [] "Unto";
     link
       [ rel "stylesheet"; type_ "text/css"; href "/static/styles/common.css" ];

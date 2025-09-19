@@ -260,7 +260,10 @@ module GraphData = struct
     data : string;
     data_labels : string option;
     color : string;
+    display : bool;
     fill : bool;
+    extra_dataset_fields : string list;
+    extra_scale_fields : string list;
   }
 
   let empty () =
@@ -271,10 +274,15 @@ module GraphData = struct
       data = "";
       data_labels = None;
       color = "";
+      display = false;
       fill = false;
+      extra_dataset_fields = [];
+      extra_scale_fields = [];
     }
 
-  let of_stream (stream : Models.Streams.StreamType.t) =
+  let of_stream ~(sport_type : Models.Strava_models.sportType)
+      (stream : Models.Streams.StreamType.t) =
+    let _ = sport_type in
     match stream with
     | Models.Streams.StreamType.TimeStream s ->
         let data = List.init (List.length s.data) ~f:(fun v -> v) in
@@ -287,46 +295,74 @@ module GraphData = struct
         let data =
           List.fold ~init:"" ~f:(fun acc v -> acc ^ sprintf "%d," v) data
         in
+        let t = empty () in
         {
+          t with
           is_xaxis = true;
-          is_altitude = false;
           label = "Time";
           data;
           data_labels = Some data_labels;
-          (* NOTE: this is the x-axis so no color or fill *)
-          color = "";
-          fill = false;
+          display = true;
+          extra_scale_fields =
+            [
+              {| ticks: {
+          // forces step size to be 50 units
+          stepSize: 300
+            },|};
+            ];
         }
     | Models.Streams.StreamType.AltitudeStream s ->
+        let smoothing_window = 5 in
+        let data =
+          Utils.moving_average (module Utils.FloatOps) smoothing_window s.data
+        in
         let data =
           List.fold ~init:""
             ~f:(fun acc v ->
               let alt = Float.to_int (Float.round_down v) in
               acc ^ sprintf "%d," alt)
-            s.data
+            data
         in
+        let t = empty () in
         {
-          is_xaxis = false;
+          t with
           is_altitude = true;
           label = "Altitude";
           data;
-          data_labels = None;
           color = "gray";
+          display = true;
           fill = true;
         }
     | Models.Streams.StreamType.HeartRateStream s ->
+        (* TODO: should i keep this smoothing, it makes the data a bit more readable *)
+        let smoothing_window = 5 in
         let data =
-          List.fold ~init:"" ~f:(fun acc v -> acc ^ sprintf "%d," v) s.data
+          Utils.moving_average (module Utils.IntOps) smoothing_window s.data
         in
+        let data =
+          List.fold ~init:"" ~f:(fun acc v -> acc ^ sprintf "%d," v) data
+        in
+        let t = empty () in
         {
-          is_xaxis = false;
-          is_altitude = false;
+          t with
           label = "Heartrate";
           data;
-          data_labels = None;
-          color = "red";
-          fill = false;
+          color = "#ff6384";
+          display = true;
+          extra_dataset_fields =
+            [ "cubicInterpolationMode: 'monotone',"; "tension: 0.8," ];
+          extra_scale_fields = [ sprintf "min: %d," 70; sprintf "max: %d," 200 ];
         }
+    | Models.Streams.StreamType.VelocityStream s ->
+        let smoothing_window = 15 in
+        let data =
+          Utils.moving_average (module Utils.FloatOps) smoothing_window s.data
+        in
+        let data =
+          List.fold ~init:"" ~f:(fun acc v -> acc ^ sprintf "%f," v) data
+        in
+        let t = empty () in
+        { t with label = "Velocity"; data; color = "#36a2eb"; display = false }
     | _ -> assert false
 
   let dataset (t : t) =
@@ -337,13 +373,14 @@ module GraphData = struct
           fill: %s,
           data: [%s],
           borderWidth: 1,
-          backgroundColor: '%s',
           borderColor: '%s',
           pointStyle: false,
-          yAxisID: '%s'
+          yAxisID: '%s',
+          %s
         },
       |}
-      t.label (Bool.to_string t.fill) t.data t.color t.color t.label
+      t.label (Bool.to_string t.fill) t.data t.color t.label
+      (String.concat ~sep:"\n" t.extra_dataset_fields)
 
   let scale ?(to_left = false) (t : t) =
     let position = if to_left then "left" else "right" in
@@ -361,12 +398,15 @@ module GraphData = struct
       {|
       '%s': {
         type: 'linear',
-        display: true,
+        display: %s,
         position: '%s',
+        %s
         %s
       },
       |}
-      t.label position grid_lines
+      t.label (Bool.to_string t.display) position
+      (String.concat ~sep:"\n" t.extra_scale_fields)
+      grid_lines
 end
 
 module Graph = struct
@@ -379,22 +419,24 @@ module Graph = struct
   let empty () =
     { show_altitude = false; x_axis = GraphData.empty (); lines = [] }
 
-  let add_stream (acc : t) (stream : Models.Streams.StreamType.t) =
-    let line = GraphData.of_stream stream in
+  let add_stream ~(sport_type : Models.Strava_models.sportType) (acc : t)
+      (stream : Models.Streams.StreamType.t) =
+    let line = GraphData.of_stream ~sport_type stream in
     match stream with
     | Models.Streams.StreamType.TimeStream _ -> { acc with x_axis = line }
     | Models.Streams.StreamType.VelocityStream _ ->
         { acc with show_altitude = true; lines = line :: acc.lines }
     | _ -> { acc with lines = line :: acc.lines }
 
-  let of_streams (streams : Models.Streams.StreamType.t list) =
+  let of_streams ~(sport_type : Models.Strava_models.sportType)
+      (streams : Models.Streams.StreamType.t list) =
     let streams =
       List.filter
         ~f:(fun stream ->
           match stream with
           (* TODO: support these as well *)
           (* | Models.Streams.StreamType.WattsStream  _  *)
-          (* | Models.Streams.StreamType.VelocityStream _ *)
+          | Models.Streams.StreamType.VelocityStream _
           | Models.Streams.StreamType.TimeStream _
           | Models.Streams.StreamType.AltitudeStream _
           | Models.Streams.StreamType.HeartRateStream _ ->
@@ -402,7 +444,9 @@ module Graph = struct
           | _ -> false)
         streams
     in
-    let graph = List.fold ~init:(empty ()) ~f:add_stream streams in
+    let graph =
+      List.fold ~init:(empty ()) ~f:(add_stream ~sport_type) streams
+    in
     let lines =
       List.filter
         ~f:(fun line ->
@@ -427,7 +471,7 @@ module Graph = struct
     |> String.concat
 
   let script_of_activity (activity : Models.Activity.t) =
-    let graph = of_streams activity.streams in
+    let graph = of_streams ~sport_type:activity.sport_type activity.streams in
     sprintf
       {|
   const ctx = document.getElementById('streamsChart');
@@ -446,7 +490,7 @@ module Graph = struct
           text: 'Chart.js Line Chart'
         },
       },
-      stacked: false,
+      stacked: true,
       interaction: {
         mode: 'index',
         intersect: false
