@@ -258,10 +258,13 @@ module GraphData = struct
     is_altitude : bool;
     label : string;
     data : string;
+    data_len : int option;
     data_labels : string option;
     color : string;
     display : bool;
     fill : bool;
+    (* The bigger the order value the further in the background the graph appears *)
+    order : int;
     extra_dataset_fields : string list;
     extra_scale_fields : string list;
   }
@@ -272,24 +275,32 @@ module GraphData = struct
       is_altitude = false;
       label = "";
       data = "";
+      data_len = None;
       data_labels = None;
       color = "";
       display = false;
       fill = false;
+      order = 0;
       extra_dataset_fields = [];
       extra_scale_fields = [];
     }
 
-  let of_stream ~(sport_type : Models.Strava_models.sportType)
+  let gray = "rgba(128, 128, 128)"
+  let red = "rgba(255, 99, 132)"
+  let blue = "rgba(54, 162, 235)"
+
+  let of_stream ~(activity : Models.Activity.t)
       (stream : Models.Streams.StreamType.t) =
-    let _ = sport_type in
     match stream with
     | Models.Streams.StreamType.TimeStream s ->
         let data = List.init (List.length s.data) ~f:(fun v -> v) in
+        Dream.log "Time samples %d; Last elmt %d" (List.length data)
+          (List.last_exn data);
         let data_labels =
           List.fold ~init:""
             ~f:(fun acc v ->
-              sprintf "%s'%s'," acc (Helpers.format_activity_duration v))
+              (* sprintf "%s'%s'," acc (Helpers.format_activity_duration v)) *)
+              sprintf "%s%d," acc v)
             data
         in
         let data =
@@ -301,6 +312,7 @@ module GraphData = struct
           is_xaxis = true;
           label = "Time";
           data;
+          data_len = Some (List.length s.data);
           data_labels = Some data_labels;
           display = true;
         }
@@ -312,16 +324,25 @@ module GraphData = struct
         let data =
           List.fold ~init:"" ~f:(fun acc v -> acc ^ sprintf "%f," v) data
         in
+        let grace = 30 in
+        let suggested_min = Option.value_exn activity.stats.elev_high - grace in
+        let suggested_max = Option.value_exn activity.stats.elev_high + grace in
+
         let t = empty () in
         {
           t with
           is_altitude = true;
           label = "Altitude";
           data;
-          (* gray *)
-          color = "rgba(128, 128, 128)";
+          color = gray;
           display = true;
           fill = true;
+          order = 100;
+          extra_scale_fields =
+            [
+              sprintf "suggestedMin: %d," suggested_min;
+              sprintf "suggestedMax: %d," suggested_max;
+            ];
         }
     | Models.Streams.StreamType.HeartRateStream s ->
         let smoothing_window = 5 in
@@ -336,10 +357,10 @@ module GraphData = struct
           t with
           label = "Heartrate";
           data;
-          (* red *)
-          color = "rgba(255, 99, 132)";
+          color = red;
           display = true;
           fill = true;
+          order = 1;
           extra_dataset_fields = [];
           extra_scale_fields =
             [ sprintf "suggestedMin: %d," 90; sprintf "suggestedMax: %d," 190 ];
@@ -358,11 +379,8 @@ module GraphData = struct
           label = "Velocity";
           data;
           fill = true;
-          (* blue *)
-          color = "rgba(54, 162, 235)";
-          (* TODO: this display is not doing anything and I need the flag to
-             work because by default we should disable temp and power and
-             others ??? *)
+          order = 2;
+          color = blue;
           display = false;
         }
     | _ -> assert false
@@ -377,15 +395,20 @@ module GraphData = struct
           label: '%s',
           fill: %s,
           data: [%s],
+          normalized: true,
           borderWidth: 1,
           borderColor: '%s',
           backgroundColor: '%s',
           pointStyle: false,
           yAxisID: '%s',
+          hidden: %s,
+          order: %d,
           %s
         },
       |}
       t.label (Bool.to_string t.fill) t.data t.color fill_color t.label
+      (Bool.to_string (not t.display))
+      t.order
       (String.concat ~sep:"\n" t.extra_dataset_fields)
 
   let scale ?(to_left = false) (t : t) =
@@ -400,6 +423,7 @@ module GraphData = struct
     |}
       else ""
     in
+    (* NOTE: display here controls if the scales are shown and not the dataset itself *)
     sprintf
       {|
       '%s': {
@@ -413,6 +437,38 @@ module GraphData = struct
       t.label (Bool.to_string t.display) position
       (String.concat ~sep:"\n" t.extra_scale_fields)
       grid_lines
+
+  let x_scale (t : t) =
+    assert t.is_xaxis;
+
+    sprintf
+      {|
+        x: {
+          type: 'linear',
+          display: true,
+          max: %d,
+          ticks: {
+            callback: function(value, index, values) {
+              function modulo(a,b){
+                q = parseInt(a / b);  //finding quotient (integer part only)
+                p = q * b;  //finding product
+                return a - p;  //finding modulus
+              }
+
+              const hrs = Math.floor(value / 3600);
+              const mins = Math.floor(modulo(value, 3600) / 60);
+              const secs = Math.floor(modulo(value , 60));
+
+              // Pad minutes and seconds to 2 digits
+              const paddedMins = String(mins).padStart(2, '0');
+              const paddedSecs = String(secs).padStart(2, '0');
+
+              return `${hrs}:${paddedMins}:${paddedSecs}`;
+            },
+          },
+        },
+      |}
+      (Option.value_exn t.data_len)
 end
 
 module Graph = struct
@@ -425,9 +481,9 @@ module Graph = struct
   let empty () =
     { show_altitude = false; x_axis = GraphData.empty (); lines = [] }
 
-  let add_stream ~(sport_type : Models.Strava_models.sportType) (acc : t)
+  let add_stream ~(activity : Models.Activity.t) (acc : t)
       (stream : Models.Streams.StreamType.t) =
-    let line = GraphData.of_stream ~sport_type stream in
+    let line = GraphData.of_stream ~activity stream in
     match stream with
     | Models.Streams.StreamType.TimeStream _ -> { acc with x_axis = line }
     | Models.Streams.StreamType.VelocityStream _ ->
@@ -436,7 +492,6 @@ module Graph = struct
 
   let of_streams ~(activity : Models.Activity.t)
       (streams : Models.Streams.StreamType.t list) =
-    let sport_type = activity.sport_type in
     let streams =
       List.filter
         ~f:(fun stream ->
@@ -452,10 +507,7 @@ module Graph = struct
           | _ -> false)
         streams
     in
-    let graph =
-      List.fold ~init:(empty ()) ~f:(add_stream ~sport_type) streams
-    in
-    (* TODO: have fixed values of x_axis i.e. every 5 mins or sth like that *)
+    let graph = List.fold ~init:(empty ()) ~f:(add_stream ~activity) streams in
     graph
 
   let x_axis_labels (t : t) = Option.value_exn t.x_axis.data_labels
@@ -463,11 +515,14 @@ module Graph = struct
   let datasets (t : t) =
     t.lines |> List.map ~f:(fun line -> GraphData.dataset line) |> String.concat
 
-  let scales (t : t) =
+  let y_scales (t : t) =
     t.lines
     |> List.mapi ~f:(fun i line -> GraphData.scale ~to_left:(i = 0) line)
     |> String.concat
 
+  let x_scale (t : t) = GraphData.x_scale t.x_axis
+
+  (* TODO: how to show distance if available but only in tooltip *)
   let script_of_activity (activity : Models.Activity.t) =
     let graph = of_streams ~activity activity.streams in
     sprintf
@@ -482,22 +537,19 @@ module Graph = struct
     },
     options: {
       responsive: true,
-      plugins: {
-        title: {
-          display: true,
-          text: 'Chart.js Line Chart'
-        },
-      },
-      stacked: true,
+      stacked: false,
       interaction: {
         mode: 'index',
         intersect: false
       },
-      scales: { %s },
+      scales: {
+        %s
+        %s
+      },
     }
   });
     |}
-      (x_axis_labels graph) (datasets graph) (scales graph)
+      (x_axis_labels graph) (datasets graph) (x_scale graph) (y_scales graph)
 end
 
 let activity_graphs (activity : Models.Activity.t) =
