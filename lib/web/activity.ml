@@ -299,8 +299,7 @@ module GraphData = struct
         let data_labels =
           List.fold ~init:""
             ~f:(fun acc v ->
-              (* sprintf "%s'%s'," acc (Helpers.format_activity_duration v)) *)
-              sprintf "%s%d," acc v)
+              sprintf "%s'%s'," acc (Helpers.format_activity_duration v))
             data
         in
         let data =
@@ -366,6 +365,7 @@ module GraphData = struct
             [ sprintf "suggestedMin: %d," 90; sprintf "suggestedMax: %d," 190 ];
         }
     | Models.Streams.StreamType.VelocityStream s ->
+        (* TODO: format velocity to expected format i.e. pace / speed  *)
         let smoothing_window = 15 in
         let data =
           Utils.moving_average (module Utils.FloatOps) smoothing_window s.data
@@ -449,21 +449,7 @@ module GraphData = struct
           max: %d,
           ticks: {
             callback: function(value, index, values) {
-              function modulo(a,b){
-                q = parseInt(a / b);  //finding quotient (integer part only)
-                p = q * b;  //finding product
-                return a - p;  //finding modulus
-              }
-
-              const hrs = Math.floor(value / 3600);
-              const mins = Math.floor(modulo(value, 3600) / 60);
-              const secs = Math.floor(modulo(value , 60));
-
-              // Pad minutes and seconds to 2 digits
-              const paddedMins = String(mins).padStart(2, '0');
-              const paddedSecs = String(secs).padStart(2, '0');
-
-              return `${hrs}:${paddedMins}:${paddedSecs}`;
+              return timeLabels[value];
             },
           },
         },
@@ -510,7 +496,11 @@ module Graph = struct
     let graph = List.fold ~init:(empty ()) ~f:(add_stream ~activity) streams in
     graph
 
-  let x_axis_labels (t : t) = Option.value_exn t.x_axis.data_labels
+  (* NOTE: this is passed to Chart.labels but in reality is the raw int seconds *)
+  let x_axis_labels (t : t) = t.x_axis.data
+
+  (* NOTE: this contains all formatted data to be shown by tooltip *)
+  let x_axis_formatted (t : t) = Option.value_exn t.x_axis.data_labels
 
   let datasets (t : t) =
     t.lines |> List.map ~f:(fun line -> GraphData.dataset line) |> String.concat
@@ -522,11 +512,23 @@ module Graph = struct
 
   let x_scale (t : t) = GraphData.x_scale t.x_axis
 
-  (* TODO: how to show distance if available but only in tooltip *)
+  let data_definitions (t : t) =
+    sprintf {|
+  const timeLabels = [%s];
+    |} (x_axis_formatted t)
+
+  (* TODO: show distance if available in footer of tooltip:
+     https://www.chartjs.org/docs/latest/samples/tooltip/content.html
+     https://www.chartjs.org/docs/latest/configuration/tooltip.html#tooltip-callbacks
+    *)
   let script_of_activity (activity : Models.Activity.t) =
     let graph = of_streams ~activity activity.streams in
     sprintf
       {|
+  %s
+  const formatTime = (tooltipItem) => {
+    return timeLabels[tooltipItem[0].dataIndex];
+  };
   const ctx = document.getElementById('streamsChart');
 
   new Chart(ctx, {
@@ -542,6 +544,13 @@ module Graph = struct
         mode: 'index',
         intersect: false
       },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            title: formatTime,
+          },
+        },
+      },
       scales: {
         %s
         %s
@@ -549,7 +558,8 @@ module Graph = struct
     }
   });
     |}
-      (x_axis_labels graph) (datasets graph) (x_scale graph) (y_scales graph)
+      (data_definitions graph) (x_axis_labels graph) (datasets graph)
+      (x_scale graph) (y_scales graph)
 end
 
 let activity_graphs (activity : Models.Activity.t) =
@@ -604,6 +614,7 @@ let head_elems () =
         type_ "text/css";
         href "/static/leaflet/dist/leaflet.css";
       ];
+    (* NOTE: leaflet.js version 1.9.4 *)
     script [ src "%s" "/static/leaflet/dist/leaflet.js" ] "";
     link
       [
@@ -611,9 +622,11 @@ let head_elems () =
         type_ "text/css";
         href "/static/Leaflet.ResetView/dist/L.Control.ResetView.min.css";
       ];
+    (* NOTE: Leaflet.ResetView version 1.9.2 *)
     script
       [ src "%s" "/static/Leaflet.ResetView/dist/L.Control.ResetView.min.js" ]
       "";
+    (* NOTE: chart.js version 4.5.0 *)
     script [ src "%s" "/static/chart.js/dist/chart.umd.min.js" ] "";
     link
       [ rel "stylesheet"; type_ "text/css"; href "/static/styles/common.css" ];
