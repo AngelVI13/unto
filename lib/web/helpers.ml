@@ -174,6 +174,13 @@ let speed_pace_stat_node activity_type value =
       Stat.activity_stat pace_stat (pace_stat_value value)
   | _ -> Stat.activity_stat speed_stat (speed_stat_value value)
 
+let speed_pace_stat_value activity_type value =
+  match activity_type with
+  | Models.Strava_models.Run | Models.Strava_models.TrailRun
+  | Models.Strava_models.VirtualRun ->
+      pace_stat_value value
+  | _ -> speed_stat_value value
+
 let calculate_calories ~(athlete : Models.Strava_models.StravaAthlete.t)
     ?(multiplier = 0.80) ~(avg_hr : int) ~(duration : int) () =
   let mins = Float.of_int duration /. 60.0 in

@@ -252,10 +252,18 @@ let activity_stats_card (athlete : Models.Strava_models.StravaAthlete.t option)
   in
   div [ class_ "card activityCardStats" ] nodes
 
+type graphType =
+  | UnknownGraph
+  | TimeGraph
+  | HeartrateGraph
+  | VelocityGraph
+  | AltitudeGraph
+  | DistanceGraph
+[@@deriving show { with_path = false }, eq]
+
 module GraphData = struct
   type t = {
-    is_xaxis : bool;
-    is_altitude : bool;
+    graph_type : graphType;
     label : string;
     data : string;
     data_len : int option;
@@ -271,8 +279,7 @@ module GraphData = struct
 
   let empty () =
     {
-      is_xaxis = false;
-      is_altitude = false;
+      graph_type = UnknownGraph;
       label = "";
       data = "";
       data_len = None;
@@ -308,7 +315,7 @@ module GraphData = struct
         let t = empty () in
         {
           t with
-          is_xaxis = true;
+          graph_type = TimeGraph;
           label = "Time";
           data;
           data_len = Some (List.length s.data);
@@ -330,7 +337,7 @@ module GraphData = struct
         let t = empty () in
         {
           t with
-          is_altitude = true;
+          graph_type = AltitudeGraph;
           label = "Altitude";
           data;
           color = gray;
@@ -354,6 +361,7 @@ module GraphData = struct
         let t = empty () in
         {
           t with
+          graph_type = HeartrateGraph;
           label = "Heartrate";
           data;
           color = red;
@@ -365,22 +373,54 @@ module GraphData = struct
             [ sprintf "suggestedMin: %d," 90; sprintf "suggestedMax: %d," 190 ];
         }
     | Models.Streams.StreamType.VelocityStream s ->
-        (* TODO: format velocity to expected format i.e. pace / speed  *)
         let smoothing_window = 15 in
-        let data =
+        let smoothed_data =
           Utils.moving_average (module Utils.FloatOps) smoothing_window s.data
         in
         let data =
-          List.fold ~init:"" ~f:(fun acc v -> acc ^ sprintf "%f," v) data
+          List.fold ~init:""
+            ~f:(fun acc v -> acc ^ sprintf "%f," v)
+            smoothed_data
+        in
+        let data_labels =
+          Some
+            (List.fold ~init:""
+               ~f:(fun acc v ->
+                 acc
+                 ^ sprintf "'%s',"
+                     (Helpers.speed_pace_stat_value activity.sport_type v))
+               smoothed_data)
         in
         let t = empty () in
         {
           t with
+          graph_type = VelocityGraph;
           label = "Velocity";
           data;
+          data_labels;
           fill = true;
           order = 2;
           color = blue;
+          display = false;
+        }
+    | Models.Streams.StreamType.DistanceStream s ->
+        let data =
+          List.fold ~init:"" ~f:(fun acc v -> acc ^ sprintf "%f," v) s.data
+        in
+        let data_labels =
+          Some
+            (List.fold ~init:""
+               ~f:(fun acc v ->
+                 acc ^ sprintf "'%s'," (Helpers.distance_stat_value v))
+               s.data)
+        in
+        let t = empty () in
+        {
+          t with
+          graph_type = DistanceGraph;
+          label = "Distance";
+          data;
+          data_labels;
           display = false;
         }
     | _ -> assert false
@@ -439,7 +479,7 @@ module GraphData = struct
       grid_lines
 
   let x_scale (t : t) =
-    assert t.is_xaxis;
+    assert (equal_graphType t.graph_type TimeGraph);
 
     sprintf
       {|
@@ -462,16 +502,24 @@ module Graph = struct
     show_altitude : bool;
     x_axis : GraphData.t;
     lines : GraphData.t list;
+    extra_lines : GraphData.t list;
   }
 
   let empty () =
-    { show_altitude = false; x_axis = GraphData.empty (); lines = [] }
+    {
+      show_altitude = false;
+      x_axis = GraphData.empty ();
+      lines = [];
+      extra_lines = [];
+    }
 
   let add_stream ~(activity : Models.Activity.t) (acc : t)
       (stream : Models.Streams.StreamType.t) =
     let line = GraphData.of_stream ~activity stream in
     match stream with
     | Models.Streams.StreamType.TimeStream _ -> { acc with x_axis = line }
+    | Models.Streams.StreamType.DistanceStream _ ->
+        { acc with extra_lines = line :: acc.extra_lines }
     | Models.Streams.StreamType.VelocityStream _ ->
         { acc with show_altitude = true; lines = line :: acc.lines }
     | _ -> { acc with lines = line :: acc.lines }
@@ -488,6 +536,7 @@ module Graph = struct
           | Models.Streams.StreamType.AltitudeStream _ ->
               Option.is_some activity.stats.average_speed
           | Models.Streams.StreamType.TimeStream _
+          | Models.Streams.StreamType.DistanceStream _
           | Models.Streams.StreamType.HeartRateStream _ ->
               true
           | _ -> false)
@@ -502,6 +551,28 @@ module Graph = struct
   (* NOTE: this contains all formatted data to be shown by tooltip *)
   let x_axis_formatted (t : t) = Option.value_exn t.x_axis.data_labels
 
+  let velocity_formatted (t : t) =
+    match
+      List.find
+        ~f:(fun line -> equal_graphType line.graph_type VelocityGraph)
+        t.lines
+    with
+    | None -> ""
+    | Some line ->
+        sprintf "const velocityLabels = [%s];"
+          (Option.value_exn line.data_labels)
+
+  let distance_formatted (t : t) =
+    match
+      List.find
+        ~f:(fun line -> equal_graphType line.graph_type DistanceGraph)
+        t.extra_lines
+    with
+    | None -> ""
+    | Some line ->
+        sprintf "const distanceLabels = [%s];"
+          (Option.value_exn line.data_labels)
+
   let datasets (t : t) =
     t.lines |> List.map ~f:(fun line -> GraphData.dataset line) |> String.concat
 
@@ -513,14 +584,31 @@ module Graph = struct
   let x_scale (t : t) = GraphData.x_scale t.x_axis
 
   let data_definitions (t : t) =
-    sprintf {|
+    sprintf
+      {|
   const timeLabels = [%s];
-    |} (x_axis_formatted t)
+  %s
+  %s
+      |}
+      (x_axis_formatted t) (velocity_formatted t) (distance_formatted t)
 
-  (* TODO: show distance if available in footer of tooltip:
-     https://www.chartjs.org/docs/latest/samples/tooltip/content.html
-     https://www.chartjs.org/docs/latest/configuration/tooltip.html#tooltip-callbacks
-    *)
+  let tooltip_footer (t : t) =
+    let distance_line =
+      List.find
+        ~f:(fun line -> equal_graphType line.graph_type DistanceGraph)
+        t.extra_lines
+    in
+    match distance_line with
+    | None -> ""
+    | Some _ ->
+        {| footer: function(tooltipItems) {
+          const idx = tooltipItems[0].dataIndex;
+          return distanceLabels[idx] + "km";
+       },
+    |}
+
+  (* TODO: add scale callback to show the speed/pace correctly *)
+  (* TODO: currently we hardcoded min/km to unit but we should be taking the unit from the GraphData.t instead or sth ? *)
   let script_of_activity (activity : Models.Activity.t) =
     let graph = of_streams ~activity activity.streams in
     sprintf
@@ -528,6 +616,25 @@ module Graph = struct
   %s
   const formatTime = (tooltipItem) => {
     return timeLabels[tooltipItem[0].dataIndex];
+  };
+  const formatLabel = (tooltipItem) => {
+    let label = tooltipItem.dataset.label || '';
+
+    if (label) {
+        label += ': ';
+    }
+
+    const idx = tooltipItem.dataIndex;
+    if (tooltipItem.dataset.label === "Velocity") {
+      return label + velocityLabels[idx] + "min/km";
+    } else if (tooltipItem.dataset.label === "Heartrate") {
+      return label + tooltipItem.formattedValue + "bpm";
+    } else if (tooltipItem.dataset.label === "Altitude") {
+      const val = tooltipItem.raw.toFixed(1);
+      return label + val + "m";
+    }
+
+    return label + tooltipItem.formattedValue;
   };
   const ctx = document.getElementById('streamsChart');
 
@@ -548,6 +655,8 @@ module Graph = struct
         tooltip: {
           callbacks: {
             title: formatTime,
+            label: formatLabel,
+            %s
           },
         },
       },
@@ -559,7 +668,7 @@ module Graph = struct
   });
     |}
       (data_definitions graph) (x_axis_labels graph) (datasets graph)
-      (x_scale graph) (y_scales graph)
+      (tooltip_footer graph) (x_scale graph) (y_scales graph)
 end
 
 let activity_graphs (activity : Models.Activity.t) =
