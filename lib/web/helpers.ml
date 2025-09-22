@@ -14,9 +14,15 @@ let activity_icon_and_color (activity : Models.Activity.t) =
   (icon_background, img_src)
 
 module Stat = struct
-  type t = { name : string; description : string; icon_path : string }
+  type t = {
+    name : string;
+    description : string;
+    unit : string;
+    icon_path : string;
+  }
 
-  let make ~name ~description ~icon_path = { name; description; icon_path }
+  let make ~name ~description ~unit ~icon_path =
+    { name; description; unit; icon_path }
 
   let activity_stat (t : t) (value : string) =
     div
@@ -32,7 +38,7 @@ module Stat = struct
             img
               [
                 class_ "stat-icon-img";
-                title_ "%s" t.description;
+                title_ "%s (%s)" t.description t.unit;
                 src "%s" t.icon_path;
               ];
           ];
@@ -91,44 +97,48 @@ let format_activity_duration duration_secs =
 let duration_stat_value moving_time = format_activity_duration moving_time
 
 let duration_stat =
-  Stat.make ~name:"Duration" ~description:"Duration (hh:mm:ss)"
+  Stat.make ~name:"Duration" ~description:"Duration" ~unit:"hh:mm:ss"
     ~icon_path:"/static/assets/duration.png"
 
 let hr_stat =
-  Stat.make ~name:"Heartrate" ~description:"Heartrate (bpm)"
+  Stat.make ~name:"Heartrate" ~description:"Heartrate" ~unit:"bpm"
     ~icon_path:"/static/assets/heartrate.png"
 
 let distance_stat =
-  Stat.make ~name:"Distance" ~description:"Distance (km)"
+  Stat.make ~name:"Distance" ~description:"Distance" ~unit:"km"
     ~icon_path:"/static/assets/distance.png"
 
 let pace_stat =
-  Stat.make ~name:"Pace" ~description:"Pace (min/km)"
+  Stat.make ~name:"Pace" ~description:"Pace" ~unit:"min/km"
     ~icon_path:"/static/assets/pace.png"
 
 let speed_stat =
-  Stat.make ~name:"Speed" ~description:"Speed (kph)"
+  Stat.make ~name:"Speed" ~description:"Speed" ~unit:"kph"
     ~icon_path:"/static/assets/speed.png"
 
 let calories_stat =
-  Stat.make ~name:"Calories" ~description:"Calories"
+  Stat.make ~name:"Calories" ~description:"Calories" ~unit:"kcal"
     ~icon_path:"/static/assets/calories.png"
 
 let elev_gain_loss_stat =
-  Stat.make ~name:"Elevation" ~description:"Elevation gain & loss (m)"
+  Stat.make ~name:"Elevation" ~description:"Elevation gain & loss" ~unit:"m"
     ~icon_path:"/static/assets/elevation.png"
 
 let power_stat =
-  Stat.make ~name:"Power" ~description:"Power (Watt)"
+  Stat.make ~name:"Power" ~description:"Power" ~unit:"Watt"
     ~icon_path:"/static/assets/power.png"
 
 let cadence_stat =
-  Stat.make ~name:"Cadence" ~description:"Cadence (steps/min or rev/min)"
+  Stat.make ~name:"Cadence" ~description:"Cadence" ~unit:"steps/min or rev/min"
     ~icon_path:"/static/assets/cadence.png"
 
 let elevation_stat =
-  Stat.make ~name:"Elevation" ~description:"Elevation (m)"
+  Stat.make ~name:"Elevation" ~description:"Elevation" ~unit:"m"
     ~icon_path:"/static/assets/elevation.png"
+
+let temperature_stat =
+  Stat.make ~name:"Temperature" ~description:"Temperature" ~unit:"C"
+    ~icon_path:"/static/assets/temperature.png"
 
 let elevation_stat_value elev = Int.to_string elev
 
@@ -167,12 +177,20 @@ let pace_stat_value avg =
 let speed_stat_value avg =
   sprintf "%.1f" Float.(round_significant ~significant_digits:3 (avg * 3.6))
 
-let speed_pace_stat_node activity_type value =
+type velocityType = PaceVelocity | SpeedVelocity
+
+let velocity_type_of_activity_type
+    (activity_type : Models.Strava_models.sportType) =
   match activity_type with
   | Models.Strava_models.Run | Models.Strava_models.TrailRun
   | Models.Strava_models.VirtualRun ->
-      Stat.activity_stat pace_stat (pace_stat_value value)
-  | _ -> Stat.activity_stat speed_stat (speed_stat_value value)
+      PaceVelocity
+  | _ -> SpeedVelocity
+
+let speed_pace_stat_node activity_type value =
+  match velocity_type_of_activity_type activity_type with
+  | PaceVelocity -> Stat.activity_stat pace_stat (pace_stat_value value)
+  | SpeedVelocity -> Stat.activity_stat speed_stat (speed_stat_value value)
 
 let speed_pace_stat_value activity_type value =
   match activity_type with

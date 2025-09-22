@@ -259,6 +259,8 @@ type graphType =
   | VelocityGraph
   | AltitudeGraph
   | DistanceGraph
+  | PowerGraph
+  | TemperatureGraph
 [@@deriving show { with_path = false }, eq]
 
 module GraphData = struct
@@ -273,6 +275,7 @@ module GraphData = struct
     fill : bool;
     (* The bigger the order value the further in the background the graph appears *)
     order : int;
+    unit : string;
     extra_dataset_fields : string list;
     extra_scale_fields : string list;
   }
@@ -288,6 +291,7 @@ module GraphData = struct
       display = false;
       fill = false;
       order = 0;
+      unit = "-";
       extra_dataset_fields = [];
       extra_scale_fields = [];
     }
@@ -295,6 +299,8 @@ module GraphData = struct
   let gray = "rgba(128, 128, 128)"
   let red = "rgba(255, 99, 132)"
   let blue = "rgba(54, 162, 235)"
+  let yellow = "rgb(255, 205, 86)"
+  let purple = "rgb(153, 102, 255)"
 
   let of_stream ~(activity : Models.Activity.t)
       (stream : Models.Streams.StreamType.t) =
@@ -344,6 +350,7 @@ module GraphData = struct
           display = true;
           fill = true;
           order = 100;
+          unit = Helpers.elevation_stat.unit;
           extra_scale_fields =
             [
               sprintf "suggestedMin: %d," suggested_min;
@@ -368,6 +375,7 @@ module GraphData = struct
           display = true;
           fill = true;
           order = 1;
+          unit = Helpers.hr_stat.unit;
           extra_dataset_fields = [];
           extra_scale_fields =
             [ sprintf "suggestedMin: %d," 90; sprintf "suggestedMax: %d," 190 ];
@@ -382,13 +390,17 @@ module GraphData = struct
             ~f:(fun acc v -> acc ^ sprintf "%f," v)
             smoothed_data
         in
+        let format_fn, unit =
+          match Helpers.velocity_type_of_activity_type activity.sport_type with
+          | Helpers.PaceVelocity ->
+              (Helpers.pace_stat_value, Helpers.pace_stat.unit)
+          | Helpers.SpeedVelocity ->
+              (Helpers.speed_stat_value, Helpers.speed_stat.unit)
+        in
         let data_labels =
           Some
             (List.fold ~init:""
-               ~f:(fun acc v ->
-                 acc
-                 ^ sprintf "'%s',"
-                     (Helpers.speed_pace_stat_value activity.sport_type v))
+               ~f:(fun acc v -> acc ^ sprintf "'%s'," (format_fn v))
                smoothed_data)
         in
         let t = empty () in
@@ -400,8 +412,10 @@ module GraphData = struct
           data_labels;
           fill = true;
           order = 2;
+          unit;
           color = blue;
           display = false;
+          extra_scale_fields = [ "grace: '20%'," ];
         }
     | Models.Streams.StreamType.DistanceStream s ->
         let data =
@@ -422,6 +436,54 @@ module GraphData = struct
           data;
           data_labels;
           display = false;
+        }
+    | Models.Streams.StreamType.WattsStream s ->
+        (* TODO: smoothe this data *)
+        (* let smoothing_window = 5 in *)
+        (* let data = *)
+        (*   Utils.moving_average (module Utils.IntOps) smoothing_window s.data *)
+        (* in *)
+        let data = s.data in
+        let data =
+          List.fold ~init:""
+            ~f:(fun acc v ->
+              let v =
+                match v with None -> "null" | Some value -> sprintf "%d" value
+              in
+              acc ^ sprintf "%s," v)
+            data
+        in
+        let t = empty () in
+        {
+          t with
+          graph_type = PowerGraph;
+          label = "Power";
+          data;
+          color = yellow;
+          display = false;
+          fill = true;
+          order = 3;
+          unit = Helpers.power_stat.unit;
+          extra_dataset_fields = [];
+        }
+    | Models.Streams.StreamType.TempStream s ->
+        let data = s.data in
+        let data =
+          List.fold ~init:"" ~f:(fun acc v -> acc ^ sprintf "%d," v) data
+        in
+        let t = empty () in
+        {
+          t with
+          graph_type = TemperatureGraph;
+          label = "Temperature";
+          data;
+          color = purple;
+          display = false;
+          fill = true;
+          order = 4;
+          unit = Helpers.temperature_stat.unit;
+          extra_dataset_fields = [];
+          extra_scale_fields = [ "grace: '20%'," ];
         }
     | _ -> assert false
 
@@ -529,21 +591,26 @@ module Graph = struct
     let streams =
       List.filter
         ~f:(fun stream ->
-          (* TODO: support these as well *)
-          (* | Models.Streams.StreamType.WattsStream  _  *)
           match stream with
           | Models.Streams.StreamType.VelocityStream _
           | Models.Streams.StreamType.AltitudeStream _ ->
               Option.is_some activity.stats.average_speed
           | Models.Streams.StreamType.TimeStream _
           | Models.Streams.StreamType.DistanceStream _
+          | Models.Streams.StreamType.WattsStream _
+          | Models.Streams.StreamType.TempStream _
           | Models.Streams.StreamType.HeartRateStream _ ->
               true
           | _ -> false)
         streams
     in
     let graph = List.fold ~init:(empty ()) ~f:(add_stream ~activity) streams in
-    graph
+    {
+      graph with
+      lines =
+        graph.lines
+        |> List.sort ~compare:(fun l1 l2 -> Int.compare l1.order l2.order);
+    }
 
   (* NOTE: this is passed to Chart.labels but in reality is the raw int seconds *)
   let x_axis_labels (t : t) = t.x_axis.data
@@ -583,6 +650,12 @@ module Graph = struct
 
   let x_scale (t : t) = GraphData.x_scale t.x_axis
 
+  let unit_definitions (t : t) =
+    t.lines
+    |> List.map ~f:(fun line ->
+           sprintf "const %sUnit = '%s';" line.label line.unit)
+    |> String.concat ~sep:"\n"
+
   let data_definitions (t : t) =
     sprintf
       {|
@@ -608,11 +681,11 @@ module Graph = struct
     |}
 
   (* TODO: add scale callback to show the speed/pace correctly *)
-  (* TODO: currently we hardcoded min/km to unit but we should be taking the unit from the GraphData.t instead or sth ? *)
   let script_of_activity (activity : Models.Activity.t) =
     let graph = of_streams ~activity activity.streams in
     sprintf
       {|
+  %s
   %s
   const formatTime = (tooltipItem) => {
     return timeLabels[tooltipItem[0].dataIndex];
@@ -626,12 +699,16 @@ module Graph = struct
 
     const idx = tooltipItem.dataIndex;
     if (tooltipItem.dataset.label === "Velocity") {
-      return label + velocityLabels[idx] + "min/km";
+      return label + velocityLabels[idx] + VelocityUnit;
     } else if (tooltipItem.dataset.label === "Heartrate") {
-      return label + tooltipItem.formattedValue + "bpm";
+      return label + tooltipItem.formattedValue + HeartrateUnit;
     } else if (tooltipItem.dataset.label === "Altitude") {
       const val = tooltipItem.raw.toFixed(1);
-      return label + val + "m";
+      return label + val + AltitudeUnit;
+    } else if (tooltipItem.dataset.label === "Power") {
+      return label + tooltipItem.formattedValue + PowerUnit;
+    } else if (tooltipItem.dataset.label === "Temperature") {
+      return label + tooltipItem.formattedValue + TemperatureUnit;
     }
 
     return label + tooltipItem.formattedValue;
@@ -667,8 +744,8 @@ module Graph = struct
     }
   });
     |}
-      (data_definitions graph) (x_axis_labels graph) (datasets graph)
-      (tooltip_footer graph) (x_scale graph) (y_scales graph)
+      (data_definitions graph) (unit_definitions graph) (x_axis_labels graph)
+      (datasets graph) (tooltip_footer graph) (x_scale graph) (y_scales graph)
 end
 
 let activity_graphs (activity : Models.Activity.t) =
