@@ -55,8 +55,6 @@ module GraphData = struct
     match stream with
     | Models.Streams.StreamType.TimeStream s ->
         let data = List.init (List.length s.data) ~f:(fun v -> v) in
-        Dream.log "Time samples %d; Last elmt %d" (List.length data)
-          (List.last_exn data);
         let data_labels =
           List.fold ~init:""
             ~f:(fun acc v ->

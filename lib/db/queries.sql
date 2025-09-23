@@ -163,6 +163,36 @@ CREATE TABLE IF NOT EXISTS splits (
 -- @add_split
 INSERT INTO splits VALUES;
 
+-- @splits_by_activity_id
+SELECT 
+    sp.split_index,
+    sp.start,
+    sp.len,
+    s.moving_time,
+    s.elapsed_time,
+    s.distance,
+    s.elev_gain,
+    s.elev_loss,
+    s.elev_high,
+    s.elev_low,
+    s.start_lat,
+    s.start_lng,
+    s.end_lat,
+    s.end_lng,
+    s.average_speed,
+    s.max_speed,
+    s.average_cadence,
+    s.max_cadence,
+    s.average_temp,
+    s.average_heartrate,
+    s.max_heartrate,
+    s.average_power,
+    s.max_power
+FROM splits sp
+JOIN stats s ON sp.stats_id = s.id
+WHERE sp.activity_id = @activity_id
+ORDER BY sp.split_index;
+
 -- @create_streams
 CREATE TABLE IF NOT EXISTS streams (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

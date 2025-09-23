@@ -55,12 +55,16 @@
 }
 
 #map {
-  height: 380px;
-  width: 380px;
+  height: 40vh;
+  width: 29vw;
 }
 
 .activityCardStats {
-  width: 30vw;
+  width: 29vw;
+}
+
+.activitySplitsStats {
+  width: 29vw;
 }
 
 .baseStatsTable {
@@ -95,7 +99,7 @@ tfoot {
 
 #streamsChart {
   height: 50vh;
-  width: 800px;
+  width: 93vw;
 }
 
 @media screen and (max-width: 930px) {

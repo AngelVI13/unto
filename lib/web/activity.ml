@@ -72,8 +72,9 @@ let activity_graphs_card (activity : Models.Activity.t) =
     ]
 
 let activity_laps_splits_card (activity : Models.Activity.t) =
-  let _ = activity in
-  div [ class_ "card" ] [ txt "Activity laps and splits" ]
+  div
+    [ class_ "card activitySplitsStats" ]
+    [ Activity_splits.activity_splits_table activity ]
 
 let activity_grid (athlete : Models.Strava_models.StravaAthlete.t option)
     (activity : Models.Activity.t option) =
@@ -85,8 +86,8 @@ let activity_grid (athlete : Models.Strava_models.StravaAthlete.t option)
         [
           activity_details_card activity;
           activity_stats_card athlete activity;
-          activity_graphs_card activity;
           activity_laps_splits_card activity;
+          activity_graphs_card activity;
         ]
 
 let head_elems () =
