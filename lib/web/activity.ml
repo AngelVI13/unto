@@ -438,12 +438,8 @@ module GraphData = struct
           display = false;
         }
     | Models.Streams.StreamType.WattsStream s ->
-        (* TODO: smoothe this data *)
-        (* let smoothing_window = 5 in *)
-        (* let data = *)
-        (*   Utils.moving_average (module Utils.IntOps) smoothing_window s.data *)
-        (* in *)
-        let data = s.data in
+        let smoothing_window = 5 in
+        let data = Utils.option_moving_average smoothing_window s.data in
         let data =
           List.fold ~init:""
             ~f:(fun acc v ->
@@ -453,6 +449,9 @@ module GraphData = struct
               acc ^ sprintf "%s," v)
             data
         in
+
+        let max_power = Option.value_exn activity.stats.max_power in
+        let suggested_max = Float.of_int max_power *. 1.3 |> Float.to_int in
         let t = empty () in
         {
           t with
@@ -464,7 +463,7 @@ module GraphData = struct
           fill = true;
           order = 3;
           unit = Helpers.power_stat.unit;
-          extra_dataset_fields = [];
+          extra_scale_fields = [ sprintf "suggestedMax: %d," suggested_max ];
         }
     | Models.Streams.StreamType.TempStream s ->
         let data = s.data in
@@ -482,7 +481,6 @@ module GraphData = struct
           fill = true;
           order = 4;
           unit = Helpers.temperature_stat.unit;
-          extra_dataset_fields = [];
           extra_scale_fields = [ "grace: '20%'," ];
         }
     | _ -> assert false

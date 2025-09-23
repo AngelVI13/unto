@@ -58,6 +58,25 @@ let moving_average (type a) (module N : NUMERIC with type t = a) k data =
   done;
   Array.to_list smoothed
 
+let option_moving_average (k : int) (data : int option list) =
+  let n = List.length data in
+  let arr = Array.of_list data in
+  let smoothed = Array.create ~len:n None in
+  for i = 0 to n - 1 do
+    let sum = ref 0 in
+    let count = ref 0 in
+    for j = i - k to i + k do
+      if j >= 0 && j < n then
+        match arr.(j) with
+        | None -> ()
+        | Some value ->
+            sum := !sum + value;
+            incr count
+    done;
+    smoothed.(i) <- Some (!sum / !count)
+  done;
+  Array.to_list smoothed
+
 let average data =
   let sum = Float.of_int @@ List.sum (module Int) ~f:Fn.id data in
 
