@@ -24,6 +24,18 @@ module Stat = struct
   let make ~name ~description ~unit ~icon_path =
     { name; description; unit; icon_path }
 
+  let stat_icon (t : t) =
+    span
+      [ class_ "activityCardStatName statNameIcon" ]
+      [
+        img
+          [
+            class_ "stat-icon-img";
+            title_ "%s (%s)" t.description t.unit;
+            src "%s" t.icon_path;
+          ];
+      ]
+
   let activity_stat (t : t) (value : string) =
     div
       [ class_ "activityCardStat" ]
@@ -32,55 +44,18 @@ module Stat = struct
         span
           [ class_ "activityCardStatName statNameText" ]
           [ txt "%s: " t.name ];
-        span
-          [ class_ "activityCardStatName statNameIcon" ]
-          [
-            img
-              [
-                class_ "stat-icon-img";
-                title_ "%s (%s)" t.description t.unit;
-                src "%s" t.icon_path;
-              ];
-          ];
+        stat_icon t;
         span [ class_ "activityCardStatValue" ] [ txt "%s" value ];
       ]
 
   let value_row (t : t) ~(value : string) =
-    tr []
-      [
-        td []
-          [
-            span
-              [ class_ "activityCardStatName statNameIcon" ]
-              [
-                img
-                  [
-                    class_ "stat-icon-img";
-                    title_ "%s" t.description;
-                    src "%s" t.icon_path;
-                  ];
-              ];
-          ];
-        td [] [ txt "%s" value ];
-      ]
+    tr [] [ td [] [ stat_icon t ]; td [] [ txt "%s" value ] ]
 
   let min_max_avg_row (t : t) ~(min_value : string) ~(max_value : string)
       ~(avg_value : string) =
     tr []
       [
-        td []
-          [
-            span
-              [ class_ "activityCardStatName statNameIcon" ]
-              [
-                img
-                  [
-                    class_ "stat-icon-img";
-                    title_ "%s" t.description;
-                    src "%s" t.icon_path;
-                  ];
-              ];
-          ];
+        td [] [ stat_icon t ];
         td [] [ txt "%s" avg_value ];
         td [] [ txt "%s" max_value ];
         td [] [ txt "%s" min_value ];
