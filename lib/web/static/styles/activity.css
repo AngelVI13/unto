@@ -61,10 +61,13 @@
 
 .activityCardStats {
   width: 29vw;
+  height: max-content; /* allow table to grow beyond container */
 }
 
 .activitySplitsStats {
-  width: 29vw;
+  max-width: 29vw;
+  max-height: 50vh;
+  overflow: hidden;
 }
 
 .baseStatsTable {
@@ -75,13 +78,16 @@
 
 table {
   table-layout: fixed;
-  width: 80%;
-  margin: 0 auto;
+  width: 100%;
   border-collapse: collapse;
 }
 
 tbody tr:nth-child(even) {
-  background-color: var(--light-highlight);
+  background: var(--light-highlight);
+}
+
+tbody tr:nth-child(odd) {
+  background: #fff;
 }
 
 th,
@@ -109,4 +115,51 @@ tfoot {
   .activityGrid > div {
     padding: 5px 20vw;
   }
+}
+
+.splitsTable {
+  max-width: 100%;
+  max-height: 50vh; /* or any height you prefer */
+  overflow: auto; /* enables both horizontal & vertical scroll */
+}
+
+.splitsTable table {
+  border-collapse: collapse;
+  width: max-content; /* allow table to grow beyond container */
+  min-width: 100%; /* ensures it doesn't shrink smaller than card */
+  table-layout: fixed; /* respect min-widths on columns */
+}
+
+.splitsTable th,
+.splitsTable td {
+  padding: 8px;
+  text-align: left;
+  white-space: nowrap; /* prevent text from wrapping and squishing */
+}
+
+.splitsTable thead {
+  border-bottom: 2px solid black;
+}
+
+/* Freeze table header */
+.splitsTable th {
+  position: sticky;
+  top: 0; /* sticks header to the top */
+  background: #fff;
+  z-index: 2; /* stay above body cells */
+}
+
+/* Freeze first column (both header + body cells) */
+.splitsTable th:first-child,
+.splitsTable td:first-child {
+  position: sticky;
+  left: 0; /* sticks first column to the left */
+  background: inherit;
+  z-index: 1; /* keep under header cells */
+}
+
+/* Special case: top-left corner cell (header + first column) */
+.splitsTable th:first-child {
+  background: #fff;
+  z-index: 3; /* higher so it overlaps correctly */
 }
