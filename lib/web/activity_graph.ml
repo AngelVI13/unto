@@ -149,6 +149,8 @@ module GraphData = struct
                ~f:(fun acc v -> acc ^ sprintf "'%s'," (format_fn v))
                smoothed_data)
         in
+        let suggested_max = Option.value_exn activity.stats.max_speed in
+
         let t = empty () in
         {
           t with
@@ -161,7 +163,7 @@ module GraphData = struct
           unit;
           color = blue;
           display = false;
-          extra_scale_fields = [ "grace: '20%'," ];
+          extra_scale_fields = [ sprintf "suggestedMax: %f," suggested_max ];
         }
     | Models.Streams.StreamType.DistanceStream s ->
         let data =

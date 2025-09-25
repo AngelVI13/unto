@@ -12,6 +12,9 @@ module Lap = struct
   }
   [@@deriving show { with_path = false }, yojson, fields]
 
+  let make ~start ~len ~index =
+    { moving_time = 0; lap_index = index; start; len; stats = Stats.empty () }
+
   let t_of_StravaLap (lap : StravaLap.t) start_index =
     {
       moving_time = lap.moving_time;

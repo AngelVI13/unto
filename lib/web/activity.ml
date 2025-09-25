@@ -72,9 +72,16 @@ let activity_graphs_card (activity : Models.Activity.t) =
     ]
 
 let activity_laps_splits_card (activity : Models.Activity.t) =
+  let sport_type = activity.sport_type in
+  let selected = Activity_splits.Laps in
+  let stats =
+    match selected with
+    | Laps -> List.map ~f:(fun lap -> lap.stats) activity.laps
+    | Splits -> List.map ~f:(fun split -> split.stats) activity.splits
+  in
   div
     [ class_ "card activitySplitsStats" ]
-    [ Activity_splits.activity_splits_table activity ]
+    [ Activity_splits.activity_splits_table ~sport_type ~selected stats ]
 
 let activity_grid (athlete : Models.Strava_models.StravaAthlete.t option)
     (activity : Models.Activity.t option) =

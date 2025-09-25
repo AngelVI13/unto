@@ -3,9 +3,7 @@ open Dream_html
 open HTML
 
 let split_stat_headers ~(sport_type : Models.Strava_models.sportType)
-    (split : Models.Splits.Split.t) =
-  let stats = split.stats in
-
+    (stats : Models.Stats.t) =
   let split_nr = Some (txt "#") in
   let duration = Some (Helpers.Stat.stat_icon Helpers.duration_stat) in
 
@@ -57,10 +55,8 @@ let split_stat_headers ~(sport_type : Models.Strava_models.sportType)
   columns
 
 let split_stat_values ~(sport_type : Models.Strava_models.sportType)
-    (split : Models.Splits.Split.t) =
-  let stats = split.stats in
-
-  let split_idx = Some (sprintf "%d" (split.split_index + 1)) in
+    (index : int) (stats : Models.Stats.t) =
+  let split_idx = Some (sprintf "%d" (index + 1)) in
 
   let duration = Some (Helpers.duration_stat_value stats.moving_time) in
 
@@ -121,26 +117,22 @@ let split_stat_values ~(sport_type : Models.Strava_models.sportType)
   in
   tr [] values
 
-let activity_splits_table (activity : Models.Activity.t) =
-  match List.length activity.splits with
-  | 0 -> txt "No splits present"
+type splitLapSelector = Laps | Splits [@@deriving show { with_path = false }]
+
+(* NOTE: this whole file works the same but for laps *)
+let activity_splits_table ~(sport_type : Models.Strava_models.sportType)
+    ~(selected : splitLapSelector) (stats : Models.Stats.t list) =
+  match List.length stats with
+  | 0 -> txt "No %s present" (show_splitLapSelector selected)
   | _ ->
-      let nodes =
-        List.map
-          ~f:(split_stat_values ~sport_type:activity.sport_type)
-          activity.splits
-      in
+      let nodes = List.mapi ~f:(split_stat_values ~sport_type) stats in
       div
         [ class_ "splitsTable" ]
         [
           table []
             [
               thead []
-                [
-                  tr []
-                    (split_stat_headers ~sport_type:activity.sport_type
-                       (List.hd_exn activity.splits));
-                ];
+                [ tr [] (split_stat_headers ~sport_type (List.hd_exn stats)) ];
               tbody [] nodes;
             ];
         ]

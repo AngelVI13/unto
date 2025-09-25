@@ -141,6 +141,62 @@ let get_weeks_activities { handle; _ } ~(start_date : Date.t) :
       activities := activity :: !activities);
   !activities
 
+let get_laps_by_activity_id handle ~(activity_id : int) : Models.Laps.Laps.t =
+  let laps = ref [] in
+  DB.laps_by_activity_id handle ~activity_id:(Int64.of_int activity_id)
+    (fun
+      ~lap_index
+      ~start
+      ~len
+      ~moving_time
+      ~elapsed_time
+      ~distance
+      ~elev_gain
+      ~elev_loss
+      ~elev_high
+      ~elev_low
+      ~start_lat
+      ~start_lng
+      ~end_lat
+      ~end_lng
+      ~average_speed
+      ~max_speed
+      ~average_cadence
+      ~max_cadence
+      ~average_temp
+      ~average_heartrate
+      ~max_heartrate
+      ~average_power
+      ~max_power
+    ->
+      let lap =
+        Models.Laps.Lap.make ~start:(Int64.to_int_exn start)
+          ~len:(Int64.to_int_exn len)
+          ~index:(Int64.to_int_exn lap_index)
+      in
+      let stats =
+        Models.Stats.Fields.create ~data_points:(-1)
+          ~moving_time:(Int64.to_int_exn moving_time)
+          ~elapsed_time:(Int64.to_int_exn elapsed_time)
+          ~distance ~elev_gain:(to_int_option elev_gain)
+          ~elev_loss:(to_int_option elev_loss)
+          ~elev_high:(to_int_option elev_high)
+          ~elev_low:(to_int_option elev_low)
+          ~start_latlng:(to_loc_option start_lat start_lng)
+          ~end_latlng:(to_loc_option end_lat end_lng)
+          ~average_speed ~max_speed
+          ~average_cadence:(to_int_option average_cadence)
+          ~max_cadence:(to_int_option max_cadence)
+          ~average_temp:(to_int_option average_temp)
+          ~average_heartrate:(to_int_option average_heartrate)
+          ~max_heartrate:(to_int_option max_heartrate)
+          ~average_power:(to_int_option average_power)
+          ~max_power:(to_int_option max_power)
+      in
+      let lap = Models.Laps.Lap.set_stats lap stats in
+      laps := lap :: !laps);
+  List.rev !laps
+
 let get_splits_by_activity_id handle ~(activity_id : int) :
     Models.Splits.Splits.t =
   let splits = ref [] in
@@ -264,14 +320,14 @@ let get_activity { handle; _ } ~(activity_id : int) : Models.Activity.t option =
       let streams = Models.Streams.Streams.t_of_yojson json in
 
       let splits = get_splits_by_activity_id ~activity_id handle in
+      let laps = get_laps_by_activity_id ~activity_id handle in
 
       let activity =
         Models.Activity.Fields.create ~id:(Int64.to_int_exn id)
           ~athlete_id:(Int64.to_int_exn athlete_id)
           ~name
           ~sport_type:(Models.Strava_models.sportType_of_string sport_type)
-          ~start_date ~timezone ~map_id ~map_summary_polyline ~stats
-          ~laps:(Models.Laps.Laps.empty ())
+          ~start_date ~timezone ~map_id ~map_summary_polyline ~stats ~laps
           ~splits ~streams
       in
       activities := activity :: !activities);

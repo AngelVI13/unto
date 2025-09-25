@@ -148,6 +148,36 @@ CREATE TABLE IF NOT EXISTS laps (
 -- @add_lap
 INSERT INTO laps VALUES;
 
+-- @laps_by_activity_id
+SELECT 
+    l.lap_index,
+    l.start,
+    l.len,
+    s.moving_time,
+    s.elapsed_time,
+    s.distance,
+    s.elev_gain,
+    s.elev_loss,
+    s.elev_high,
+    s.elev_low,
+    s.start_lat,
+    s.start_lng,
+    s.end_lat,
+    s.end_lng,
+    s.average_speed,
+    s.max_speed,
+    s.average_cadence,
+    s.max_cadence,
+    s.average_temp,
+    s.average_heartrate,
+    s.max_heartrate,
+    s.average_power,
+    s.max_power
+FROM laps l
+JOIN stats s ON l.stats_id = s.id
+WHERE l.activity_id = @activity_id
+ORDER BY l.lap_index;
+
 -- @create_splits
 CREATE TABLE IF NOT EXISTS splits (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
