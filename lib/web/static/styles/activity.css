@@ -168,4 +168,9 @@ tfoot {
   font-weight: bold;
   font-size: var(--mobile-font-size);
   display: inline;
+  margin-right: 10px;
+}
+
+.splitSelectBtns {
+  margin-bottom: 5px;
 }
