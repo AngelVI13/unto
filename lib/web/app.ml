@@ -53,8 +53,14 @@ let handle_activity ~db request =
         Db.get_activity db ~activity_id)
   in
 
+  let split_select =
+    match Dream.query request "split_select" with
+    | None -> Activity_splits.Splits
+    | Some s -> Activity_splits.splitLapSelector_of_string s
+  in
+
   let athlete = Db.get_athlete db in
-  let page = Activity.activity_page athlete activity in
+  let page = Activity.activity_page ~athlete ~activity ~split_select in
   Dream_html.respond page
 
 (* TODO: activity fails to download streams 113217900 *)

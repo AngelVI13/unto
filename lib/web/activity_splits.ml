@@ -117,13 +117,16 @@ let split_stat_values ~(sport_type : Models.Strava_models.sportType)
   in
   tr [] values
 
-type splitLapSelector = Laps | Splits [@@deriving show { with_path = false }]
+type splitLapSelector = Laps | Splits
+[@@deriving show { with_path = false }, sexp, eq]
+
+let splitLapSelector_of_string s = splitLapSelector_of_sexp (Sexp.of_string s)
 
 (* NOTE: this whole file works the same but for laps *)
 let activity_splits_table ~(sport_type : Models.Strava_models.sportType)
-    ~(selected : splitLapSelector) (stats : Models.Stats.t list) =
+    ~(split_select : splitLapSelector) (stats : Models.Stats.t list) =
   match List.length stats with
-  | 0 -> txt "No %s present" (show_splitLapSelector selected)
+  | 0 -> txt "No %s present" (show_splitLapSelector split_select)
   | _ ->
       let nodes = List.mapi ~f:(split_stat_values ~sport_type) stats in
       div

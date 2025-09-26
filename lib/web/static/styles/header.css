@@ -18,11 +18,11 @@ header h1 {
   margin-bottom: 30px;
 }
 
-header .inactive a {
+.inactive a {
   color: rgba(110, 110, 110, 0.4);
 }
 
-header .active a {
+.active a {
   color: black;
 }
 

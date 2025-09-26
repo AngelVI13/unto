@@ -163,3 +163,9 @@ tfoot {
   background: #fff;
   z-index: 3; /* higher so it overlaps correctly */
 }
+
+.splitSelectBtns span {
+  font-weight: bold;
+  font-size: var(--mobile-font-size);
+  display: inline;
+}

@@ -71,20 +71,59 @@ let activity_graphs_card (activity : Models.Activity.t) =
         ];
     ]
 
-let activity_laps_splits_card (activity : Models.Activity.t) =
+(* TODO: maybe split/lap switching should be done with htmx so we don't reload the whole page *)
+(* TODO: similarly with htmx maybe we just load page without data and display the data as it appears *)
+(* TODO: find a way to smartly build the href urls rather than hardcoding strings *)
+let activity_laps_splits_card ~(activity : Models.Activity.t)
+    ~(split_select : Activity_splits.splitLapSelector) =
   let sport_type = activity.sport_type in
-  let selected = Activity_splits.Laps in
   let stats =
-    match selected with
+    match split_select with
     | Laps -> List.map ~f:(fun lap -> lap.stats) activity.laps
     | Splits -> List.map ~f:(fun split -> split.stats) activity.splits
   in
+
   div
     [ class_ "card activitySplitsStats" ]
-    [ Activity_splits.activity_splits_table ~sport_type ~selected stats ]
+    [
+      div
+        [ class_ "splitSelectBtns" ]
+        [
+          span
+            [
+              (if Activity_splits.equal_splitLapSelector split_select Splits
+               then class_ "active"
+               else class_ "inactive");
+            ]
+            [
+              a
+                [
+                  href "/activity/%d?split_select=%s" activity.id
+                    (Activity_splits.show_splitLapSelector Splits);
+                ]
+                [ txt "Splits" ];
+            ];
+          span
+            [
+              (if Activity_splits.equal_splitLapSelector split_select Laps then
+                 class_ "active"
+               else class_ "inactive");
+            ]
+            [
+              a
+                [
+                  href "/activity/%d?split_select=%s" activity.id
+                    (Activity_splits.show_splitLapSelector Laps);
+                ]
+                [ txt "Laps" ];
+            ];
+        ];
+      Activity_splits.activity_splits_table ~sport_type ~split_select stats;
+    ]
 
-let activity_grid (athlete : Models.Strava_models.StravaAthlete.t option)
-    (activity : Models.Activity.t option) =
+let activity_grid ~(athlete : Models.Strava_models.StravaAthlete.t option)
+    ~(activity : Models.Activity.t option)
+    ~(split_select : Activity_splits.splitLapSelector) =
   match activity with
   | None -> div [] [ txt "no such activity" ]
   | Some activity ->
@@ -93,7 +132,7 @@ let activity_grid (athlete : Models.Strava_models.StravaAthlete.t option)
         [
           activity_details_card activity;
           activity_stats_card athlete activity;
-          activity_laps_splits_card activity;
+          activity_laps_splits_card ~activity ~split_select;
           activity_graphs_card activity;
         ]
 
@@ -138,8 +177,9 @@ let head_elems () =
       [ rel "stylesheet"; type_ "text/css"; href "/static/styles/activity.css" ];
   ]
 
-let activity_page (athlete : Models.Strava_models.StravaAthlete.t option)
-    (activity : Models.Activity.t option) =
+let activity_page ~(athlete : Models.Strava_models.StravaAthlete.t option)
+    ~(activity : Models.Activity.t option)
+    ~(split_select : Activity_splits.splitLapSelector) =
   let athlete_name =
     match athlete with None -> "Unknown" | Some athl -> athl.firstname
   in
@@ -147,5 +187,9 @@ let activity_page (athlete : Models.Strava_models.StravaAthlete.t option)
     [ lang "en" ]
     [
       head [] (head_elems ());
-      body [] [ Header.header_ athlete_name; activity_grid athlete activity ];
+      body []
+        [
+          Header.header_ athlete_name;
+          activity_grid ~athlete ~activity ~split_select;
+        ];
     ]
