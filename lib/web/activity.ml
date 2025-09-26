@@ -73,7 +73,6 @@ let activity_graphs_card (activity : Models.Activity.t) =
 
 (* TODO: maybe split/lap switching should be done with htmx so we don't reload the whole page *)
 (* TODO: similarly with htmx maybe we just load page without data and display the data as it appears *)
-(* TODO: find a way to smartly build the href urls rather than hardcoding strings *)
 let activity_laps_splits_card ~(activity : Models.Activity.t)
     ~(split_select : Activity_splits.splitLapSelector) =
   let sport_type = activity.sport_type in
@@ -82,6 +81,7 @@ let activity_laps_splits_card ~(activity : Models.Activity.t)
     | Laps -> List.map ~f:(fun lap -> lap.stats) activity.laps
     | Splits -> List.map ~f:(fun split -> split.stats) activity.splits
   in
+  let href_path = path_attr href Paths.activity_split_select activity.id in
 
   div
     [ class_ "card activitySplitsStats" ]
@@ -97,10 +97,7 @@ let activity_laps_splits_card ~(activity : Models.Activity.t)
             ]
             [
               a
-                [
-                  href "/activity/%d?split_select=%s" activity.id
-                    (Activity_splits.show_splitLapSelector Splits);
-                ]
+                [ href_path (Activity_splits.show_splitLapSelector Splits) ]
                 [ txt "Splits" ];
             ];
           span
@@ -111,10 +108,7 @@ let activity_laps_splits_card ~(activity : Models.Activity.t)
             ]
             [
               a
-                [
-                  href "/activity/%d?split_select=%s" activity.id
-                    (Activity_splits.show_splitLapSelector Laps);
-                ]
+                [ href_path (Activity_splits.show_splitLapSelector Laps) ]
                 [ txt "Laps" ];
             ];
         ];

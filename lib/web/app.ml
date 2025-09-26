@@ -77,8 +77,8 @@ let run (db : Db.t) =
   @@ Dream.router
        [
          Dream_html.Livereload.route;
-         Dream.get "/" (handle_training_log ~db);
-         Dream.get "/activity/:id" (handle_activity ~db);
+         Dream_html.get Paths.index (handle_training_log ~db);
+         Dream_html.get Paths.activity (handle_activity ~db);
          Dream.get "/static/**" (Dream.static "./lib/web/static");
        ]
 

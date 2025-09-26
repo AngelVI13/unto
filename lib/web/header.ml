@@ -9,10 +9,10 @@ let header_ (athlete_name : string) =
         [
           span
             [ class_ "headerTxt headerTxtBig active" ]
-            [ a [ href "/" ] [ txt "Training Log" ] ];
+            [ a [ path_attr href Paths.index ] [ txt "Training Log" ] ];
           span
             [ class_ "headerTxt headerTxtSmall active" ]
-            [ a [ href "/" ] [ txt "Training Log" ] ];
+            [ a [ path_attr href Paths.index ] [ txt "Training Log" ] ];
           span
             [ class_ "headerTxt headerTxtBig inactive" ]
             [ a [ href "" ] [ txt "Dashboards" ] ];
