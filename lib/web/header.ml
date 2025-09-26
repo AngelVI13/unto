@@ -29,7 +29,11 @@ let header_ (athlete_name : string) =
               a
                 [ href "" ]
                 [
-                  img [ class_ "header-img"; src "/static/assets/account.png" ];
+                  img
+                    [
+                      class_ "header-img";
+                      path_attr src Static.Assets.Images.account_png;
+                    ];
                 ];
             ];
           span [ class_ "icon-container athlete-txt" ] [ txt "%s" athlete_name ];
@@ -39,7 +43,11 @@ let header_ (athlete_name : string) =
               a
                 [ href "" ]
                 [
-                  img [ class_ "header-img"; src "/static/assets/settings.png" ];
+                  img
+                    [
+                      class_ "header-img";
+                      path_attr src Static.Assets.Images.settings_png;
+                    ];
                 ];
             ];
         ];

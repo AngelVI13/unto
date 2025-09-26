@@ -79,7 +79,7 @@ let run (db : Db.t) =
          Dream_html.Livereload.route;
          Dream_html.get Paths.index (handle_training_log ~db);
          Dream_html.get Paths.activity (handle_activity ~db);
-         Dream.get "/static/**" (Dream.static "./lib/web/static");
+         Static.routes;
        ]
 
 let%expect_test "fetch weeks activities from db" =

@@ -33,7 +33,7 @@ let activity_details_card (activity : Models.Activity.t) =
         [
           div
             [ class_ "big-icon-container"; style_ "%s" icon_background ]
-            [ img [ class_ "big-icon-img"; src "%s" img_src ] ];
+            [ img [ class_ "big-icon-img"; path_attr src img_src ] ];
           div
             [ class_ "activityType" ]
             [
@@ -141,34 +141,50 @@ let head_elems () =
       [
         rel "icon";
         type_ "image/x-icon";
-        href "/static/assets/favicon_32x32.ico";
+        path_attr href Static.Assets.Images.favicon_small_ico;
       ];
     link
       [
         rel "stylesheet";
         type_ "text/css";
-        href "/static/leaflet/dist/leaflet.css";
+        path_attr href Static.Assets.Js.Leaflet.Dist.leaflet_css;
       ];
     (* NOTE: leaflet.js version 1.9.4 *)
-    script [ src "%s" "/static/leaflet/dist/leaflet.js" ] "";
+    script [ path_attr src Static.Assets.Js.Leaflet.Dist.leaflet_js ] "";
     link
       [
         rel "stylesheet";
         type_ "text/css";
-        href "/static/Leaflet.ResetView/dist/L.Control.ResetView.min.css";
+        path_attr href
+          Static.Assets.Js.Leaflet_ResetView.Dist.l_Control_ResetView_min_css;
       ];
     (* NOTE: Leaflet.ResetView version 1.9.2 *)
     script
-      [ src "%s" "/static/Leaflet.ResetView/dist/L.Control.ResetView.min.js" ]
+      [
+        path_attr src
+          Static.Assets.Js.Leaflet_ResetView.Dist.l_Control_ResetView_min_js;
+      ]
       "";
     (* NOTE: chart.js version 4.5.0 *)
-    script [ src "%s" "/static/chart.js/dist/chart.umd.min.js" ] "";
+    script [ path_attr src Static.Assets.Js.Chart_js.Dist.chart_umd_min_js ] "";
     link
-      [ rel "stylesheet"; type_ "text/css"; href "/static/styles/common.css" ];
+      [
+        rel "stylesheet";
+        type_ "text/css";
+        path_attr href Static.Assets.Css.common_css;
+      ];
     link
-      [ rel "stylesheet"; type_ "text/css"; href "/static/styles/header.css" ];
+      [
+        rel "stylesheet";
+        type_ "text/css";
+        path_attr href Static.Assets.Css.header_css;
+      ];
     link
-      [ rel "stylesheet"; type_ "text/css"; href "/static/styles/activity.css" ];
+      [
+        rel "stylesheet";
+        type_ "text/css";
+        path_attr href Static.Assets.Css.activity_css;
+      ];
   ]
 
 let activity_page ~(athlete : Models.Strava_models.StravaAthlete.t option)

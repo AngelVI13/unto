@@ -5,10 +5,10 @@ open HTML
 let activity_icon_and_color (activity : Models.Activity.t) =
   let icon_color, img_src =
     match activity.sport_type with
-    | Run -> ("gold", "/static/assets/running.png")
-    | Ride -> ("coral", "/static/assets/cycling.png")
-    | Crossfit -> ("greenyellow", "/static/assets/crosstrain.png")
-    | _ -> ("gray", "/static/assets/unknown.png")
+    | Run -> ("gold", Static.Assets.Images.running_png)
+    | Ride -> ("coral", Static.Assets.Images.cycling_png)
+    | Crossfit -> ("greenyellow", Static.Assets.Images.crosstrain_png)
+    | _ -> ("gray", Static.Assets.Images.unknown_png)
   in
   let icon_background = sprintf "background: %s;" icon_color in
   (icon_background, img_src)
@@ -18,7 +18,7 @@ module Stat = struct
     name : string;
     description : string;
     unit : string;
-    icon_path : string;
+    icon_path : (Dream.response Lwt.t, attr) path;
   }
 
   let make ~name ~description ~unit ~icon_path =
@@ -32,7 +32,7 @@ module Stat = struct
           [
             class_ "stat-icon-img";
             title_ "%s (%s)" t.description t.unit;
-            src "%s" t.icon_path;
+            path_attr src t.icon_path;
           ];
       ]
 
@@ -73,47 +73,47 @@ let duration_stat_value moving_time = format_activity_duration moving_time
 
 let duration_stat =
   Stat.make ~name:"Duration" ~description:"Duration" ~unit:"hh:mm:ss"
-    ~icon_path:"/static/assets/duration.png"
+    ~icon_path:Static.Assets.Images.duration_png
 
 let hr_stat =
   Stat.make ~name:"Heartrate" ~description:"Heartrate" ~unit:"bpm"
-    ~icon_path:"/static/assets/heartrate.png"
+    ~icon_path:Static.Assets.Images.heartrate_png
 
 let distance_stat =
   Stat.make ~name:"Distance" ~description:"Distance" ~unit:"km"
-    ~icon_path:"/static/assets/distance.png"
+    ~icon_path:Static.Assets.Images.distance_png
 
 let pace_stat =
   Stat.make ~name:"Pace" ~description:"Pace" ~unit:"min/km"
-    ~icon_path:"/static/assets/pace.png"
+    ~icon_path:Static.Assets.Images.pace_png
 
 let speed_stat =
   Stat.make ~name:"Speed" ~description:"Speed" ~unit:"kph"
-    ~icon_path:"/static/assets/speed.png"
+    ~icon_path:Static.Assets.Images.speed_png
 
 let calories_stat =
   Stat.make ~name:"Calories" ~description:"Calories" ~unit:"kcal"
-    ~icon_path:"/static/assets/calories.png"
+    ~icon_path:Static.Assets.Images.calories_png
 
 let elev_gain_loss_stat =
   Stat.make ~name:"Elevation" ~description:"Elevation gain & loss" ~unit:"m"
-    ~icon_path:"/static/assets/elevation.png"
+    ~icon_path:Static.Assets.Images.elevation_png
 
 let power_stat =
   Stat.make ~name:"Power" ~description:"Power" ~unit:"Watt"
-    ~icon_path:"/static/assets/power.png"
+    ~icon_path:Static.Assets.Images.power_png
 
 let cadence_stat =
   Stat.make ~name:"Cadence" ~description:"Cadence" ~unit:"steps/min or rev/min"
-    ~icon_path:"/static/assets/cadence.png"
+    ~icon_path:Static.Assets.Images.cadence_png
 
 let elevation_stat =
   Stat.make ~name:"Elevation" ~description:"Elevation" ~unit:"m"
-    ~icon_path:"/static/assets/elevation.png"
+    ~icon_path:Static.Assets.Images.elevation_png
 
 let temperature_stat =
   Stat.make ~name:"Temperature" ~description:"Temperature" ~unit:"C"
-    ~icon_path:"/static/assets/temperature.png"
+    ~icon_path:Static.Assets.Images.temperature_png
 
 let elevation_stat_value elev = Int.to_string elev
 

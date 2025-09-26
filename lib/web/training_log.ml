@@ -42,7 +42,7 @@ let activity_header (activity : Models.Activity.t) =
     [
       span
         [ class_ "icon-container"; style_ "%s" icon_background ]
-        [ img [ class_ "icon-img"; src "%s" img_src ] ];
+        [ img [ class_ "icon-img"; path_attr src img_src ] ];
       span
         [ class_ "activityType" ]
         [ txt "%s" (Models.Strava_models.show_sportType activity.sport_type) ];
@@ -321,18 +321,26 @@ let head_elems () =
       [
         rel "icon";
         type_ "image/x-icon";
-        href "/static/assets/favicon_32x32.ico";
+        path_attr href Static.Assets.Images.favicon_small_ico;
       ];
     title [] "Unto";
-    link
-      [ rel "stylesheet"; type_ "text/css"; href "/static/styles/common.css" ];
-    link
-      [ rel "stylesheet"; type_ "text/css"; href "/static/styles/header.css" ];
     link
       [
         rel "stylesheet";
         type_ "text/css";
-        href "/static/styles/training_log.css";
+        path_attr href Static.Assets.Css.common_css;
+      ];
+    link
+      [
+        rel "stylesheet";
+        type_ "text/css";
+        path_attr href Static.Assets.Css.header_css;
+      ];
+    link
+      [
+        rel "stylesheet";
+        type_ "text/css";
+        path_attr href Static.Assets.Css.training_log_css;
       ];
   ]
 
