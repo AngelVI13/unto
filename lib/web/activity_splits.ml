@@ -24,7 +24,7 @@ let split_stat_headers ~(sport_type : Models.Strava_models.sportType)
   in
 
   let gain_loss =
-    stats.elev_gain >>| fun _ ->
+    Option.both stats.elev_gain stats.max_speed >>| fun _ ->
     Helpers.Stat.stat_icon Helpers.elev_gain_loss_stat
   in
 
@@ -89,7 +89,7 @@ let split_stat_values ~(sport_type : Models.Strava_models.sportType)
   in
 
   let gain_loss =
-    stats.elev_gain >>| fun elev_gain ->
+    Option.both stats.elev_gain stats.max_speed >>| fun (elev_gain, _) ->
     let elev_loss = Option.value_exn stats.elev_loss in
     Helpers.elev_gain_loss_stat_value elev_gain elev_loss
   in

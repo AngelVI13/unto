@@ -77,23 +77,36 @@ let activity_stats_table (activity : Models.Activity.t) =
     | _, _ -> assert false
   in
 
-  let speed_pace_row =
+  let speed_pace_row, elevation_row =
     match (activity.stats.max_speed, activity.stats.average_speed) with
-    | None, None -> None
+    | None, None -> (None, None)
     | Some speed_max, Some speed_avg ->
-        let node =
-          match activity.sport_type with
-          | Models.Strava_models.Run | Models.Strava_models.TrailRun
-          | Models.Strava_models.VirtualRun ->
-              Helpers.Stat.min_max_avg_row Helpers.pace_stat ~min_value:"-"
-                ~max_value:(Helpers.pace_stat_value speed_max)
-                ~avg_value:(Helpers.pace_stat_value speed_avg)
-          | _ ->
-              Helpers.Stat.min_max_avg_row Helpers.speed_stat ~min_value:"-"
-                ~max_value:(Helpers.speed_stat_value speed_max)
-                ~avg_value:(Helpers.speed_stat_value speed_avg)
+        let speed_row =
+          Some
+            (match activity.sport_type with
+            | Models.Strava_models.Run | Models.Strava_models.TrailRun
+            | Models.Strava_models.VirtualRun ->
+                Helpers.Stat.min_max_avg_row Helpers.pace_stat ~min_value:"-"
+                  ~max_value:(Helpers.pace_stat_value speed_max)
+                  ~avg_value:(Helpers.pace_stat_value speed_avg)
+            | _ ->
+                Helpers.Stat.min_max_avg_row Helpers.speed_stat ~min_value:"-"
+                  ~max_value:(Helpers.speed_stat_value speed_max)
+                  ~avg_value:(Helpers.speed_stat_value speed_avg))
         in
-        Some node
+        (* NOTE: only show elevation if the activity has speed recorded *)
+        let elevation_row =
+          match (activity.stats.elev_high, activity.stats.elev_low) with
+          | None, None -> None
+          | Some elev_max, Some elev_min ->
+              Some
+                (Helpers.Stat.min_max_avg_row Helpers.elevation_stat
+                   ~min_value:(Helpers.elevation_stat_value elev_min)
+                   ~max_value:(Helpers.elevation_stat_value elev_max)
+                   ~avg_value:"-")
+          | _, _ -> assert false
+        in
+        (speed_row, elevation_row)
     | _, _ -> assert false
   in
 
@@ -116,18 +129,6 @@ let activity_stats_table (activity : Models.Activity.t) =
           (Helpers.Stat.min_max_avg_row Helpers.cadence_stat ~min_value:"-"
              ~max_value:(Helpers.cadence_stat_value cad_max)
              ~avg_value:(Helpers.cadence_stat_value cad_avg))
-    | _, _ -> assert false
-  in
-
-  let elevation_row =
-    match (activity.stats.elev_high, activity.stats.elev_low) with
-    | None, None -> None
-    | Some elev_max, Some elev_min ->
-        Some
-          (Helpers.Stat.min_max_avg_row Helpers.elevation_stat
-             ~min_value:(Helpers.elevation_stat_value elev_min)
-             ~max_value:(Helpers.elevation_stat_value elev_max)
-             ~avg_value:"-")
     | _, _ -> assert false
   in
 
