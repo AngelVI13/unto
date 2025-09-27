@@ -6,7 +6,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
-  padding: 10px;
   width: 100%;
   align-items: flex-start;
 }
@@ -16,6 +15,7 @@
 }
 
 .activityHeader {
+  width: 29vw;
   display: grid;
   gap: 10px;
 }
@@ -56,7 +56,7 @@
 
 #map {
   height: 40vh;
-  width: 29vw;
+  width: 100%;
 }
 
 .activityCardStats {
@@ -64,8 +64,12 @@
   height: max-content; /* allow table to grow beyond container */
 }
 
+.activityGraphs {
+  width: 94vw;
+}
+
 .activitySplitsStats {
-  max-width: 29vw;
+  width: 29vw;
   max-height: 50vh;
   overflow: hidden;
 }
@@ -105,16 +109,7 @@ tfoot {
 
 #streamsChart {
   height: 50vh;
-  width: 93vw;
-}
-
-@media screen and (max-width: 930px) {
-}
-
-@media screen and (max-width: 550px) {
-  .activityGrid > div {
-    padding: 5px 20vw;
-  }
+  width: 100%;
 }
 
 .splitsTable {
@@ -173,4 +168,32 @@ tfoot {
 
 .splitSelectBtns {
   margin-bottom: 5px;
+}
+
+@media screen and (max-width: 930px) {
+  .activityCardStats {
+    width: 44vw;
+  }
+
+  .activityHeader {
+    width: 44vw;
+  }
+
+  .activitySplitsStats {
+    width: 94vw;
+  }
+}
+
+@media screen and (max-width: 650px) {
+  .activityCardStats {
+    width: 90vw;
+  }
+
+  .activityHeader {
+    width: 90vw;
+  }
+
+  .activitySplitsStats {
+    width: 90vw;
+  }
 }

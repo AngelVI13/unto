@@ -53,9 +53,19 @@ let handle_activity ~db request =
         Db.get_activity db ~activity_id)
   in
 
+  (* If activity exists and has laps -> show laps by default *)
+  let default_split_select =
+    match activity with
+    | None -> Activity_splits.Splits
+    | Some activity -> (
+        match List.length activity.laps with
+        | 0 | 1 -> Activity_splits.Splits
+        | _ -> Activity_splits.Laps)
+  in
+
   let split_select =
     match Dream.query request "split_select" with
-    | None -> Activity_splits.Splits
+    | None -> default_split_select
     | Some s -> Activity_splits.splitLapSelector_of_string s
   in
 

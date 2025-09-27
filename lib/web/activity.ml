@@ -61,7 +61,7 @@ let activity_graphs (activity : Models.Activity.t) =
 
 let activity_graphs_card (activity : Models.Activity.t) =
   div
-    [ class_ "card" ]
+    [ class_ "card activityGraphs" ]
     [
       div
         [ class_ "graphContainer" ]
@@ -71,7 +71,6 @@ let activity_graphs_card (activity : Models.Activity.t) =
         ];
     ]
 
-(* TODO: make it look good on mobile *)
 (* TODO: maybe split/lap switching should be done with htmx so we don't reload the whole page *)
 (* TODO: similarly with htmx maybe we just load page without data and display the data as it appears *)
 let activity_laps_splits_card ~(activity : Models.Activity.t)
