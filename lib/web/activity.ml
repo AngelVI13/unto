@@ -72,21 +72,29 @@ let activity_stats_card (athlete : Models.Strava_models.StravaAthlete.t option)
 let activity_graphs (activity : Models.Activity.t) =
   Activity_graph.Graph.script_of_activity activity
 
-let activity_graphs_card (activity : Models.Activity.t) =
+let activity_graphs_card ?(full_load = true) (activity : Models.Activity.t) =
+  let graph_elements =
+    if full_load then
+      [
+        canvas [ id "streamsChart" ] [];
+        script [] "%s" (activity_graphs activity);
+      ]
+    else
+      [
+        canvas
+          [
+            id "streamsChart";
+            Hx.trigger "load";
+            path_attr Hx.get Paths.activity_graph_url activity.id;
+          ]
+          [];
+      ]
+  in
   div
     [ class_ "card activityGraphs" ]
-    [
-      div
-        [ class_ "graphContainer" ]
-        [
-          canvas [ id "streamsChart" ] [];
-          script [] "%s" (activity_graphs activity);
-        ];
-    ]
+    [ div [ class_ "graphContainer" ] graph_elements ]
 
 (* TODO: maybe split/lap switching should be done with htmx so we don't reload the whole page *)
-(* TODO: similarly with htmx maybe we just load page without data and display the data as it appears *)
-(* EXAMPLE <div hx-trigger="load" hx-get="/views/users/createUserForm"></div> *)
 let activity_laps_splits_card ~(activity : Models.Activity.t)
     ~(split_select : Activity_splits.splitLapSelector) =
   let sport_type = activity.sport_type in
@@ -141,7 +149,7 @@ let activity_grid ~(athlete : Models.Strava_models.StravaAthlete.t option)
           activity_details_card activity;
           activity_stats_card athlete activity;
           activity_laps_splits_card ~activity ~split_select;
-          activity_graphs_card activity;
+          activity_graphs_card ~full_load:false activity;
         ]
 
 let head_elems () =

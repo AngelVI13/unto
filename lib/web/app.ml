@@ -84,6 +84,24 @@ let handle_activity_map ~db request =
   let page = Activity.activity_map ~full_load:true ~activity () in
   Dream_html.respond page
 
+let handle_activity_graph ~db request =
+  let activity_id = Dream.param request "id" |> Int.of_string_opt in
+  let activity =
+    Option.bind activity_id ~f:(fun activity_id ->
+        Db.get_activity db ~activity_id)
+    |> Option.value_exn
+  in
+
+  (*   TODO: something is wrong loading the 100km run *)
+  (*   28.09.25 05:54:30.792    dream.logger  WARN REQ 34 Aborted by: Invalid_argument("Int.of_float: argument (inf) is out of range or NaN") *)
+  (*   28.09.25 05:54:30.792    dream.logger  WARN Raised at Stdlib.invalid_arg in file "stdlib.ml", line 30, characters 20-45 *)
+  (*   28.09.25 05:54:30.792    dream.logger  WARN Called from Web__Helpers.pace_stat_value in file "lib/web/helpers.ml", line 147, characters 20-67 *)
+  (*   28.09.25 05:54:30.792    dream.logger  WARN Called from Web__Activity_graph.GraphData.of_stream.(fun) in file "lib/web/activity_graph.ml", line 149, characters 54-67 *)
+  (*   28.09.25 05:54:30.792    dream.logger  WARN Called from Base__List0.fold in file "src/list0.ml", line 37, characters 27-37 *)
+  (*   28.09.25 05:54:30.792    dream.logger  WARN Called from Web__Activity_graph.GraphData.of_stream in file "lib/web/activity_graph.ml", lines 148-150, characters 12-29                                                                                                      28.09.25 05:54:30.792    dream.logger  WARN Called from Web__Activity_graph.Graph.add_stream in file "lib/web/activity_graph.ml", line 326, characters 15-51                                                                                                              28.09.25 05:54:30.792    dream.logger  WARN Called from Base__List0.fold in file "src/list0.ml", line 37, characters 27-37           28.09.25 05:54:30.792    dream.logger  WARN Called from Web__Activity_graph.Graph.of_streams in file "lib/web/activity_graph.ml", line 353, characters 16-76                                                                                                              28.09.25 05:54:30.792    dream.logger  WARN Called from Web__Activity_graph.Graph.script_of_activity in file "lib/web/activity_graph.ml", line 431, characters 16-53                                                                                                      28.09.25 05:54:30.792    dream.logger  WARN Called from Web__Activity.activity_graphs in file "lib/web/activity.ml" (inlined), line 73, characters 2-50                                                                                                                   28.09.25 05:54:30.792    dream.logger  WARN Called from Web__Activity.activity_graphs_card in file "lib/web/activity.ml", line 80, characters 23-49                                                                                                                       28.09.25 05:54:30.792    dream.logger  WARN Called from Web__App.handle_activity_graph in file "lib/web/app.ml", line 95, characters 13-67                                                                                                                                28.09.25 05:54:30.792    dream.logger  WARN Called from Dream_html__Path.handler in file "dream-html/path.ml", line 99, characters 46-56                                                                                                                                  28.09.25 05:54:30.792    dream.logger  WARN Called from Lwt.Sequence_associated_storage.with_value in file "src/core/lwt.ml", line 804, characters 19-23                                                                                                                  28.09.25 05:54:30.792    dream.logger  WARN Re-raised at Lwt.Sequence_associated_storage.with_value in file "src/core/lwt.ml", line 809, characters 6-15                                                                                                                  28.09.25 05:54:30.792    dream.logger  WARN Called from Lwt.Sequential_composition.try_bind in file "src/core/lwt.ml", line 2139, characters 10-14                                                                            *)
+  let page = Activity.activity_graphs_card ~full_load:true activity in
+  Dream_html.respond page
+
 (* TODO: activity fails to download streams 113217900 *)
 (* processing activity=113217900 2014-02-12T16:00:00Z *)
 (*   downloading streams *)
@@ -101,6 +119,7 @@ let run (db : Db.t) =
          Dream_html.get Paths.index (handle_training_log ~db);
          Dream_html.get Paths.activity (handle_activity ~db);
          Dream_html.get Paths.activity_map (handle_activity_map ~db);
+         Dream_html.get Paths.activity_graph (handle_activity_graph ~db);
          Static.routes;
        ]
 
