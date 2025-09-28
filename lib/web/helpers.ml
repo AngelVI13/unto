@@ -144,9 +144,14 @@ let distance_stat_node distance =
   Stat.activity_stat distance_stat (distance_stat_value distance)
 
 let pace_stat_value avg =
-  let secs_per_km = Int.of_float (Float.round_down (1000.0 /. avg)) in
-  let secs = secs_per_km mod 60 in
-  let mins = secs_per_km / 60 in
+  let mins, secs =
+    if Float.equal Float.zero avg then (59, 59)
+    else
+      let secs_per_km = Int.of_float (Float.round_down (1000.0 /. avg)) in
+      let secs = secs_per_km mod 60 in
+      let mins = secs_per_km / 60 in
+      (mins, secs)
+  in
   sprintf "%02d:%02d" mins secs
 
 let speed_stat_value avg =

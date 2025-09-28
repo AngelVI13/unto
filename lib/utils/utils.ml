@@ -73,7 +73,9 @@ let option_moving_average (k : int) (data : int option list) =
             sum := !sum + value;
             incr count
     done;
-    smoothed.(i) <- Some (!sum / !count)
+    (* NOTE: it could happen that we find only None's in our window -> just
+       return 0 *)
+    smoothed.(i) <- Some (if !count = 0 then 0 else !sum / !count)
   done;
   Array.to_list smoothed
 
