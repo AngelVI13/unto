@@ -95,6 +95,8 @@ let activity_graphs_card ?(full_load = true) (activity : Models.Activity.t) =
     [ div [ class_ "graphContainer" ] graph_elements ]
 
 (* TODO: maybe split/lap switching should be done with htmx so we don't reload the whole page *)
+(* TODO: make the pace, hr, power with vertical bars to indicate how high the
+   value is for easy comparison (similar to the split values in strava) *)
 let activity_laps_splits_card ~(activity : Models.Activity.t)
     ~(split_select : Activity_splits.splitLapSelector) =
   let sport_type = activity.sport_type in
@@ -103,10 +105,23 @@ let activity_laps_splits_card ~(activity : Models.Activity.t)
     | Laps -> List.map ~f:(fun lap -> lap.stats) activity.laps
     | Splits -> List.map ~f:(fun split -> split.stats) activity.splits
   in
-  let href_path = path_attr href Paths.activity_split_select activity.id in
+
+  let select_btn (select : Activity_splits.splitLapSelector) =
+    let href_path =
+      path_attr Hx.get Paths.activity_select_url activity.id
+        (Activity_splits.show_splitLapSelector select)
+    in
+    let htmx_target = Hx.target "#splitsTable" in
+    let htmx_trigger = Hx.trigger "click" in
+    let htmx_swap = Hx.swap "outerHTML" in
+    (* NOTE: the empty href is needed otherwise the `a` doesn't get any styling *)
+    [ href ""; href_path; htmx_target; htmx_trigger; htmx_swap ]
+  in
 
   div
-    [ class_ "card activitySplitsStats" ]
+    (* NOTE: the id is only needed for the htmx target, for some reason the
+       class selector doesn't work *)
+    [ class_ "card activitySplitsStats"; id "splitsTable" ]
     [
       div
         [ class_ "splitSelectBtns" ]
@@ -117,22 +132,14 @@ let activity_laps_splits_card ~(activity : Models.Activity.t)
                then class_ "active"
                else class_ "inactive");
             ]
-            [
-              a
-                [ href_path (Activity_splits.show_splitLapSelector Splits) ]
-                [ txt "Splits" ];
-            ];
+            [ a (select_btn Splits) [ txt "Splits" ] ];
           span
             [
               (if Activity_splits.equal_splitLapSelector split_select Laps then
                  class_ "active"
                else class_ "inactive");
             ]
-            [
-              a
-                [ href_path (Activity_splits.show_splitLapSelector Laps) ]
-                [ txt "Laps" ];
-            ];
+            [ a (select_btn Laps) [ txt "Laps" ] ];
         ];
       Activity_splits.activity_splits_table ~sport_type ~split_select stats;
     ]
