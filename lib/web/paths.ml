@@ -1,3 +1,5 @@
 let%path index = "/"
 let%path activity = "/activity/:id"
 let%path activity_split_select = "/activity/%d?split_select=%s"
+let%path activity_map = "/activity/:id/map"
+let%path activity_map_url = "/activity/%d/map"

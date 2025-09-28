@@ -73,6 +73,17 @@ let handle_activity ~db request =
   let page = Activity.activity_page ~athlete ~activity ~split_select in
   Dream_html.respond page
 
+let handle_activity_map ~db request =
+  let activity_id = Dream.param request "id" |> Int.of_string_opt in
+  let activity =
+    Option.bind activity_id ~f:(fun activity_id ->
+        Db.get_activity db ~activity_id)
+    |> Option.value_exn
+  in
+
+  let page = Activity.activity_map ~full_load:true ~activity () in
+  Dream_html.respond page
+
 (* TODO: activity fails to download streams 113217900 *)
 (* processing activity=113217900 2014-02-12T16:00:00Z *)
 (*   downloading streams *)
@@ -89,6 +100,7 @@ let run (db : Db.t) =
          Dream_html.Livereload.route;
          Dream_html.get Paths.index (handle_training_log ~db);
          Dream_html.get Paths.activity (handle_activity ~db);
+         Dream_html.get Paths.activity_map (handle_activity_map ~db);
          Static.routes;
        ]
 

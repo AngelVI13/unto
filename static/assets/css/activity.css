@@ -170,7 +170,7 @@ tfoot {
   margin-bottom: 5px;
 }
 
-@media screen and (max-width: 930px) {
+@media screen and (max-width: 1100px) {
   .activityCardStats {
     width: 44vw;
   }
@@ -184,7 +184,7 @@ tfoot {
   }
 }
 
-@media screen and (max-width: 650px) {
+@media screen and (max-width: 840px) {
   .activityCardStats {
     width: 90vw;
   }

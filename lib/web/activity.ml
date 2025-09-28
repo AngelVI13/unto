@@ -8,16 +8,7 @@ let activity_start_time (timestamp : string) =
   let time = Time_ns.to_sec_string ~zone:Timezone.utc time in
   sprintf "%s" time
 
-let activity_map (locations : float list list option) =
-  match locations with
-  | None -> null []
-  | Some locs ->
-      let map_script = Activity_map.activity_map_script locs in
-      null [ div [ id "map" ] []; script [] "%s" map_script ]
-
-let activity_details_card (activity : Models.Activity.t) =
-  let icon_background, img_src = Helpers.activity_icon_and_color activity in
-
+let activity_map ~(activity : Models.Activity.t) ?(full_load = true) () =
   (* this is list of lat lng points (to draw a map) if they exist for the activity *)
   let locations =
     List.find_map
@@ -25,6 +16,28 @@ let activity_details_card (activity : Models.Activity.t) =
         match stream with LatLngStream s -> Some s.data | _ -> None)
       activity.streams
   in
+
+  match locations with
+  | None -> null []
+  | Some locs ->
+      if full_load then
+        let map_script = Activity_map.activity_map_script locs in
+        null [ div [ id "map" ] []; script [] "%s" map_script ]
+      else
+        null
+          [
+            div
+              [
+                id "map";
+                Hx.trigger "load";
+                path_attr Hx.get Paths.activity_map_url activity.id;
+              ]
+              [];
+          ]
+
+let activity_details_card (activity : Models.Activity.t) =
+  let icon_background, img_src = Helpers.activity_icon_and_color activity in
+
   div
     [ class_ "card activityHeader" ]
     [
@@ -43,7 +56,7 @@ let activity_details_card (activity : Models.Activity.t) =
       div
         [ class_ "activityTime" ]
         [ txt "%s: %s" activity.name (activity_start_time activity.start_date) ];
-      activity_map locations;
+      activity_map ~activity ~full_load:false ();
     ]
 
 let activity_stats_card (athlete : Models.Strava_models.StravaAthlete.t option)
@@ -73,6 +86,7 @@ let activity_graphs_card (activity : Models.Activity.t) =
 
 (* TODO: maybe split/lap switching should be done with htmx so we don't reload the whole page *)
 (* TODO: similarly with htmx maybe we just load page without data and display the data as it appears *)
+(* EXAMPLE <div hx-trigger="load" hx-get="/views/users/createUserForm"></div> *)
 let activity_laps_splits_card ~(activity : Models.Activity.t)
     ~(split_select : Activity_splits.splitLapSelector) =
   let sport_type = activity.sport_type in
@@ -167,6 +181,8 @@ let head_elems () =
       "";
     (* NOTE: chart.js version 4.5.0 *)
     script [ path_attr src Static.Assets.Js.Chart_js.Dist.chart_umd_min_js ] "";
+    (* NOTE: htmx version 2.0.7 *)
+    script [ path_attr src Static.Assets.Js.Htmx.Dist.htmx_min_js ] "";
     link
       [
         rel "stylesheet";
