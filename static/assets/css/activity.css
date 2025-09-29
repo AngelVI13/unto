@@ -163,13 +163,13 @@ tfoot {
   position: sticky;
   left: 0; /* sticks first column to the left */
   background: inherit;
-  z-index: 1; /* keep under header cells */
+  z-index: 3; /* keep under header cells */
 }
 
 /* Special case: top-left corner cell (header + first column) */
 .splitsTable th:first-child {
   background: #fff;
-  z-index: 3; /* higher so it overlaps correctly */
+  z-index: 4; /* higher so it overlaps correctly */
 }
 
 .splitSelectBtns span {

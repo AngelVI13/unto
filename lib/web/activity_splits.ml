@@ -54,14 +54,38 @@ let split_stat_headers ~(sport_type : Models.Strava_models.sportType)
   in
   columns
 
-let split_stat_values ~(sport_type : Models.Strava_models.sportType)
-    (index : int) (stats : Models.Stats.t) =
-  let split_idx = Some (sprintf "%d" (index + 1)) in
+let split_stat_values ~(activity : Models.Activity.t) (index : int)
+    (stats : Models.Stats.t) =
+  let sport_type = activity.sport_type in
 
-  let duration = Some (Helpers.duration_stat_value stats.moving_time) in
+  let make_bar_row ~color ~percent value =
+    (* NOTE: reduce the color alpha *)
+    let color =
+      String.substr_replace_first ~pattern:")" ~with_:", 0.4)" color
+    in
+    td []
+      [
+        div
+          [
+            class_ "bar"; style_ "width: %d%s; background: %s" percent "%" color;
+          ]
+          [];
+        span [] [ txt "%s" value ];
+      ]
+  in
+
+  let make_txt_row value = td [] [ txt "%s" value ] in
+
+  let split_idx = Some (make_txt_row @@ sprintf "%d" (index + 1)) in
+
+  let duration =
+    Some (make_txt_row @@ Helpers.duration_stat_value stats.moving_time)
+  in
 
   let open Option.Monad_infix in
-  let distance = stats.distance >>| Helpers.distance_stat_value in
+  let distance =
+    stats.distance >>| Helpers.distance_stat_value >>| make_txt_row
+  in
 
   let speed_pace =
     stats.average_speed >>| fun avg_val ->
@@ -71,51 +95,55 @@ let split_stat_values ~(sport_type : Models.Strava_models.sportType)
       | Helpers.PaceVelocity -> Helpers.pace_stat_value
       | Helpers.SpeedVelocity -> Helpers.speed_stat_value
     in
-    sprintf "%s (%s)" (to_string avg_val) (to_string max_val)
+    let value = sprintf "%s (%s)" (to_string avg_val) (to_string max_val) in
+
+    let activity_max = Option.value_exn activity.stats.average_speed in
+    let percent =
+      Float.(to_int (round_nearest (activity_max / avg_val * 100.0) - 50.0))
+    in
+    make_bar_row ~color:Activity_graph.GraphData.blue ~percent value
   in
 
+  (* TODO: add bars for heartrate and power and maybe elevation or sth? *)
   let heartrate =
     stats.average_heartrate >>| fun avg_val ->
     let max_val = Option.value_exn stats.max_heartrate in
     let to_string = Helpers.hr_stat_value in
-    sprintf "%s (%s)" (to_string avg_val) (to_string max_val)
+    make_txt_row @@ sprintf "%s (%s)" (to_string avg_val) (to_string max_val)
   in
 
   let power =
     stats.average_power >>| fun avg_val ->
     let max_val = Option.value_exn stats.max_power in
     let to_string = Helpers.power_stat_value in
-    sprintf "%s (%s)" (to_string avg_val) (to_string max_val)
+    make_txt_row @@ sprintf "%s (%s)" (to_string avg_val) (to_string max_val)
   in
 
   let gain_loss =
     Option.both stats.elev_gain stats.max_speed >>| fun (elev_gain, _) ->
     let elev_loss = Option.value_exn stats.elev_loss in
-    Helpers.elev_gain_loss_stat_value elev_gain elev_loss
+    make_txt_row @@ Helpers.elev_gain_loss_stat_value elev_gain elev_loss
   in
 
   let cadence =
     stats.average_cadence >>| fun avg_val ->
     let max_val = Option.value_exn stats.max_cadence in
     let to_string = Helpers.cadence_stat_value in
-    sprintf "%s (%s)" (to_string avg_val) (to_string max_val)
+    make_txt_row @@ sprintf "%s (%s)" (to_string avg_val) (to_string max_val)
   in
 
   let values =
     [
-      (split_idx, "splitIdxRow");
-      (duration, "durationRow");
-      (distance, "distanceRow");
-      (speed_pace, "speedPaceRow");
-      (heartrate, "heartrateRow");
-      (power, "powerRow");
-      (gain_loss, "elevGainRow");
-      (cadence, "cadenceRow");
+      split_idx;
+      duration;
+      distance;
+      speed_pace;
+      heartrate;
+      power;
+      gain_loss;
+      cadence;
     ]
-    (* |> List.filter_opt *)
-    |> List.filter ~f:(fun (value, _) -> Option.is_some value)
-    |> List.map ~f:(fun (value, name) ->
-           td [ class_ "%s" name ] [ txt "%s" (Option.value_exn value) ])
+    |> List.filter_opt
   in
   tr [] values
 
@@ -125,12 +153,13 @@ type splitLapSelector = Laps | Splits
 let splitLapSelector_of_string s = splitLapSelector_of_sexp (Sexp.of_string s)
 
 (* NOTE: this whole file works the same but for laps *)
-let activity_splits_table ~(sport_type : Models.Strava_models.sportType)
+let activity_splits_table ~(activity : Models.Activity.t)
     ~(split_select : splitLapSelector) (stats : Models.Stats.t list) =
   match List.length stats with
   | 0 -> txt "No %s present" (show_splitLapSelector split_select)
   | _ ->
-      let nodes = List.mapi ~f:(split_stat_values ~sport_type) stats in
+      let sport_type = activity.sport_type in
+      let nodes = List.mapi ~f:(split_stat_values ~activity) stats in
       div
         [ class_ "splitsTable" ]
         [

@@ -99,7 +99,6 @@ let activity_graphs_card ?(full_load = true) (activity : Models.Activity.t) =
    value is for easy comparison (similar to the split values in strava) *)
 let activity_laps_splits_card ~(activity : Models.Activity.t)
     ~(split_select : Activity_splits.splitLapSelector) =
-  let sport_type = activity.sport_type in
   let stats =
     match split_select with
     | Laps -> List.map ~f:(fun lap -> lap.stats) activity.laps
@@ -141,8 +140,7 @@ let activity_laps_splits_card ~(activity : Models.Activity.t)
             ]
             [ a (select_btn Laps) [ txt "Laps" ] ];
         ];
-      Activity_splits.activity_splits_table ~sport_type ~split_select stats;
-      script [] "%s" Activity_splits.activity_splits_table_formatting;
+      Activity_splits.activity_splits_table ~activity ~split_select stats;
     ]
 
 let activity_grid ~(athlete : Models.Strava_models.StravaAthlete.t option)
