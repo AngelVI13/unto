@@ -103,17 +103,19 @@ let split_stat_values ~(sport_type : Models.Strava_models.sportType)
 
   let values =
     [
-      split_idx;
-      duration;
-      distance;
-      speed_pace;
-      heartrate;
-      power;
-      gain_loss;
-      cadence;
+      (split_idx, "splitIdxRow");
+      (duration, "durationRow");
+      (distance, "distanceRow");
+      (speed_pace, "speedPaceRow");
+      (heartrate, "heartrateRow");
+      (power, "powerRow");
+      (gain_loss, "elevGainRow");
+      (cadence, "cadenceRow");
     ]
-    |> List.filter_opt
-    |> List.map ~f:(fun value -> td [] [ txt "%s" value ])
+    (* |> List.filter_opt *)
+    |> List.filter ~f:(fun (value, _) -> Option.is_some value)
+    |> List.map ~f:(fun (value, name) ->
+           td [ class_ "%s" name ] [ txt "%s" (Option.value_exn value) ])
   in
   tr [] values
 
@@ -132,10 +134,44 @@ let activity_splits_table ~(sport_type : Models.Strava_models.sportType)
       div
         [ class_ "splitsTable" ]
         [
-          table []
+          table
+            [ id "splitsTable" ]
             [
               thead []
                 [ tr [] (split_stat_headers ~sport_type (List.hd_exn stats)) ];
               tbody [] nodes;
             ];
         ]
+
+let activity_splits_table_formatting =
+  {|
+    const table = document.getElementById("splitsTable");
+    console.log(table);
+    const cells = Array.from(table.querySelectorAll(".heartrateRow")); // 2nd column
+    console.log(cells);
+    const values = cells.map(td => 
+    parseInt(td.textContent.split(" (")[0]));
+    
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
+    cells.forEach((td, i) => {
+      const val = values[i];
+      const rawPercent = ((val - min) / (max - min)) * 100;
+      const percent = Math.max(rawPercent, 10);
+
+      // Create bar div
+      const bar = document.createElement("div");
+      bar.className = "bar";
+      bar.style.width = percent + "%";
+      bar.style.background = "rgba(255, 99, 132, 0.5)";
+
+      // Wrap text
+      const span = document.createElement("span");
+      span.textContent = td.textContent;
+
+      td.textContent = "";
+      td.appendChild(bar);
+      td.appendChild(span);
+    });
+  |}

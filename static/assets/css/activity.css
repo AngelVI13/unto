@@ -118,6 +118,18 @@ tfoot {
   overflow: auto; /* enables both horizontal & vertical scroll */
 }
 
+.splitsTable .bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  z-index: 0;
+}
+.splitsTable td span {
+  position: relative;
+  z-index: 1; /* keep text visible */
+}
+
 .splitsTable table {
   border-collapse: collapse;
   width: max-content; /* allow table to grow beyond container */
@@ -127,6 +139,7 @@ tfoot {
 
 .splitsTable th,
 .splitsTable td {
+  position: relative;
   padding: 8px;
   text-align: left;
   white-space: nowrap; /* prevent text from wrapping and squishing */
