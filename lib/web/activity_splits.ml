@@ -59,6 +59,8 @@ let split_stat_values ~(activity : Models.Activity.t) (index : int)
   let sport_type = activity.sport_type in
 
   let make_bar_row ~color ~percent value =
+    let percent = Int.max percent 5 in
+    let percent = Int.min percent 100 in
     (* NOTE: reduce the color alpha *)
     let color =
       String.substr_replace_first ~pattern:")" ~with_:", 0.4)" color
@@ -97,26 +99,51 @@ let split_stat_values ~(activity : Models.Activity.t) (index : int)
     in
     let value = sprintf "%s (%s)" (to_string avg_val) (to_string max_val) in
 
-    let activity_max = Option.value_exn activity.stats.average_speed in
+    let activity_avg = Option.value_exn activity.stats.average_speed in
     let percent =
-      Float.(to_int (round_nearest (activity_max / avg_val * 100.0) - 50.0))
+      Float.(
+        (* NOTE: here we center the middle to be aligned to the avg value for
+           the whole activity *)
+        (* NOTE: here the 100.0 - value is to make bigger speed show bigger
+           instead of smaller *)
+        to_int (round_nearest 100.0 - ((activity_avg / avg_val * 100.0) - 50.0)))
     in
     make_bar_row ~color:Activity_graph.GraphData.blue ~percent value
   in
 
-  (* TODO: add bars for heartrate and power and maybe elevation or sth? *)
   let heartrate =
     stats.average_heartrate >>| fun avg_val ->
     let max_val = Option.value_exn stats.max_heartrate in
     let to_string = Helpers.hr_stat_value in
-    make_txt_row @@ sprintf "%s (%s)" (to_string avg_val) (to_string max_val)
+    let value = sprintf "%s (%s)" (to_string avg_val) (to_string max_val) in
+
+    let activity_avg = Option.value_exn activity.stats.average_heartrate in
+    let percent =
+      Float.(
+        (* NOTE: here we center the middle to be aligned to the avg value for
+           the whole activity *)
+        to_int
+          (round_nearest 100.0
+          - ((of_int activity_avg / of_int avg_val * 100.0) - 50.0)))
+    in
+    make_bar_row ~color:Activity_graph.GraphData.red ~percent value
   in
 
   let power =
     stats.average_power >>| fun avg_val ->
     let max_val = Option.value_exn stats.max_power in
     let to_string = Helpers.power_stat_value in
-    make_txt_row @@ sprintf "%s (%s)" (to_string avg_val) (to_string max_val)
+    let value = sprintf "%s (%s)" (to_string avg_val) (to_string max_val) in
+    let activity_avg = Option.value_exn activity.stats.average_power in
+    let percent =
+      Float.(
+        (* NOTE: here we center the middle to be aligned to the avg value for
+           the whole activity *)
+        to_int
+          (round_nearest 100.0
+          - ((of_int activity_avg / of_int avg_val * 100.0) - 50.0)))
+    in
+    make_bar_row ~color:Activity_graph.GraphData.yellow ~percent value
   in
 
   let gain_loss =
