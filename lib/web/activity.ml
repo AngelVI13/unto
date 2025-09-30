@@ -94,9 +94,6 @@ let activity_graphs_card ?(full_load = true) (activity : Models.Activity.t) =
     [ class_ "card activityGraphs" ]
     [ div [ class_ "graphContainer" ] graph_elements ]
 
-(* TODO: maybe split/lap switching should be done with htmx so we don't reload the whole page *)
-(* TODO: make the pace, hr, power with vertical bars to indicate how high the
-   value is for easy comparison (similar to the split values in strava) *)
 let activity_laps_splits_card ~(activity : Models.Activity.t)
     ~(split_select : Activity_splits.splitLapSelector) =
   let stats =

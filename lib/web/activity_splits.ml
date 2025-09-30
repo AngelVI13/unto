@@ -1,6 +1,117 @@
-open! Core
+open Core
 open Dream_html
 open HTML
+
+module SplitAvgRange = struct
+  type t = {
+    min_velocity : float option;
+    max_velocity : float option;
+    min_heartrate : int option;
+    max_heartrate : int option;
+    min_power : int option;
+    max_power : int option;
+  }
+
+  let empty () =
+    {
+      min_velocity = None;
+      max_velocity = None;
+      min_heartrate = None;
+      max_heartrate = None;
+      min_power = None;
+      max_power = None;
+    }
+
+  let add_stats (acc : t) (stats : Models.Stats.t) =
+    let acc =
+      match stats.average_speed with
+      | None -> acc
+      | Some avg -> (
+          match (acc.min_velocity, acc.max_velocity) with
+          | None, None ->
+              { acc with min_velocity = Some avg; max_velocity = Some avg }
+          | Some min_, Some max_ ->
+              {
+                acc with
+                min_velocity = Some (Float.min min_ avg);
+                max_velocity = Some (Float.max max_ avg);
+              }
+          | _ -> assert false)
+    in
+    let acc =
+      match stats.average_heartrate with
+      | None -> acc
+      | Some avg -> (
+          match (acc.min_heartrate, acc.max_heartrate) with
+          | None, None ->
+              { acc with min_heartrate = Some avg; max_heartrate = Some avg }
+          | Some min_, Some max_ ->
+              {
+                acc with
+                min_heartrate = Some (Int.min min_ avg);
+                max_heartrate = Some (Int.max max_ avg);
+              }
+          | _ -> assert false)
+    in
+    let acc =
+      match stats.average_power with
+      | None -> acc
+      | Some avg -> (
+          match (acc.min_power, acc.max_power) with
+          | None, None ->
+              { acc with min_power = Some avg; max_power = Some avg }
+          | Some min_, Some max_ ->
+              {
+                acc with
+                min_power = Some (Int.min min_ avg);
+                max_power = Some (Int.max max_ avg);
+              }
+          | _ -> assert false)
+    in
+
+    acc
+
+  let expand_ranges ?(percent = 10) (t : t) =
+    let multiplier = Float.(of_int percent / 100.0) in
+    let min_multiplier = 1.0 -. multiplier in
+    let max_multiplier = 1.0 +. multiplier in
+    let t =
+      match (t.min_velocity, t.max_velocity) with
+      | None, None -> t
+      | Some min_, Some max_ ->
+          {
+            t with
+            min_velocity = Some (min_ *. min_multiplier);
+            max_velocity = Some (max_ *. max_multiplier);
+          }
+      | _ -> assert false
+    in
+
+    let t =
+      match (t.min_heartrate, t.max_heartrate) with
+      | None, None -> t
+      | Some min_, Some max_ ->
+          {
+            t with
+            min_heartrate = Some Float.(to_int (of_int min_ *. min_multiplier));
+            max_heartrate = Some Float.(to_int (of_int max_ *. max_multiplier));
+          }
+      | _ -> assert false
+    in
+
+    let t =
+      match (t.min_power, t.max_power) with
+      | None, None -> t
+      | Some min_, Some max_ ->
+          {
+            t with
+            min_power = Some Float.(to_int (of_int min_ *. min_multiplier));
+            max_power = Some Float.(to_int (of_int max_ *. max_multiplier));
+          }
+      | _ -> assert false
+    in
+    t
+end
 
 let split_stat_headers ~(sport_type : Models.Strava_models.sportType)
     (stats : Models.Stats.t) =
@@ -54,8 +165,8 @@ let split_stat_headers ~(sport_type : Models.Strava_models.sportType)
   in
   columns
 
-let split_stat_values ~(activity : Models.Activity.t) (index : int)
-    (stats : Models.Stats.t) =
+let split_stat_values ~(activity : Models.Activity.t)
+    ~(stats_ranges : SplitAvgRange.t) (index : int) (stats : Models.Stats.t) =
   let sport_type = activity.sport_type in
 
   let make_bar_row ~color ~percent value =
@@ -99,14 +210,12 @@ let split_stat_values ~(activity : Models.Activity.t) (index : int)
     in
     let value = sprintf "%s (%s)" (to_string avg_val) (to_string max_val) in
 
-    let activity_avg = Option.value_exn activity.stats.average_speed in
+    let avg_min = Option.value_exn stats_ranges.min_velocity in
+    let avg_max = Option.value_exn stats_ranges.max_velocity in
     let percent =
       Float.(
-        (* NOTE: here we center the middle to be aligned to the avg value for
-           the whole activity *)
-        (* NOTE: here the 100.0 - value is to make bigger speed show bigger
-           instead of smaller *)
-        to_int (round_nearest 100.0 - ((activity_avg / avg_val * 100.0) - 50.0)))
+        to_int
+          (round_nearest ((avg_val - avg_min) / (avg_max - avg_min) * 100.0)))
     in
     make_bar_row ~color:Activity_graph.GraphData.blue ~percent value
   in
@@ -117,14 +226,15 @@ let split_stat_values ~(activity : Models.Activity.t) (index : int)
     let to_string = Helpers.hr_stat_value in
     let value = sprintf "%s (%s)" (to_string avg_val) (to_string max_val) in
 
-    let activity_avg = Option.value_exn activity.stats.average_heartrate in
+    let avg_min = Option.value_exn stats_ranges.min_heartrate in
+    let avg_max = Option.value_exn stats_ranges.max_heartrate in
     let percent =
       Float.(
-        (* NOTE: here we center the middle to be aligned to the avg value for
-           the whole activity *)
         to_int
-          (round_nearest 100.0
-          - ((of_int activity_avg / of_int avg_val * 100.0) - 50.0)))
+          (round_nearest
+             ((of_int avg_val - of_int avg_min)
+             / (of_int avg_max - of_int avg_min)
+             * 100.0)))
     in
     make_bar_row ~color:Activity_graph.GraphData.red ~percent value
   in
@@ -134,14 +244,16 @@ let split_stat_values ~(activity : Models.Activity.t) (index : int)
     let max_val = Option.value_exn stats.max_power in
     let to_string = Helpers.power_stat_value in
     let value = sprintf "%s (%s)" (to_string avg_val) (to_string max_val) in
-    let activity_avg = Option.value_exn activity.stats.average_power in
+
+    let avg_min = Option.value_exn stats_ranges.min_power in
+    let avg_max = Option.value_exn stats_ranges.max_power in
     let percent =
       Float.(
-        (* NOTE: here we center the middle to be aligned to the avg value for
-           the whole activity *)
         to_int
-          (round_nearest 100.0
-          - ((of_int activity_avg / of_int avg_val * 100.0) - 50.0)))
+          (round_nearest
+             ((of_int avg_val - of_int avg_min)
+             / (of_int avg_max - of_int avg_min)
+             * 100.0)))
     in
     make_bar_row ~color:Activity_graph.GraphData.yellow ~percent value
   in
@@ -186,7 +298,15 @@ let activity_splits_table ~(activity : Models.Activity.t)
   | 0 -> txt "No %s present" (show_splitLapSelector split_select)
   | _ ->
       let sport_type = activity.sport_type in
-      let nodes = List.mapi ~f:(split_stat_values ~activity) stats in
+      let stats_ranges =
+        List.fold ~init:(SplitAvgRange.empty ()) ~f:SplitAvgRange.add_stats
+          stats
+        |> SplitAvgRange.expand_ranges ~percent:10
+      in
+
+      let nodes =
+        List.mapi ~f:(split_stat_values ~activity ~stats_ranges) stats
+      in
       div
         [ class_ "splitsTable" ]
         [
@@ -198,36 +318,3 @@ let activity_splits_table ~(activity : Models.Activity.t)
               tbody [] nodes;
             ];
         ]
-
-let activity_splits_table_formatting =
-  {|
-    const table = document.getElementById("splitsTable");
-    console.log(table);
-    const cells = Array.from(table.querySelectorAll(".heartrateRow")); // 2nd column
-    console.log(cells);
-    const values = cells.map(td => 
-    parseInt(td.textContent.split(" (")[0]));
-    
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-
-    cells.forEach((td, i) => {
-      const val = values[i];
-      const rawPercent = ((val - min) / (max - min)) * 100;
-      const percent = Math.max(rawPercent, 10);
-
-      // Create bar div
-      const bar = document.createElement("div");
-      bar.className = "bar";
-      bar.style.width = percent + "%";
-      bar.style.background = "rgba(255, 99, 132, 0.5)";
-
-      // Wrap text
-      const span = document.createElement("span");
-      span.textContent = td.textContent;
-
-      td.textContent = "";
-      td.appendChild(bar);
-      td.appendChild(span);
-    });
-  |}

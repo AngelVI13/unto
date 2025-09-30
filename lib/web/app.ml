@@ -100,8 +100,6 @@ let handle_activity_select ~db request =
   let split_select =
     Dream.param request "select" |> Activity_splits.splitLapSelector_of_string
   in
-  (* TODO: this should not replace the whole card but just the stats table
-     cause now its a bit jarring *)
   let page = Activity.activity_laps_splits_card ~activity ~split_select in
   Dream_html.respond page
 
