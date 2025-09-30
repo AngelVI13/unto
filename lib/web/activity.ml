@@ -137,7 +137,8 @@ let activity_laps_splits_card ~(activity : Models.Activity.t)
             ]
             [ a (select_btn Laps) [ txt "Laps" ] ];
         ];
-      Activity_splits.activity_splits_table ~activity ~split_select stats;
+      Activity_splits.activity_splits_table ~sport_type:activity.sport_type
+        ~split_select stats;
     ]
 
 let activity_grid ~(athlete : Models.Strava_models.StravaAthlete.t option)

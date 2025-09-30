@@ -165,10 +165,8 @@ let split_stat_headers ~(sport_type : Models.Strava_models.sportType)
   in
   columns
 
-let split_stat_values ~(activity : Models.Activity.t)
+let split_stat_values ~(sport_type : Models.Strava_models.sportType)
     ~(stats_ranges : SplitAvgRange.t) (index : int) (stats : Models.Stats.t) =
-  let sport_type = activity.sport_type in
-
   let make_bar_row ~color ~percent value =
     let percent = Int.max percent 5 in
     let percent = Int.min percent 100 in
@@ -292,12 +290,11 @@ type splitLapSelector = Laps | Splits
 let splitLapSelector_of_string s = splitLapSelector_of_sexp (Sexp.of_string s)
 
 (* NOTE: this whole file works the same but for laps *)
-let activity_splits_table ~(activity : Models.Activity.t)
+let activity_splits_table ~(sport_type : Models.Strava_models.sportType)
     ~(split_select : splitLapSelector) (stats : Models.Stats.t list) =
   match List.length stats with
   | 0 -> txt "No %s present" (show_splitLapSelector split_select)
   | _ ->
-      let sport_type = activity.sport_type in
       let stats_ranges =
         List.fold ~init:(SplitAvgRange.empty ()) ~f:SplitAvgRange.add_stats
           stats
@@ -305,7 +302,7 @@ let activity_splits_table ~(activity : Models.Activity.t)
       in
 
       let nodes =
-        List.mapi ~f:(split_stat_values ~activity ~stats_ranges) stats
+        List.mapi ~f:(split_stat_values ~sport_type ~stats_ranges) stats
       in
       div
         [ class_ "splitsTable" ]
