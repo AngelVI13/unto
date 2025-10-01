@@ -103,6 +103,14 @@ let handle_activity_select ~db request =
   let page = Activity.activity_laps_splits_card ~activity ~split_select in
   Dream_html.respond page
 
+let handle_update ~db ~strava_auth request =
+  let _ = (db, strava_auth, request) in
+  Dream.log "---------update-----------";
+  (* TODO: here get new activities from strava and just call add
+     Db.add_activity for all of them -> thats it *)
+  let page = Header.update_icon ~updated_items_num:10 () in
+  Dream_html.respond page
+
 (* TODO: activity fails to download streams 113217900 *)
 (* processing activity=113217900 2014-02-12T16:00:00Z *)
 (*   downloading streams *)
@@ -112,12 +120,14 @@ let handle_activity_select ~db request =
 (*   downloading streams *)
 (*   downloading laps *)
 (*   error while downloading/parsing streams: ("Yojson__Safe.Util.Type_error(\"Expected array, got object\", _)") *)
-let run (db : Db.t) =
+let run ~(db : Db.t) ~(strava_auth : Strava.Auth.Auth.t) =
+  let _ = strava_auth in
   Dream.run @@ Dream.logger
   @@ Dream.router
        [
          Dream_html.Livereload.route;
          Dream_html.get Paths.index (handle_training_log ~db);
+         Dream_html.get Paths.update (handle_update ~db ~strava_auth);
          Dream_html.get Paths.activity (handle_activity ~db);
          Dream_html.get Paths.activity_map (handle_activity_map ~db);
          Dream_html.get Paths.activity_graph (handle_activity_graph ~db);

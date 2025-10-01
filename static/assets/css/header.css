@@ -31,6 +31,26 @@ header .header-img {
   height: auto;
 }
 
+header .header-img-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+header .header-img-wrapper .header-img {
+  display: block;
+}
+
+header .header-img-wrapper .header-img-txt {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: darkolivegreen;
+  font-size: 14px;
+  font-weight: bold;
+  pointer-events: none; /* so clicks go through to the link */
+}
+
 header .athlete-txt {
   font-size: 24px;
   font-family: system-ui;
@@ -61,6 +81,10 @@ header .athlete-txt {
 
   header .headerTxtSmall {
     display: inline;
+  }
+
+  header .header-img-wrapper .header-img-txt {
+    font-size: 12px;
   }
 
   header .header-img {

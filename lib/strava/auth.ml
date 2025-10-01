@@ -1,6 +1,26 @@
 open Core
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
+let load_token_file filename =
+  match Sys_unix.file_exists filename with
+  | `Yes -> Or_error.try_with (fun () -> Yojson.Safe.from_file filename)
+  | _ ->
+      let url =
+        "https://www.strava.com/oauth/authorize?client_id=21710&response_type=code&redirect_uri=http://localhost/exchange_token&approval_prompt=force&scope=read_all,activity:read_all,profile:read_all"
+      in
+      printf "!ERROR!: Did not find the tokens file you provided: %s\n\n"
+        filename;
+      printf "If you don't have such a file please follow the steps below\n";
+      printf "\t1.Paste the URL in your browser and Authorize the app: \n\t%S\n"
+        url;
+      printf
+        "\t2.Afterwards wait for the browser to redirect you and copy the code \
+         after `code=` parameter from the url\n";
+      printf
+        "\t3.Next to obtain an access & refresh tokens execute the script:\n\
+         \t ./bin/main.exe obtain-access-token --auth-code AUTH_CODE\n\n";
+      Or_error.error_s [%message "Missing tokens"]
+
 module AuthClient = struct
   type t = { client_id : string; client_secret : string }
   [@@deriving show { with_path = false }]
@@ -8,7 +28,7 @@ module AuthClient = struct
   let make client_id client_secret = { client_id; client_secret }
 end
 
-module Auth = struct
+module AuthTokens = struct
   type t = {
     token_type : string;
     access_token : string;
@@ -26,6 +46,17 @@ module Auth = struct
       expires_in = 0;
       refresh_token = "REFRESH_TOKEN";
     }
+
+  let of_filename (filename : string) : t Or_error.t =
+    let open Or_error.Let_syntax in
+    let%bind contents = load_token_file filename in
+    Or_error.try_with (fun () -> t_of_yojson contents)
+end
+
+module Auth = struct
+  type t = { client : AuthClient.t; tokens : AuthTokens.t }
+
+  let make ~client ~tokens = { client; tokens }
 end
 
 let auth_params (auth_client : AuthClient.t) =
@@ -86,30 +117,9 @@ let refresh_token auth_client refresh_token =
   let out = match res with Ok c -> c.body | Error (_, s) -> failwith s in
   out
 
-let load_token_file filename =
-  match Sys_unix.file_exists filename with
-  | `Yes -> Or_error.try_with (fun () -> Yojson.Safe.from_file filename)
-  | _ ->
-      let url =
-        "https://www.strava.com/oauth/authorize?client_id=21710&response_type=code&redirect_uri=http://localhost/exchange_token&approval_prompt=force&scope=read_all,activity:read_all,profile:read_all"
-      in
-      printf "!ERROR!: Did not find the tokens file you provided: %s\n\n"
-        filename;
-      printf "If you don't have such a file please follow the steps below\n";
-      printf "\t1.Paste the URL in your browser and Authorize the app: \n\t%S\n"
-        url;
-      printf
-        "\t2.Afterwards wait for the browser to redirect you and copy the code \
-         after `code=` parameter from the url\n";
-      printf
-        "\t3.Next to obtain an access & refresh tokens execute the script:\n\
-         \t ./bin/main.exe obtain-access-token --auth-code AUTH_CODE\n\n";
-      Or_error.error_s [%message "Missing tokens"]
-
 let load_and_refresh_tokens auth_client filename =
   let open Or_error.Let_syntax in
-  let%bind contents = load_token_file filename in
-  let%bind auth = Or_error.try_with (fun () -> Auth.t_of_yojson contents) in
+  let%bind auth = AuthTokens.of_filename filename in
 
   let now_since_epoch =
     (* convert it from ns to s *)
@@ -123,7 +133,9 @@ let load_and_refresh_tokens auth_client filename =
       printf "ACCESS_TOKEN expired -> refreshing it\n";
       let resp = refresh_token auth_client auth.refresh_token in
       let%bind json = validate_token_resp resp in
-      let%bind auth = Or_error.try_with (fun () -> Auth.t_of_yojson json) in
+      let%bind auth =
+        Or_error.try_with (fun () -> AuthTokens.t_of_yojson json)
+      in
       Yojson.Safe.to_file filename json;
       printf "Saved new ACCESS_TOKEN to file: %s\n" filename;
       Ok auth

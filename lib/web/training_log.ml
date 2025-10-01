@@ -324,6 +324,8 @@ let head_elems () =
         path_attr href Static.Assets.Images.favicon_small_ico;
       ];
     title [] "Unto";
+    (* NOTE: htmx version 2.0.7 *)
+    script [ path_attr src Static.Assets.Js.Htmx.Dist.htmx_min_js ] "";
     link
       [
         rel "stylesheet";

@@ -3,7 +3,7 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = ["run-app"]
+  args_bin = ["run-app -t new_tokens.json"]
   bin = "./_build/default/bin/main.exe"
   cmd = "dune build && sleep 1"
   delay = 1000
