@@ -54,9 +54,16 @@ module AuthTokens = struct
 end
 
 module Auth = struct
-  type t = { client : AuthClient.t; tokens : AuthTokens.t }
+  type t = {
+    client : AuthClient.t;
+    (* tokens: is used by the web app and has to update multiple times
+        during the app's life and i can't propagate back the new value for
+        all web app handlers so this is mutable. *)
+    mutable tokens : AuthTokens.t;
+    filename : string;
+  }
 
-  let make ~client ~tokens = { client; tokens }
+  let make ~client ~tokens ~filename = { client; tokens; filename }
 end
 
 let auth_params (auth_client : AuthClient.t) =
@@ -104,7 +111,7 @@ let obtain_access_token auth_client auth_code filename =
   printf "Saved data to file %s\n" filename;
   Ok ()
 
-let refresh_token auth_client refresh_token =
+let refresh_token_req auth_client refresh_token =
   let url = "https://www.strava.com/api/v3/oauth/token" in
   let params =
     auth_params auth_client
@@ -117,25 +124,32 @@ let refresh_token auth_client refresh_token =
   let out = match res with Ok c -> c.body | Error (_, s) -> failwith s in
   out
 
-let load_and_refresh_tokens auth_client filename =
+let refresh_tokens (auth : Auth.t) =
   let open Or_error.Let_syntax in
-  let%bind auth = AuthTokens.of_filename filename in
-
   let now_since_epoch =
     (* convert it from ns to s *)
     (Time_ns.now () |> Time_ns.to_int_ns_since_epoch) / 1000_000_000
   in
-  match Int.(auth.expires_at < now_since_epoch) with
+  match Int.(auth.tokens.expires_at < now_since_epoch) with
   | false ->
       printf "ACCESS_TOKEN still valid\n";
-      Ok auth
+      Ok ()
   | true ->
       printf "ACCESS_TOKEN expired -> refreshing it\n";
-      let resp = refresh_token auth_client auth.refresh_token in
+      let resp = refresh_token_req auth.client auth.tokens.refresh_token in
       let%bind json = validate_token_resp resp in
-      let%bind auth =
+      let%bind auth_tokens =
         Or_error.try_with (fun () -> AuthTokens.t_of_yojson json)
       in
-      Yojson.Safe.to_file filename json;
-      printf "Saved new ACCESS_TOKEN to file: %s\n" filename;
-      Ok auth
+      Yojson.Safe.to_file auth.filename json;
+      printf "Saved new ACCESS_TOKEN to file: %s\n" auth.filename;
+      auth.tokens <- auth_tokens;
+      Ok ()
+
+let load_and_refresh_tokens auth_client filename =
+  let open Or_error.Let_syntax in
+  let%bind tokens = AuthTokens.of_filename filename in
+  let auth = Auth.make ~client:auth_client ~tokens ~filename in
+
+  let%bind _ = refresh_tokens auth in
+  Ok auth

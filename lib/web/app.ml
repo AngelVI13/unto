@@ -103,12 +103,46 @@ let handle_activity_select ~db request =
   let page = Activity.activity_laps_splits_card ~activity ~split_select in
   Dream_html.respond page
 
-let handle_update ~db ~strava_auth request =
-  let _ = (db, strava_auth, request) in
+let update_activities ~(db : Db.t) ~(strava_auth : Strava.Auth.Auth.t) =
+  let open Or_error.Let_syntax in
+  let%bind _ = Strava.Auth.refresh_tokens strava_auth in
+
+  let present_activities = Db.all_activities db in
+  let%bind athlete =
+    match Db.get_num_athletes db with
+    | 0 ->
+        let%bind athlete =
+          Strava.Api.fetch_athlete ~token:strava_auth.tokens.access_token
+        in
+        Db.add_athlete_if_not_exist db athlete;
+        Ok athlete
+    | 1 -> Ok (Option.value_exn (Db.get_athlete db))
+    | _ -> assert false
+  in
+  let new_activities =
+    Or_error.ok_exn
+      (Strava.Api.fetch_activities ~token:strava_auth.tokens.access_token
+         ~num_activities:100 ~start_page:1 ~exclude:present_activities)
+  in
+  ignore
+    (List.map
+       ~f:(fun activity ->
+         printf "adding activity to db %d\n" activity.id;
+         Db.add_activity db activity athlete.id)
+       new_activities);
+  Ok (List.length new_activities)
+
+(* TODO: I have to not only update the refresh icon but also reload the current page *)
+let handle_update ~db ~(strava_auth : Strava.Auth.Auth.t) request =
+  let _ = request in
   Dream.log "---------update-----------";
-  (* TODO: here get new activities from strava and just call add
-     Db.add_activity for all of them -> thats it *)
-  let page = Header.update_icon ~updated_items_num:10 () in
+  let num_new_activities =
+    match update_activities ~db ~strava_auth with
+    | Error _ -> -1
+    | Ok num_activities -> num_activities
+  in
+
+  let page = Header.update_icon ~updated_items_num:num_new_activities () in
   Dream_html.respond page
 
 (* TODO: activity fails to download streams 113217900 *)
@@ -121,7 +155,6 @@ let handle_update ~db ~strava_auth request =
 (*   downloading laps *)
 (*   error while downloading/parsing streams: ("Yojson__Safe.Util.Type_error(\"Expected array, got object\", _)") *)
 let run ~(db : Db.t) ~(strava_auth : Strava.Auth.Auth.t) =
-  let _ = strava_auth in
   Dream.run @@ Dream.logger
   @@ Dream.router
        [

@@ -18,6 +18,9 @@ INSERT INTO athletes VALUES;
 SELECT * FROM athletes
 ORDER BY id;
 
+-- @num_athletes
+SELECT COUNT(*) FROM athletes;
+
 -- @list_athlete_ids
 SELECT id FROM athletes;
 

@@ -46,6 +46,8 @@ let to_loc_option (a : float option) (b : float option) =
   | Some a, Some b -> Some (a, b)
   | _ -> assert false
 
+let get_num_athletes { handle; _ } = DB.num_athletes handle |> Int64.to_int_exn
+
 let add_athlete_if_not_exist { handle; _ } (athlete : StravaAthlete.t) =
   let athlete_ids = ref [] in
   DB.list_athlete_ids handle (fun ~id -> athlete_ids := id :: !athlete_ids);

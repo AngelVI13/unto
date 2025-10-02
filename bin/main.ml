@@ -30,7 +30,7 @@ let command_pull_activities auth_client =
          Or_error.ok_exn
            (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       Strava.Api.pull_activities auth.access_token n)
+       Strava.Api.pull_activities auth.tokens.access_token n)
 
 let command_pull_streams auth_client =
   Command.basic ~summary:"Pull streams for a given activity and save to file"
@@ -45,7 +45,7 @@ let command_pull_streams auth_client =
          Or_error.ok_exn
            (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       Or_error.ok_exn (Strava.Api.pull_streams auth.access_token id))
+       Or_error.ok_exn (Strava.Api.pull_streams auth.tokens.access_token id))
 
 let command_download auth_client =
   Command.basic ~summary:"Download activities"
@@ -63,7 +63,8 @@ let command_download auth_client =
          Or_error.ok_exn
            (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       Or_error.ok_exn (Strava.Api.process_activities auth.access_token n))
+       Or_error.ok_exn
+         (Strava.Api.process_activities auth.tokens.access_token n))
 
 let command_pull_laps auth_client =
   Command.basic ~summary:"Pull laps for a given activity and save to file"
@@ -78,7 +79,7 @@ let command_pull_laps auth_client =
          Or_error.ok_exn
            (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       Or_error.ok_exn (Strava.Api.pull_laps auth.access_token id))
+       Or_error.ok_exn (Strava.Api.pull_laps auth.tokens.access_token id))
 
 let command_user_info auth_client =
   Command.basic ~summary:"Get user info"
@@ -92,7 +93,7 @@ let command_user_info auth_client =
          Or_error.ok_exn
            (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       Or_error.ok_exn (Strava.Api.process_user auth.access_token))
+       Or_error.ok_exn (Strava.Api.process_user auth.tokens.access_token))
 
 let command_zones auth_client =
   Command.basic ~summary:"Get user zones info"
@@ -106,7 +107,7 @@ let command_zones auth_client =
          Or_error.ok_exn
            (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       Or_error.ok_exn (Strava.Api.process_zones auth.access_token))
+       Or_error.ok_exn (Strava.Api.process_zones auth.tokens.access_token))
 
 let command_test () =
   Command.basic ~summary:"Test things"
@@ -158,14 +159,15 @@ let command_update_db auth_client =
                (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
            in
            let athlete =
-             Or_error.ok_exn (Strava.Api.fetch_athlete ~token:auth.access_token)
+             Or_error.ok_exn
+               (Strava.Api.fetch_athlete ~token:auth.tokens.access_token)
            in
            (* TODO: this should check if athlete details are the same and if
              not it should update athlete details *)
            Db.add_athlete_if_not_exist db athlete;
            let new_activities =
              Or_error.ok_exn
-               (Strava.Api.fetch_activities ~token:auth.access_token
+               (Strava.Api.fetch_activities ~token:auth.tokens.access_token
                   ~num_activities:n ~start_page ~exclude:present_activities)
            in
            ignore
@@ -192,6 +194,7 @@ let command_run_app auth_client =
        in
        let strava_auth =
          Strava.Auth.Auth.make ~client:auth_client ~tokens:auth_tokens
+           ~filename:auth_filename
        in
        let db = Db.load db_filename in
        Fun.protect

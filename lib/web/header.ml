@@ -3,7 +3,9 @@ open HTML
 
 let update_icon ?(updated_items_num = 0) () =
   let overlay_txt =
-    if updated_items_num = 0 then ""
+    (* TODO: this value should be shown in red to indicate errors *)
+    if updated_items_num < 0 then "e"
+    else if updated_items_num = 0 then ""
     else if updated_items_num > 9 then "+"
     else Int.to_string updated_items_num
   in
