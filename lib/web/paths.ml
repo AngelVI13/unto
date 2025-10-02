@@ -1,5 +1,6 @@
 let%path index = "/"
 let%path update = "/update"
+let%path login = "/login"
 let%path activity = "/activity/:id"
 let%path activity_map = "/activity/:id/map"
 let%path activity_map_url = "/activity/%d/map"

@@ -1,6 +1,8 @@
 open Core
 module Time_ns = Time_ns_unix
 
+let stored_pass = "$2y$16$Nzi5uZoqsxrwQ20kMg4Fneht2PFTKg6LThzDr5.iOJ1tT3XE/6Q8a"
+
 let last_monday ~zone =
   let today = Time_ns.now () |> Time_ns.to_date ~zone in
   let day_of_week = Date.day_of_week today in
@@ -132,10 +134,8 @@ let update_activities ~(db : Db.t) ~(strava_auth : Strava.Auth.Auth.t) =
        new_activities);
   Ok (List.length new_activities)
 
-(* TODO: I have to not only update the refresh icon but also reload the current page *)
 let handle_update ~db ~(strava_auth : Strava.Auth.Auth.t) request =
   let _ = request in
-  Dream.log "---------update-----------";
   let num_new_activities =
     match update_activities ~db ~strava_auth with
     | Error _ -> -1
@@ -144,6 +144,29 @@ let handle_update ~db ~(strava_auth : Strava.Auth.Auth.t) request =
 
   let page = Header.update_icon ~updated_items_num:num_new_activities () in
   Dream_html.respond page
+
+let handle_login request =
+  let csrf_token = Dream.csrf_token request in
+  (* TODO: beautify this page & make it mobile friendly *)
+  let page = Login.page csrf_token in
+  Dream_html.respond page
+
+let handle_login_post request =
+  let open Lwt.Syntax in
+  let* form = Dream.form request in
+  match form with
+  | `Ok [ ("password", pass) ]
+    when Bcrypt.verify pass (Bcrypt.hash_of_string stored_pass) ->
+      let* () = Dream.set_session_field request "logged_in" "true" in
+      Dream.redirect request "/"
+  | _ -> Dream.html "Invalid password"
+
+let require_login handler request =
+  (* TODO: do not hardcode this field *)
+  match Dream.session_field request "logged_in" with
+  | Some "true" -> handler request
+  (* TODO: how not to hardcode the paths but to use the Paths.login *)
+  | _ -> Dream.redirect request "/login"
 
 (* TODO: activity fails to download streams 113217900 *)
 (* processing activity=113217900 2014-02-12T16:00:00Z *)
@@ -155,16 +178,25 @@ let handle_update ~db ~(strava_auth : Strava.Auth.Auth.t) request =
 (*   downloading laps *)
 (*   error while downloading/parsing streams: ("Yojson__Safe.Util.Type_error(\"Expected array, got object\", _)") *)
 let run ~(db : Db.t) ~(strava_auth : Strava.Auth.Auth.t) =
-  Dream.run @@ Dream.logger
+  (* NOTE: For production, be sure to obtain a real certificate, for example, from
+     Let's Encrypt. Pass the certificate to Dream.run with ~certificate_file and
+     ~key_file. *)
+  Dream.run ~tls:true @@ Dream.logger @@ Dream.memory_sessions
   @@ Dream.router
        [
          Dream_html.Livereload.route;
-         Dream_html.get Paths.index (handle_training_log ~db);
-         Dream_html.get Paths.update (handle_update ~db ~strava_auth);
-         Dream_html.get Paths.activity (handle_activity ~db);
-         Dream_html.get Paths.activity_map (handle_activity_map ~db);
-         Dream_html.get Paths.activity_graph (handle_activity_graph ~db);
-         Dream_html.get Paths.activity_select (handle_activity_select ~db);
+         Dream_html.get Paths.index (require_login (handle_training_log ~db));
+         Dream_html.get Paths.login handle_login;
+         Dream_html.post Paths.login handle_login_post;
+         Dream_html.get Paths.update
+           (require_login (handle_update ~db ~strava_auth));
+         Dream_html.get Paths.activity (require_login (handle_activity ~db));
+         Dream_html.get Paths.activity_map
+           (require_login (handle_activity_map ~db));
+         Dream_html.get Paths.activity_graph
+           (require_login (handle_activity_graph ~db));
+         Dream_html.get Paths.activity_select
+           (require_login (handle_activity_select ~db));
          Static.routes;
        ]
 
