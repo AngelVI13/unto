@@ -33,7 +33,7 @@ let page csrf_token =
         ];
       body []
         [
-          Header.header_ "Unknown";
+          Header.header_ "";
           div []
             [
               form

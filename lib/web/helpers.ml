@@ -229,3 +229,11 @@ let elev_gain_loss_stat_value elev_gain elev_loss =
 let elev_gain_loss_stat_node elev_gain elev_loss =
   Stat.activity_stat elev_gain_loss_stat
     (elev_gain_loss_stat_value elev_gain elev_loss)
+
+let string_of_path path : string =
+  let buf = Buffer.create 128 in
+  let fmt = Format.formatter_of_buffer buf in
+  Dream_html.pp_path fmt path;
+  Format.pp_print_flush fmt ();
+  (* flush to make sure everything is written *)
+  Buffer.contents buf

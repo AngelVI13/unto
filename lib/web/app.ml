@@ -2,6 +2,8 @@ open Core
 module Time_ns = Time_ns_unix
 
 let stored_pass = "$2y$16$Nzi5uZoqsxrwQ20kMg4Fneht2PFTKg6LThzDr5.iOJ1tT3XE/6Q8a"
+let logged_in_field = "logged_in"
+let logged_in_success = "true"
 
 let last_monday ~zone =
   let today = Time_ns.now () |> Time_ns.to_date ~zone in
@@ -121,15 +123,14 @@ let update_activities ~(db : Db.t) ~(strava_auth : Strava.Auth.Auth.t) =
     | 1 -> Ok (Option.value_exn (Db.get_athlete db))
     | _ -> assert false
   in
-  let new_activities =
-    Or_error.ok_exn
-      (Strava.Api.fetch_activities ~token:strava_auth.tokens.access_token
-         ~num_activities:100 ~start_page:1 ~exclude:present_activities)
+  let%bind new_activities =
+    Strava.Api.fetch_activities ~token:strava_auth.tokens.access_token
+      ~num_activities:100 ~start_page:1 ~exclude:present_activities
   in
   ignore
     (List.map
        ~f:(fun activity ->
-         printf "adding activity to db %d\n" activity.id;
+         Dream.log "adding activity to db %d" activity.id;
          Db.add_activity db activity athlete.id)
        new_activities);
   Ok (List.length new_activities)
@@ -147,7 +148,6 @@ let handle_update ~db ~(strava_auth : Strava.Auth.Auth.t) request =
 
 let handle_login request =
   let csrf_token = Dream.csrf_token request in
-  (* TODO: beautify this page & make it mobile friendly *)
   let page = Login.page csrf_token in
   Dream_html.respond page
 
@@ -157,16 +157,16 @@ let handle_login_post request =
   match form with
   | `Ok [ ("password", pass) ]
     when Bcrypt.verify pass (Bcrypt.hash_of_string stored_pass) ->
-      let* () = Dream.set_session_field request "logged_in" "true" in
-      Dream.redirect request "/"
+      let* () =
+        Dream.set_session_field request logged_in_field logged_in_success
+      in
+      Dream.redirect request (Helpers.string_of_path Paths.index)
   | _ -> Dream.html "Invalid password"
 
 let require_login handler request =
-  (* TODO: do not hardcode this field *)
-  match Dream.session_field request "logged_in" with
-  | Some "true" -> handler request
-  (* TODO: how not to hardcode the paths but to use the Paths.login *)
-  | _ -> Dream.redirect request "/login"
+  match Dream.session_field request logged_in_field with
+  | Some value when String.equal value logged_in_success -> handler request
+  | _ -> Dream.redirect request (Helpers.string_of_path Paths.login)
 
 (* TODO: activity fails to download streams 113217900 *)
 (* processing activity=113217900 2014-02-12T16:00:00Z *)

@@ -75,7 +75,11 @@ let header_ (athlete_name : string) =
                     ];
                 ];
             ];
-          span [ class_ "icon-container athlete-txt" ] [ txt "%s" athlete_name ];
+          (if athlete_name = "" then span [] []
+           else
+             span
+               [ class_ "icon-container athlete-txt" ]
+               [ txt "%s" athlete_name ]);
           span
             [ class_ "icon-container" ]
             [
