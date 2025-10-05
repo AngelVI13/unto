@@ -181,7 +181,10 @@ let run ~(db : Db.t) ~(strava_auth : Strava.Auth.Auth.t) =
   (* NOTE: For production, be sure to obtain a real certificate, for example, from
      Let's Encrypt. Pass the certificate to Dream.run with ~certificate_file and
      ~key_file. *)
-  Dream.run ~tls:true @@ Dream.logger @@ Dream.memory_sessions
+  Dream.run
+  (* ~tls:true  *)
+  @@ Dream.logger
+  @@ Dream.memory_sessions
   @@ Dream.router
        [
          Dream_html.Livereload.route;
