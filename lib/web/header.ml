@@ -61,7 +61,7 @@ let header_ (athlete_name : string) =
       div
         [ class_ "headerSettings" ]
         [
-          update_icon ();
+          (if athlete_name = "" then span [] [] else update_icon ());
           span
             [ class_ "icon-container" ]
             [
@@ -80,18 +80,20 @@ let header_ (athlete_name : string) =
              span
                [ class_ "icon-container athlete-txt" ]
                [ txt "%s" athlete_name ]);
-          span
-            [ class_ "icon-container" ]
-            [
-              a
-                [ href "" ]
-                [
-                  img
-                    [
-                      class_ "header-img";
-                      path_attr src Static.Assets.Images.settings_png;
-                    ];
-                ];
-            ];
+          (if athlete_name = "" then span [] []
+           else
+             span
+               [ class_ "icon-container" ]
+               [
+                 a
+                   [ path_attr href Paths.logout ]
+                   [
+                     img
+                       [
+                         class_ "header-img";
+                         path_attr src Static.Assets.Images.logout_png;
+                       ];
+                   ];
+               ]);
         ];
     ]
