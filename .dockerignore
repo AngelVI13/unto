@@ -1,3 +1,8 @@
+.git
+*.swp
+*.log
+*.tmp
+
 *.annot
 *.cmo
 *.cma
@@ -8,7 +13,6 @@
 *.cmxs
 *.cmxa
 
-*.json
 *.csv
 
 .env
@@ -18,6 +22,9 @@ _build/
 
 # dune lock
 dune.lock
+
+# test json files
+activities_json/
 
 # ocamlbuild targets
 *.byte
