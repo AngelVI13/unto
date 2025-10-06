@@ -187,7 +187,6 @@ let run ~(db : Db.t) ~(strava_auth : Strava.Auth.Auth.t) =
   @@ Dream.memory_sessions
   @@ Dream.router
        [
-         Dream_html.Livereload.route;
          Dream_html.get Paths.index (require_login (handle_training_log ~db));
          Dream_html.get Paths.login handle_login;
          Dream_html.post Paths.login handle_login_post;
