@@ -43,6 +43,8 @@ RUN opam exec -- dune build
 # ---- Runtime stage ----
 FROM debian:bookworm-slim
 
+WORKDIR /app
+
 # Install dependencies
 # NOTE: this is the same as above
 RUN apt-get update && apt-get install -y \
@@ -65,6 +67,7 @@ RUN rm -rf /var/lib/apt/lists/*
 
 # Copy built binaries from the builder
 COPY --from=build /home/opam/app/_build/default/bin/main.exe /usr/local/bin/unto
+COPY --from=build /home/opam/app/static ./static
 COPY ./app.db .
 COPY ./new_tokens.json .
 
