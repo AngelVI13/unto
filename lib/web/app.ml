@@ -143,7 +143,9 @@ let handle_update ~db ~(strava_auth : Strava.Auth.Auth.t) request =
     | Ok num_activities -> num_activities
   in
 
-  let page = Header.update_icon ~updated_items_num:num_new_activities () in
+  let page =
+    Header.update_icon ~updated_items_num:(Some num_new_activities) ()
+  in
   Dream_html.respond page
 
 let handle_login request =

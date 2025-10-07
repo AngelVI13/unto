@@ -1,13 +1,16 @@
 open Dream_html
 open HTML
 
-let update_icon ?(updated_items_num = 0) () =
+let update_icon ?(updated_items_num = None) () =
   let overlay_txt =
-    (* TODO: this value should be shown in red to indicate errors *)
-    if updated_items_num < 0 then "e"
-    else if updated_items_num = 0 then ""
-    else if updated_items_num > 9 then "+"
-    else Int.to_string updated_items_num
+    match updated_items_num with
+    | None -> ""
+    | Some new_activities ->
+        (* TODO: this value should be shown in red to indicate errors *)
+        if new_activities < 0 then "e"
+        else if new_activities = 0 then "-"
+        else if new_activities > 9 then "+"
+        else Int.to_string new_activities
   in
   span
     [ class_ "icon-container"; id "update-icon" ]
@@ -23,6 +26,7 @@ let update_icon ?(updated_items_num = 0) () =
           path_attr Hx.get Paths.update;
           Hx.target "#update-icon";
           Hx.swap "outerHTML";
+          Hx.indicator "#update-spinner";
         ]
         [
           div
@@ -30,7 +34,8 @@ let update_icon ?(updated_items_num = 0) () =
             [
               img
                 [
-                  class_ "header-img";
+                  class_ "header-img update-indicator";
+                  id "update-spinner";
                   path_attr src Static.Assets.Images.refresh_png;
                 ];
               span [ class_ "header-img-txt" ] [ txt "%s" overlay_txt ];

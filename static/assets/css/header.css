@@ -95,3 +95,14 @@ header .athlete-txt {
     font-size: var(--mobile-font-size);
   }
 }
+
+.htmx-request .update-indicator,
+.htmx-request.update-indicator {
+  animation: spin 4s linear infinite;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
