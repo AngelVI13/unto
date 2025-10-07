@@ -15,8 +15,8 @@ let page csrf_token =
           link
             [
               rel "icon";
-              type_ "image/x-icon";
-              path_attr href Static.Assets.Images.favicon_small_ico;
+              type_ "image/png";
+              path_attr href Static.Assets.Images.favicon_small_png;
             ];
           link
             [
