@@ -98,7 +98,7 @@ header .athlete-txt {
 
 .htmx-request .update-indicator,
 .htmx-request.update-indicator {
-  animation: spin 4s linear infinite;
+  animation: spin 30s linear infinite;
 }
 
 @keyframes spin {
