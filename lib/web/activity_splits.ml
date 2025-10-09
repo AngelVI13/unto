@@ -22,6 +22,15 @@ module SplitAvgRange = struct
       max_power = None;
     }
 
+  let percent_of_int ~min_ ~max_ value =
+    Float.(
+      to_int
+        (round_nearest
+           ((of_int value - of_int min_) / (of_int max_ - of_int min_) * 100.0)))
+
+  let percent_of_float ~min_ ~max_ value =
+    Float.(to_int (round_nearest ((value - min_) / (max_ - min_) * 100.0)))
+
   let add_stats (acc : t) (stats : Models.Stats.t) =
     let acc =
       match stats.average_speed with
@@ -165,7 +174,7 @@ let split_stat_headers ~(sport_type : Models.Strava_models.sportType)
   in
   columns
 
-let make_bar_row ~color ~percent value =
+let make_bar_row ~color ~percent ~avg_percent value =
   let percent = Int.max percent 5 in
   let percent = Int.min percent 100 in
   (* NOTE: reduce the color alpha *)
@@ -186,14 +195,15 @@ let make_bar_row ~color ~percent value =
       div
         [
           class_ "avg-line";
-          style_ "left: %d%s; background: %s;" 45 "%" avg_line_color;
+          style_ "left: %d%s; background: %s;" avg_percent "%" avg_line_color;
         ]
         [];
       span [] [ txt "%s" value ];
     ]
 
 let split_stat_values ~(sport_type : Models.Strava_models.sportType)
-    ~(stats_ranges : SplitAvgRange.t) (index : int) (stats : Models.Stats.t) =
+    ~(avg_stats : Models.Stats.t) ~(stats_ranges : SplitAvgRange.t)
+    (index : int) (stats : Models.Stats.t) =
   let make_txt_row value = td [] [ txt "%s" value ] in
 
   let split_idx = Some (make_txt_row @@ sprintf "%d" (index + 1)) in
@@ -220,11 +230,14 @@ let split_stat_values ~(sport_type : Models.Strava_models.sportType)
     let avg_min = Option.value_exn stats_ranges.min_velocity in
     let avg_max = Option.value_exn stats_ranges.max_velocity in
     let percent =
-      Float.(
-        to_int
-          (round_nearest ((avg_val - avg_min) / (avg_max - avg_min) * 100.0)))
+      SplitAvgRange.percent_of_float ~min_:avg_min ~max_:avg_max avg_val
+    in
+    let avg_percent =
+      Option.value_exn avg_stats.average_speed
+      |> SplitAvgRange.percent_of_float ~min_:avg_min ~max_:avg_max
     in
     make_bar_row ~color:Activity_graph.GraphData.blue ~percent value
+      ~avg_percent
   in
 
   let heartrate =
@@ -236,14 +249,13 @@ let split_stat_values ~(sport_type : Models.Strava_models.sportType)
     let avg_min = Option.value_exn stats_ranges.min_heartrate in
     let avg_max = Option.value_exn stats_ranges.max_heartrate in
     let percent =
-      Float.(
-        to_int
-          (round_nearest
-             ((of_int avg_val - of_int avg_min)
-             / (of_int avg_max - of_int avg_min)
-             * 100.0)))
+      SplitAvgRange.percent_of_int ~min_:avg_min ~max_:avg_max avg_val
     in
-    make_bar_row ~color:Activity_graph.GraphData.red ~percent value
+    let avg_percent =
+      Option.value_exn avg_stats.average_heartrate
+      |> SplitAvgRange.percent_of_int ~min_:avg_min ~max_:avg_max
+    in
+    make_bar_row ~color:Activity_graph.GraphData.red ~percent value ~avg_percent
   in
 
   let power =
@@ -255,14 +267,14 @@ let split_stat_values ~(sport_type : Models.Strava_models.sportType)
     let avg_min = Option.value_exn stats_ranges.min_power in
     let avg_max = Option.value_exn stats_ranges.max_power in
     let percent =
-      Float.(
-        to_int
-          (round_nearest
-             ((of_int avg_val - of_int avg_min)
-             / (of_int avg_max - of_int avg_min)
-             * 100.0)))
+      SplitAvgRange.percent_of_int ~min_:avg_min ~max_:avg_max avg_val
+    in
+    let avg_percent =
+      Option.value_exn avg_stats.average_power
+      |> SplitAvgRange.percent_of_int ~min_:avg_min ~max_:avg_max
     in
     make_bar_row ~color:Activity_graph.GraphData.yellow ~percent value
+      ~avg_percent
   in
 
   let gain_loss =
@@ -299,8 +311,9 @@ type splitLapSelector = Laps | Splits
 let splitLapSelector_of_string s = splitLapSelector_of_sexp (Sexp.of_string s)
 
 (* NOTE: this whole file works the same but for laps *)
-let activity_splits_table ~(sport_type : Models.Strava_models.sportType)
+let activity_splits_table ~(activity : Models.Activity.t)
     ~(split_select : splitLapSelector) (stats : Models.Stats.t list) =
+  let sport_type = activity.sport_type in
   match List.length stats with
   | 0 -> txt "No %s present" (show_splitLapSelector split_select)
   | _ ->
@@ -311,7 +324,11 @@ let activity_splits_table ~(sport_type : Models.Strava_models.sportType)
       in
 
       let nodes =
-        List.mapi ~f:(split_stat_values ~sport_type ~stats_ranges) stats
+        List.mapi
+          ~f:
+            (split_stat_values ~sport_type ~avg_stats:activity.stats
+               ~stats_ranges)
+          stats
       in
       div
         [ class_ "splitsTable" ]
