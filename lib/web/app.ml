@@ -185,11 +185,12 @@ let handle_logout request =
 (*   downloading laps *)
 (*   error while downloading/parsing streams: ("Yojson__Safe.Util.Type_error(\"Expected array, got object\", _)") *)
 let run ~(db : Db.t) ~(strava_auth : Strava.Auth.Auth.t) =
-  (* NOTE: For production, be sure to obtain a real certificate, for example, from
-     Let's Encrypt. Pass the certificate to Dream.run with ~certificate_file and
-     ~key_file. *)
+  (* NOTE: rotate cookie secret about once per year, you can use the code bellow to generate it  *)
+  (* let secret = Dream.to_base64url (Dream.random 32) in *)
+  let secret = "Ut_HWsViPaH7usYjrG0qHjTH4aB2_jjL4QP-961GBW4" in
   Dream.run ~interface:"0.0.0.0" ~port:8080
-  @@ Dream.logger @@ Dream.memory_sessions
+  @@ Dream.logger @@ Dream.set_secret secret
+  @@ Dream.cookie_sessions ~lifetime:86400.0 (* lifetime of 1 day *)
   @@ Dream.router
        [
          Dream_html.get Paths.index (require_login (handle_training_log ~db));
