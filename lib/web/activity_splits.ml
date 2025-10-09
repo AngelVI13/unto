@@ -165,26 +165,35 @@ let split_stat_headers ~(sport_type : Models.Strava_models.sportType)
   in
   columns
 
+let make_bar_row ~color ~percent value =
+  let percent = Int.max percent 5 in
+  let percent = Int.min percent 100 in
+  (* NOTE: reduce the color alpha *)
+  let fill_color =
+    String.substr_replace_first ~pattern:")" ~with_:", 0.4)" color
+  in
+  let avg_line_color =
+    String.substr_replace_first ~pattern:")" ~with_:", 0.8)" color
+  in
+  td []
+    [
+      div
+        [
+          class_ "bar";
+          style_ "width: %d%s; background: %s;" percent "%" fill_color;
+        ]
+        [];
+      div
+        [
+          class_ "avg-line";
+          style_ "left: %d%s; background: %s;" 45 "%" avg_line_color;
+        ]
+        [];
+      span [] [ txt "%s" value ];
+    ]
+
 let split_stat_values ~(sport_type : Models.Strava_models.sportType)
     ~(stats_ranges : SplitAvgRange.t) (index : int) (stats : Models.Stats.t) =
-  let make_bar_row ~color ~percent value =
-    let percent = Int.max percent 5 in
-    let percent = Int.min percent 100 in
-    (* NOTE: reduce the color alpha *)
-    let color =
-      String.substr_replace_first ~pattern:")" ~with_:", 0.4)" color
-    in
-    td []
-      [
-        div
-          [
-            class_ "bar"; style_ "width: %d%s; background: %s" percent "%" color;
-          ]
-          [];
-        span [] [ txt "%s" value ];
-      ]
-  in
-
   let make_txt_row value = td [] [ txt "%s" value ] in
 
   let split_idx = Some (make_txt_row @@ sprintf "%d" (index + 1)) in

@@ -125,9 +125,18 @@ tfoot {
   height: 100%;
   z-index: 0;
 }
+
+.splitsTable .avg-line {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 2px; /* thickness of the line */
+  z-index: 1; /* above the bar, below text */
+}
+
 .splitsTable td span {
   position: relative;
-  z-index: 1; /* keep text visible */
+  z-index: 2; /* keep text visible */
 }
 
 .splitsTable table {
@@ -154,7 +163,7 @@ tfoot {
   position: sticky;
   top: 0; /* sticks header to the top */
   background: #fff;
-  z-index: 2; /* stay above body cells */
+  z-index: 12; /* stay above body cells */
 }
 
 /* Freeze first column (both header + body cells) */
@@ -163,13 +172,13 @@ tfoot {
   position: sticky;
   left: 0; /* sticks first column to the left */
   background: inherit;
-  z-index: 3; /* keep under header cells */
+  z-index: 13; /* keep under header cells */
 }
 
 /* Special case: top-left corner cell (header + first column) */
 .splitsTable th:first-child {
   background: #fff;
-  z-index: 4; /* higher so it overlaps correctly */
+  z-index: 14; /* higher so it overlaps correctly */
 }
 
 .splitSelectBtns span {
