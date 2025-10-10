@@ -1,4 +1,5 @@
 let%path index = "/"
+let%path calendar = "/calendar"
 let%path update = "/update"
 let%path login = "/login"
 let%path logout = "/logout"

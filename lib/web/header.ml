@@ -43,7 +43,14 @@ let update_icon ?(updated_items_num = None) () =
         ];
     ]
 
-let header_ (athlete_name : string) =
+type selectedTab = TrainingLog | Calendar | Dashboard [@@deriving eq]
+
+(* TODO: this should collapse down to hamburger menu on small screens *)
+let header_ ?(selected = TrainingLog) ~(athlete_name : string) () =
+  let txtBigActive = class_ "headerTxt headerTxtBig active" in
+  let txtSmallActive = class_ "headerTxt headerTxtSmall active" in
+  let txtBigInactive = class_ "headerTxt headerTxtBig inactive" in
+  let txtSmallInactive = class_ "headerTxt headerTxtSmall inactive" in
   header
     [ class_ "headerMargin" ]
     [
@@ -51,16 +58,40 @@ let header_ (athlete_name : string) =
         [ class_ "headerTabs" ]
         [
           span
-            [ class_ "headerTxt headerTxtBig active" ]
+            [
+              (if equal_selectedTab selected TrainingLog then txtBigActive
+               else txtBigInactive);
+            ]
             [ a [ path_attr href Paths.index ] [ txt "Training Log" ] ];
           span
-            [ class_ "headerTxt headerTxtSmall active" ]
+            [
+              (if equal_selectedTab selected TrainingLog then txtSmallActive
+               else txtSmallInactive);
+            ]
             [ a [ path_attr href Paths.index ] [ txt "Training Log" ] ];
           span
-            [ class_ "headerTxt headerTxtBig inactive" ]
+            [
+              (if equal_selectedTab selected Calendar then txtBigActive
+               else txtBigInactive);
+            ]
+            [ a [ path_attr href Paths.calendar ] [ txt "Calendar" ] ];
+          span
+            [
+              (if equal_selectedTab selected Calendar then txtSmallActive
+               else txtSmallInactive);
+            ]
+            [ a [ path_attr href Paths.calendar ] [ txt "Calendar" ] ];
+          span
+            [
+              (if equal_selectedTab selected Dashboard then txtBigActive
+               else txtBigInactive);
+            ]
             [ a [ href "" ] [ txt "Dashboards" ] ];
           span
-            [ class_ "headerTxt headerTxtSmall inactive" ]
+            [
+              (if equal_selectedTab selected Dashboard then txtSmallActive
+               else txtSmallInactive);
+            ]
             [ a [ href "" ] [ txt "Dashboards" ] ];
         ];
       div

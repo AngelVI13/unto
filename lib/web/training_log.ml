@@ -357,7 +357,7 @@ let page (monday_date : Date.t)
       head [] (head_elems ());
       body []
         [
-          Header.header_ athlete_name;
+          Header.header_ ~selected:Header.TrainingLog ~athlete_name ();
           nav_buttons monday_date;
           week_table_header monday_date;
           week_table_activities athlete activities;

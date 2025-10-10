@@ -175,6 +175,12 @@ let handle_logout request =
   let* () = Dream.invalidate_session request in
   Dream.redirect request (Helpers.string_of_path Paths.login)
 
+let handle_calendar ~db request =
+  let _ = request in
+  let athlete = Db.get_athlete db in
+  let page = Calendar.page athlete [] in
+  Dream_html.respond page
+
 (* TODO: activity fails to download streams 113217900 *)
 (* processing activity=113217900 2014-02-12T16:00:00Z *)
 (*   downloading streams *)
@@ -194,6 +200,7 @@ let run ~(db : Db.t) ~(strava_auth : Strava.Auth.Auth.t) =
   @@ Dream.router
        [
          Dream_html.get Paths.index (require_login (handle_training_log ~db));
+         Dream_html.get Paths.calendar (require_login (handle_calendar ~db));
          Dream_html.get Paths.login handle_login;
          Dream_html.post Paths.login handle_login_post;
          Dream_html.get Paths.logout handle_logout;

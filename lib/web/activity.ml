@@ -225,7 +225,7 @@ let activity_page ~(athlete : Models.Strava_models.StravaAthlete.t option)
       head [] (head_elems ());
       body []
         [
-          Header.header_ athlete_name;
+          Header.header_ ~athlete_name ();
           activity_grid ~athlete ~activity ~split_select;
         ];
     ]

@@ -33,7 +33,7 @@ let page csrf_token =
         ];
       body []
         [
-          Header.header_ "";
+          Header.header_ ~athlete_name:"" ();
           div []
             [
               form
