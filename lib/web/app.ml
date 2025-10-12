@@ -15,6 +15,10 @@ let last_monday ~zone =
   in
   Date.add_days today (-days_since_monday)
 
+let first_of_month ~zone =
+  let today = Time_ns.now () |> Time_ns.to_date ~zone in
+  Date.add_days today (-Date.day today + 1)
+
 let group_activities ~(start_date : Date.t)
     (activities : Models.Activity.t list) =
   List.init 7 ~f:(fun offset ->
@@ -176,9 +180,15 @@ let handle_logout request =
   Dream.redirect request (Helpers.string_of_path Paths.login)
 
 let handle_calendar ~db request =
-  let _ = request in
+  let first_of_month =
+    match Dream.query request "month" with
+    | None -> first_of_month ~zone:Timezone.utc
+    (* TODO: if this is not first of the month then calculate it here *)
+    (* TODO: this is also missing error handling if timestamp fails to be parsed *)
+    | Some timestamp -> Utils.iso8601_to_date timestamp
+  in
   let athlete = Db.get_athlete db in
-  let page = Calendar.page athlete [] in
+  let page = Calendar.page first_of_month athlete [] in
   Dream_html.respond page
 
 (* TODO: activity fails to download streams 113217900 *)

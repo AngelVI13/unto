@@ -65,7 +65,7 @@
 }
 
 .activityGraphs {
-  width: 94vw;
+  width: 100%;
 }
 
 .activitySplitsStats {
@@ -202,20 +202,20 @@ tfoot {
   }
 
   .activitySplitsStats {
-    width: 94vw;
+    width: 100%;
   }
 }
 
 @media screen and (max-width: 840px) {
   .activityCardStats {
-    width: 90vw;
+    width: 100%;
   }
 
   .activityHeader {
-    width: 90vw;
+    width: 100%;
   }
 
   .activitySplitsStats {
-    width: 90vw;
+    width: 100%;
   }
 }

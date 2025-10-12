@@ -1,0 +1,16 @@
+.mainContainer {
+  display: inline-flex;
+  gap: 1vw;
+  height: 80vh;
+  width: 100vw;
+}
+
+.calendar {
+  width: 70%;
+  background: #0f0;
+}
+
+.summary {
+  width: 30%;
+  background: #00f;
+}

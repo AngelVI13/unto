@@ -1,5 +1,7 @@
 let%path index = "/"
+let%path training_log = "/?monday=%s"
 let%path calendar = "/calendar"
+let%path calendar_url = "/calendar?month=%s"
 let%path update = "/update"
 let%path login = "/login"
 let%path logout = "/logout"

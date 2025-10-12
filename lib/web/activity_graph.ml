@@ -276,13 +276,13 @@ module GraphData = struct
       {|
       '%s': {
         type: 'linear',
-        display: %s,
+        display: false,
         position: '%s',
         %s
         %s
       },
       |}
-      t.label (Bool.to_string t.display) position
+      t.label position
       (String.concat ~sep:"\n" t.extra_scale_fields)
       grid_lines
 

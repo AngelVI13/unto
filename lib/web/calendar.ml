@@ -2,20 +2,29 @@ open Core
 open Dream_html
 open HTML
 
-(* TODO: make this work with months not mondays *)
-let nav_buttons (monday_date : Date.t) =
-  let next_monday = Date.add_days monday_date 7 in
-  let next_monday_str = Utils.iso8601_of_date next_monday in
-  let prev_monday = Date.add_days monday_date (-7) in
-  let prev_monday_str = Utils.iso8601_of_date prev_monday in
+let nav_buttons (first_of_month : Date.t) =
+  let next_month = Date.add_months first_of_month 1 in
+  let next_month_str = Utils.iso8601_of_date next_month in
+  let prev_month = Date.add_months first_of_month (-1) in
+  let prev_month_str = Utils.iso8601_of_date prev_month in
   div
     [ class_ "navHeader" ]
     [
       div
         [ class_ "navButtons" ]
         [
-          span [] [ a [ href "/?monday=%s" prev_monday_str ] [ txt "Prev" ] ];
-          span [] [ a [ href "/?monday=%s" next_monday_str ] [ txt "Next" ] ];
+          span []
+            [
+              a
+                [ path_attr href Paths.calendar_url prev_month_str ]
+                [ txt "Prev" ];
+            ];
+          span []
+            [
+              a
+                [ path_attr href Paths.calendar_url next_month_str ]
+                [ txt "Next" ];
+            ];
         ];
       div
         [ class_ "navDates" ]
@@ -23,11 +32,17 @@ let nav_buttons (monday_date : Date.t) =
           span []
             [
               txt "(%s - %s)"
-                (Date.to_string monday_date)
-                Date.(to_string (add_days monday_date 6));
+                (Date.to_string first_of_month)
+                Date.(to_string (add_days next_month (-1)));
             ];
         ];
     ]
+
+let calendar first_of_month =
+  let _ = first_of_month in
+  div
+    [ class_ "mainContainer" ]
+    [ div [ class_ "calendar" ] []; div [ class_ "summary" ] [] ]
 
 let head_elems () =
   [
@@ -63,7 +78,8 @@ let head_elems () =
       ];
   ]
 
-let page (athlete : Models.Strava_models.StravaAthlete.t option)
+let page (first_of_month : Date.t)
+    (athlete : Models.Strava_models.StravaAthlete.t option)
     (activities : Models.Activity.t list list) =
   let athlete_name =
     match athlete with None -> "Unknown" | Some athl -> athl.firstname
@@ -76,7 +92,8 @@ let page (athlete : Models.Strava_models.StravaAthlete.t option)
       body []
         [
           Header.header_ ~selected:Header.Calendar ~athlete_name ();
-          (* nav_buttons monday_date; *)
+          nav_buttons first_of_month;
+          calendar first_of_month;
           (* week_table_header monday_date; *)
           (* week_table_activities athlete activities; *)
           (* week_summary athlete activities; *)

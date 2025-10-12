@@ -138,8 +138,18 @@ let nav_buttons (monday_date : Date.t) =
       div
         [ class_ "navButtons" ]
         [
-          span [] [ a [ href "/?monday=%s" prev_monday_str ] [ txt "Prev" ] ];
-          span [] [ a [ href "/?monday=%s" next_monday_str ] [ txt "Next" ] ];
+          span []
+            [
+              a
+                [ path_attr href Paths.training_log prev_monday_str ]
+                [ txt "Prev" ];
+            ];
+          span []
+            [
+              a
+                [ path_attr href Paths.training_log next_monday_str ]
+                [ txt "Next" ];
+            ];
         ];
       div
         [ class_ "navDates" ]
