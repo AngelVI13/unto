@@ -89,13 +89,12 @@ let calendar first_of_month (activities : Models.Activity.t list list) =
   let num_weeks = num_weeks first_of_month in
   let month_start_idx = day_of_week_to_int (Date.day_of_week first_of_month) in
   let month_days = days_in_month first_of_month in
-  Dream.log "%d" month_days;
   let days =
     List.init (num_weeks * 7) ~f:(fun i ->
         let day_idx = i - month_start_idx in
         let day_num = Date.add_days first_of_month day_idx in
         let day_activities =
-          if day_idx < 0 || day_idx > month_days then []
+          if day_idx < 0 || day_idx >= month_days then []
           else List.nth_exn activities day_idx
         in
         let activity_divs = List.map ~f:activity_div day_activities in
