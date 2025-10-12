@@ -38,11 +38,28 @@ let nav_buttons (first_of_month : Date.t) =
         ];
     ]
 
+let num_weeks first_of_month =
+  let days_in_month =
+    Date.days_in_month ~year:(Date.year first_of_month)
+      ~month:(Date.month first_of_month)
+  in
+  let weekdays_before_first =
+    Date.day_of_week first_of_month |> Day_of_week.to_int
+  in
+  (* TODO: finish this. (weekdays_before_first + days_in_month) / 7 and round
+     up will give you weeks in month *)
+  let _ = (weekdays_before_first, days_in_month) in
+  0
+
 let calendar first_of_month =
-  let _ = first_of_month in
+  let num_weeks = num_weeks first_of_month in
+  Dream.log "Num weeks in %s: %d" (Date.to_string first_of_month) num_weeks;
+  div [ class_ "calendar" ] []
+
+let main_container first_of_month =
   div
     [ class_ "mainContainer" ]
-    [ div [ class_ "calendar" ] []; div [ class_ "summary" ] [] ]
+    [ calendar first_of_month; div [ class_ "summary" ] [] ]
 
 let head_elems () =
   [
@@ -93,7 +110,7 @@ let page (first_of_month : Date.t)
         [
           Header.header_ ~selected:Header.Calendar ~athlete_name ();
           nav_buttons first_of_month;
-          calendar first_of_month;
+          main_container first_of_month;
           (* week_table_header monday_date; *)
           (* week_table_activities athlete activities; *)
           (* week_summary athlete activities; *)
