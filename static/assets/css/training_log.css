@@ -147,26 +147,6 @@ small {
     display: inline;
   }
 
-  .headerMargin {
-    margin-bottom: 10px;
-  }
-
-  header .headerTxtBig {
-    display: none;
-  }
-
-  header .headerTxtSmall {
-    display: inline;
-  }
-
-  header .header-img {
-    width: var(--mobile-font-size);
-  }
-
-  header .athlete-txt {
-    font-size: var(--mobile-font-size);
-  }
-
   .calendarHeight {
     height: 20vh;
   }

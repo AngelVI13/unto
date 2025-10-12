@@ -47,9 +47,11 @@ type selectedTab = TrainingLog | Calendar | Dashboard [@@deriving eq]
 
 (* TODO: this should collapse down to hamburger menu on small screens *)
 let header_ ?(selected = TrainingLog) ~(athlete_name : string) () =
-  let txtBigActive = class_ "headerTxt headerTxtBig active" in
+  let txtLargeActive = class_ "headerTxt headerTxtLarge active" in
+  let txtLargeInactive = class_ "headerTxt headerTxtLarge inactive" in
+  let txtMediumActive = class_ "headerTxt headerTxtMedium active" in
+  let txtMediumInactive = class_ "headerTxt headerTxtMedium inactive" in
   let txtSmallActive = class_ "headerTxt headerTxtSmall active" in
-  let txtBigInactive = class_ "headerTxt headerTxtBig inactive" in
   let txtSmallInactive = class_ "headerTxt headerTxtSmall inactive" in
   header
     [ class_ "headerMargin" ]
@@ -59,8 +61,14 @@ let header_ ?(selected = TrainingLog) ~(athlete_name : string) () =
         [
           span
             [
-              (if equal_selectedTab selected TrainingLog then txtBigActive
-               else txtBigInactive);
+              (if equal_selectedTab selected TrainingLog then txtLargeActive
+               else txtLargeInactive);
+            ]
+            [ a [ path_attr href Paths.index ] [ txt "Training Log" ] ];
+          span
+            [
+              (if equal_selectedTab selected TrainingLog then txtMediumActive
+               else txtMediumInactive);
             ]
             [ a [ path_attr href Paths.index ] [ txt "Training Log" ] ];
           span
@@ -68,11 +76,17 @@ let header_ ?(selected = TrainingLog) ~(athlete_name : string) () =
               (if equal_selectedTab selected TrainingLog then txtSmallActive
                else txtSmallInactive);
             ]
-            [ a [ path_attr href Paths.index ] [ txt "Training Log" ] ];
+            [ a [ path_attr href Paths.index ] [ txt "Log" ] ];
           span
             [
-              (if equal_selectedTab selected Calendar then txtBigActive
-               else txtBigInactive);
+              (if equal_selectedTab selected Calendar then txtLargeActive
+               else txtLargeInactive);
+            ]
+            [ a [ path_attr href Paths.calendar ] [ txt "Calendar" ] ];
+          span
+            [
+              (if equal_selectedTab selected Calendar then txtMediumActive
+               else txtMediumInactive);
             ]
             [ a [ path_attr href Paths.calendar ] [ txt "Calendar" ] ];
           span
@@ -80,11 +94,17 @@ let header_ ?(selected = TrainingLog) ~(athlete_name : string) () =
               (if equal_selectedTab selected Calendar then txtSmallActive
                else txtSmallInactive);
             ]
-            [ a [ path_attr href Paths.calendar ] [ txt "Calendar" ] ];
+            [ a [ path_attr href Paths.calendar ] [ txt "Cal" ] ];
           span
             [
-              (if equal_selectedTab selected Dashboard then txtBigActive
-               else txtBigInactive);
+              (if equal_selectedTab selected Dashboard then txtLargeActive
+               else txtLargeInactive);
+            ]
+            [ a [ href "" ] [ txt "Dashboards" ] ];
+          span
+            [
+              (if equal_selectedTab selected Dashboard then txtMediumActive
+               else txtMediumInactive);
             ]
             [ a [ href "" ] [ txt "Dashboards" ] ];
           span
@@ -92,7 +112,7 @@ let header_ ?(selected = TrainingLog) ~(athlete_name : string) () =
               (if equal_selectedTab selected Dashboard then txtSmallActive
                else txtSmallInactive);
             ]
-            [ a [ href "" ] [ txt "Dashboards" ] ];
+            [ a [ href "" ] [ txt "Dash" ] ];
         ];
       div
         [ class_ "headerSettings" ]

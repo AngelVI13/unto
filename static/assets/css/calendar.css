@@ -1,16 +1,22 @@
 .mainContainer {
-  display: inline-flex;
-  gap: 1vw;
+  display: flex;
+  gap: 10px;
+  width: 100%;
   height: 80vh;
-  width: 100vw;
 }
 
 .calendar {
-  width: 70%;
+  flex: 0 0 70%;
   background: #0f0;
 }
 
 .summary {
-  width: 30%;
+  flex: 1;
   background: #00f;
+}
+
+@media screen and (max-width: 930px) {
+  .mainContainer {
+    height: 90vh;
+  }
 }

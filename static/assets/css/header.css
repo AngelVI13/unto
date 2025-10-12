@@ -60,7 +60,7 @@ header .athlete-txt {
   font-weight: bold;
 }
 
-.headerTxtBig {
+.headerTxtLarge {
   font-size: 30px;
   display: inline;
 }
@@ -70,17 +70,26 @@ header .athlete-txt {
   display: none;
 }
 
+.headerTxtMedium {
+  font-size: var(--mobile-font-size);
+  display: none;
+}
+
 @media screen and (max-width: 930px) {
   .headerMargin {
     margin-bottom: 10px;
   }
 
-  header .headerTxtBig {
+  .headerTxtLarge {
     display: none;
   }
 
-  header .headerTxtSmall {
+  .headerTxtMedium {
     display: inline;
+  }
+
+  .headerTxtSmall {
+    display: none;
   }
 
   header .header-img-wrapper .header-img-txt {
@@ -95,6 +104,19 @@ header .athlete-txt {
     font-size: var(--mobile-font-size);
   }
 }
+
+@media screen and (max-width: 500px) {
+  .headerTxtLarge {
+    display: none;
+  }
+
+ .headerTxtMedium {
+     display: none;
+ }
+
+  .headerTxtSmall {
+    display: inline;
+  }
 
 .htmx-request .update-indicator,
 .htmx-request.update-indicator {
