@@ -38,28 +38,81 @@ let nav_buttons (first_of_month : Date.t) =
         ];
     ]
 
+(* NOTE: Day_of_week starts from Sunday (i.e. Sunday==0) => this remaps to sane
+   defaults *)
+let day_of_week_to_int = function
+  | Day_of_week.Mon -> 0
+  | Day_of_week.Tue -> 1
+  | Day_of_week.Wed -> 2
+  | Day_of_week.Thu -> 3
+  | Day_of_week.Fri -> 4
+  | Day_of_week.Sat -> 5
+  | Day_of_week.Sun -> 6
+
+let days_in_month (date : Date.t) =
+  Date.days_in_month ~year:(Date.year date) ~month:(Date.month date)
+
 let num_weeks first_of_month =
-  let days_in_month =
-    Date.days_in_month ~year:(Date.year first_of_month)
-      ~month:(Date.month first_of_month)
-  in
+  let days_in_month = days_in_month first_of_month in
   let weekdays_before_first =
-    Date.day_of_week first_of_month |> Day_of_week.to_int
+    day_of_week_to_int (Date.day_of_week first_of_month)
+    - day_of_week_to_int Mon
   in
-  (* TODO: finish this. (weekdays_before_first + days_in_month) / 7 and round
-     up will give you weeks in month *)
-  let _ = (weekdays_before_first, days_in_month) in
-  0
 
-let calendar first_of_month =
+  let total_days = weekdays_before_first + days_in_month in
+  Float.(to_int (round_up (of_int total_days / 7.0)))
+
+let activity_header (activity : Models.Activity.t) =
+  let icon_background, img_src = Helpers.activity_icon_and_color activity in
+  (* TODO: currently these styles are not in calendar.css ->
+    figure out what is needed and reuse it *)
+  div
+    [ class_ "activityHeader" ]
+    [
+      span
+        [ class_ "icon-container"; style_ "%s" icon_background ]
+        [ img [ class_ "icon-img"; path_attr src img_src ] ];
+    ]
+
+let activity_div (activity : Models.Activity.t) =
+  (* TODO: currently these styles are not in calendar.css ->
+    figure out what is needed and reuse it *)
+  div
+    [
+      class_ "activity card";
+      onclick "location.href='/activity/%d';" activity.id;
+      style_ "cursor: pointer;";
+    ]
+    [ activity_header activity ]
+
+let calendar first_of_month (activities : Models.Activity.t list list) =
   let num_weeks = num_weeks first_of_month in
-  Dream.log "Num weeks in %s: %d" (Date.to_string first_of_month) num_weeks;
-  div [ class_ "calendar" ] []
+  let month_start_idx = day_of_week_to_int (Date.day_of_week first_of_month) in
+  let month_days = days_in_month first_of_month in
+  Dream.log "%d" month_days;
+  let days =
+    List.init (num_weeks * 7) ~f:(fun i ->
+        let day_idx = i - month_start_idx in
+        let day_num = Date.add_days first_of_month day_idx in
+        let day_activities =
+          if day_idx < 0 || day_idx > month_days then []
+          else List.nth_exn activities day_idx
+        in
+        let activity_divs = List.map ~f:activity_div day_activities in
 
-let main_container first_of_month =
+        div
+          [ class_ "calendarDay" ]
+          [
+            txt "%d" (Date.day day_num);
+            div [ class_ "calendarDayActivities" ] activity_divs;
+          ])
+  in
+  div [ class_ "calendar" ] days
+
+let main_container first_of_month (activities : Models.Activity.t list list) =
   div
     [ class_ "mainContainer" ]
-    [ calendar first_of_month; div [ class_ "summary" ] [] ]
+    [ calendar first_of_month activities; div [ class_ "calendarSummary" ] [] ]
 
 let head_elems () =
   [
@@ -101,7 +154,6 @@ let page (first_of_month : Date.t)
   let athlete_name =
     match athlete with None -> "Unknown" | Some athl -> athl.firstname
   in
-  let _ = activities in
   html
     [ lang "en" ]
     [
@@ -110,7 +162,7 @@ let page (first_of_month : Date.t)
         [
           Header.header_ ~selected:Header.Calendar ~athlete_name ();
           nav_buttons first_of_month;
-          main_container first_of_month;
+          main_container first_of_month activities;
           (* week_table_header monday_date; *)
           (* week_table_activities athlete activities; *)
           (* week_summary athlete activities; *)

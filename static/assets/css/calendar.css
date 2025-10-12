@@ -8,9 +8,30 @@
 .calendar {
   flex: 0 0 70%;
   background: #0f0;
+
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  align-items: start;
 }
 
-.summary {
+.calendarDay {
+  /* height: 56px; */
+  /* padding: 6px; */
+  /* border-radius: 8px; */
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  font-size: 0.95rem;
+  color: #111827;
+  /* background: transparent; */
+  background: #f00;
+  outline: none;
+  border: none;
+  cursor: default;
+}
+
+.calendarSummary {
   flex: 1;
   background: #00f;
 }

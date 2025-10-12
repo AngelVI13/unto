@@ -105,10 +105,12 @@ let parse_json_from_bytes (b : bytes) : Yojson.Safe.t =
   let s = Bytes.unsafe_to_string ~no_mutation_while_string_reachable:b in
   Yojson.Safe.from_string s
 
-let iso8601_of_date date =
-  let now =
-    Time_ns.of_date_ofday ~zone:Timezone.utc date (Time_ns.Ofday.create ())
+let iso8601_of_date ?(end_of_day = false) date =
+  let time_data =
+    if end_of_day then Time_ns.Ofday.create ~hr:23 ~min:59 ~sec:59 ()
+    else Time_ns.Ofday.create ~hr:0 ~min:0 ~sec:0 ()
   in
+  let now = Time_ns.of_date_ofday ~zone:Timezone.utc date time_data in
   Time_ns.to_string_iso8601_basic ~zone:Timezone.utc now
 
 let iso8601_to_date timestamp =

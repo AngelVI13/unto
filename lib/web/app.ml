@@ -19,9 +19,9 @@ let first_of_month ~zone =
   let today = Time_ns.now () |> Time_ns.to_date ~zone in
   Date.add_days today (-Date.day today + 1)
 
-let group_activities ~(start_date : Date.t)
+let group_activities ~(num_days : int) ~(start_date : Date.t)
     (activities : Models.Activity.t list) =
-  List.init 7 ~f:(fun offset ->
+  List.init num_days ~f:(fun offset ->
       let day_date = Date.add_days start_date offset in
       let day_activities =
         List.filter
@@ -48,7 +48,7 @@ let handle_training_log ~db request =
   in
   let weeks_activities = Db.get_weeks_activities db ~start_date:monday in
   let grouped_activities =
-    group_activities ~start_date:monday weeks_activities
+    group_activities ~num_days:7 ~start_date:monday weeks_activities
   in
   let athlete = Db.get_athlete db in
   let page = Training_log.page monday athlete grouped_activities in
@@ -187,8 +187,21 @@ let handle_calendar ~db request =
     (* TODO: this is also missing error handling if timestamp fails to be parsed *)
     | Some timestamp -> Utils.iso8601_to_date timestamp
   in
+  let last_of_month = Date.add_days (Date.add_months first_of_month 1) (-1) in
+  let weeks_activities =
+    Db.get_months_activities db ~start_date:first_of_month
+      ~end_date:last_of_month
+  in
+  let grouped_activities =
+    group_activities
+      ~num_days:
+        (Date.days_in_month ~year:(Date.year first_of_month)
+           ~month:(Date.month first_of_month))
+      ~start_date:first_of_month weeks_activities
+  in
+
   let athlete = Db.get_athlete db in
-  let page = Calendar.page first_of_month athlete [] in
+  let page = Calendar.page first_of_month athlete grouped_activities in
   Dream_html.respond page
 
 (* TODO: activity fails to download streams 113217900 *)
@@ -251,7 +264,9 @@ let%expect_test "fetch weeks activities from db" =
     Afternoon Run Run 2025-08-12T17:36:14Z
     Lunch Ride Ride 2025-08-11T12:09:21Z |}];
 
-  let grouped = group_activities ~start_date:monday weeks_activities in
+  let grouped =
+    group_activities ~num_days:7 ~start_date:monday weeks_activities
+  in
 
   List.iter
     ~f:(fun day_activities ->
