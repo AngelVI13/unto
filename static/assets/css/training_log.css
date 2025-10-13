@@ -34,7 +34,7 @@
 }
 
 .cardToday {
-  border-color: darkolivegreen;
+  border-color: var(--accent-color);
 }
 
 .activity {

@@ -79,7 +79,7 @@ let activity_div (activity : Models.Activity.t) =
     figure out what is needed and reuse it *)
   div
     [
-      class_ "activity card";
+      class_ "calendarActivity";
       onclick "location.href='/activity/%d';" activity.id;
       style_ "cursor: pointer;";
     ]
@@ -98,11 +98,15 @@ let calendar first_of_month (activities : Models.Activity.t list list) =
           else List.nth_exn activities day_idx
         in
         let activity_divs = List.map ~f:activity_div day_activities in
-
+        (* TODO: add .calendarToday class to highlight today  *)
+        let extra_css_class =
+          if day_idx < 0 || day_idx >= month_days then "calendarInactive"
+          else ""
+        in
         div
-          [ class_ "calendarDay" ]
+          [ class_ "card calendarDay %s" extra_css_class ]
           [
-            txt "%d" (Date.day day_num);
+            span [ class_ "calendarDayNum" ] [ txt "%d" (Date.day day_num) ];
             div [ class_ "calendarDayActivities" ] activity_divs;
           ])
   in

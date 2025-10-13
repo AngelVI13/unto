@@ -2,6 +2,7 @@
   --mobile-font-size: 16px;
   /* --light-highlight: rgba(110, 110, 110, 0.1); */
   --light-highlight: #f0f0f0;
+  --accent-color: darkolivegreen;
 }
 
 body {

@@ -7,7 +7,7 @@
 
 .calendar {
   flex: 0 0 70%;
-  background: #0f0;
+  /* background: #0f0; */
 
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -15,20 +15,36 @@
   align-items: start;
 }
 
+.calendarInactive {
+  background: var(--light-highlight);
+}
+
+.calendarToday {
+  border: 1px solid var(--accent-color);
+}
+
 .calendarDay {
-  /* height: 56px; */
-  /* padding: 6px; */
-  /* border-radius: 8px; */
-  display: flex;
-  justify-content: flex-start;
-  align-items: flex-start;
+  display: gird;
   font-size: 0.95rem;
-  color: #111827;
-  /* background: transparent; */
-  background: #f00;
+  min-height: 70px;
   outline: none;
   border: none;
   cursor: default;
+}
+
+.calendarDayActivities {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.calendarActivity {
+  background: white;
+  padding: 5px;
+  margin: 0px 5px 10px 5px;
+}
+
+.calendarActivity .icon-container {
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
 }
 
 .calendarSummary {
@@ -38,6 +54,6 @@
 
 @media screen and (max-width: 930px) {
   .mainContainer {
-    height: 90vh;
+    height: 85vh;
   }
 }
