@@ -98,6 +98,10 @@ let calendar first_of_month (activities : Models.Activity.t list list) =
           else List.nth_exn activities day_idx
         in
         let activity_divs = List.map ~f:activity_div day_activities in
+        (* TODO: currently 4 activities per day breaks the
+           calendar view -> make each calendar day scrollable ??
+           by default it should show preview of activity and a
+           half so you knowto scroll *)
         (* TODO: add .calendarToday class to highlight today  *)
         let extra_css_class =
           if day_idx < 0 || day_idx >= month_days then "calendarInactive"
@@ -110,6 +114,26 @@ let calendar first_of_month (activities : Models.Activity.t list list) =
             div [ class_ "calendarDayActivities" ] activity_divs;
           ])
   in
+  let daysOfWeek =
+    [
+      ("Monday", "Mon", "M");
+      ("Tuesday", "Tue", "T");
+      ("Wednesday", "Wed", "W");
+      ("Thursday", "Thu", "T");
+      ("Friday", "Fri", "F");
+      ("Saturday", "Sat", "S");
+      ("Sunday", "Sun", "S");
+    ]
+    |> List.map ~f:(fun (long, short, xshort) ->
+           div
+             [ class_ "calendarDayOfWeek" ]
+             [
+               span [ class_ "calendarBigTxt" ] [ txt "%s" long ];
+               span [ class_ "calendarMediumTxt" ] [ txt "%s" short ];
+               span [ class_ "calendarSmallTxt" ] [ txt "%s" xshort ];
+             ])
+  in
+  let days = daysOfWeek @ days in
   div [ class_ "calendar" ] days
 
 let main_container first_of_month (activities : Models.Activity.t list list) =
