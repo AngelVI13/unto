@@ -214,6 +214,11 @@ let handle_calendar ~db request =
 (*   downloading laps *)
 (*   error while downloading/parsing streams: ("Yojson__Safe.Util.Type_error(\"Expected array, got object\", _)") *)
 let run ~(db : Db.t) ~(strava_auth : Strava.Auth.Auth.t) =
+  (* TODO: for remote db try sqlite3 with the following uri  url :=
+    "libsql://[DATABASE].turso.io?authToken=[TOKEN]" 
+    if that doen't work then will have to write my own libsql interface 
+    libSQL remote protocol (HTTP): https://docs.turso.tech/sdk/http/quickstart
+    *)
   (* NOTE: rotate cookie secret about once per year, you can use the code bellow to generate it  *)
   (* let secret = Dream.to_base64url (Dream.random 32) in *)
   let secret = "Ut_HWsViPaH7usYjrG0qHjTH4aB2_jjL4QP-961GBW4" in

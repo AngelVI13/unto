@@ -139,7 +139,10 @@ let calendar first_of_month (activities : Models.Activity.t list list) =
 let main_container first_of_month (activities : Models.Activity.t list list) =
   div
     [ class_ "mainContainer" ]
-    [ calendar first_of_month activities; div [ class_ "calendarSummary" ] [] ]
+    [
+      calendar first_of_month activities;
+      div [ class_ "calendarSummary" ] [ txt "%s" "This is where summary goes" ];
+    ]
 
 let head_elems () =
   [
