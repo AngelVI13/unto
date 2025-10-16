@@ -88,6 +88,8 @@
 
 .calendarSummary {
   flex: 1;
+  height: 80vh;
+  overflow-y: auto;
 }
 
 .activityType {
@@ -142,6 +144,10 @@
 
   .calendarSmallTxt {
     display: none;
+  }
+
+  .calendarSummary {
+    height: 85vh;
   }
 }
 

@@ -149,7 +149,7 @@ let hr_stat_node hr = Stat.activity_stat hr_stat (hr_stat_value hr)
 
 let distance_stat_value distance =
   let distance =
-    Float.round_significant ~significant_digits:3 (distance /. 1000.0)
+    Float.round_significant ~significant_digits:4 (distance /. 1000.0)
   in
   sprintf "%.2f" distance
 
@@ -168,7 +168,7 @@ let pace_stat_value avg =
   sprintf "%02d:%02d" mins secs
 
 let speed_stat_value avg =
-  sprintf "%.1f" Float.(round_significant ~significant_digits:3 (avg * 3.6))
+  sprintf "%.1f" Float.(round_significant ~significant_digits:4 (avg * 3.6))
 
 type velocityType = PaceVelocity | SpeedVelocity
 
