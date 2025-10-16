@@ -69,53 +69,6 @@
   display: none;
 }
 
-.stats {
-  background: white;
-  padding: 20px;
-  margin-top: 20px;
-}
-
-.stats h2 {
-  margin-top: 0;
-}
-
-.statsGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  margin-top: 10px;
-}
-
-.totalsSummaryContainer {
-  padding-right: 10px;
-}
-
-.summaryContainer {
-  padding-right: 10px;
-  /* this is for big screens for laptop or smaller this is
-   * adjusted */
-  width: 190px;
-}
-
-.weekStatName {
-  font-weight: bold;
-}
-
-.weekTotalStat {
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
-}
-
-.stats .verticalLine {
-  border-left: solid #000000;
-}
-
-.stats .horizontalLine {
-  display: none;
-  border-bottom: solid #000000;
-}
-
 small {
   color: #777;
 }

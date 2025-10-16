@@ -13,6 +13,19 @@ let activity_icon_and_color (activity : Models.Activity.t) =
   let icon_background = sprintf "background: %s;" icon_color in
   (icon_background, img_src)
 
+let activity_header (activity : Models.Activity.t) =
+  let icon_background, img_src = activity_icon_and_color activity in
+  div
+    [ class_ "activityHeader" ]
+    [
+      span
+        [ class_ "icon-container"; style_ "%s" icon_background ]
+        [ img [ class_ "icon-img"; path_attr src img_src ] ];
+      span
+        [ class_ "activityType" ]
+        [ txt "%s" (Models.Strava_models.show_sportType activity.sport_type) ];
+    ]
+
 module Stat = struct
   type t = {
     name : string;

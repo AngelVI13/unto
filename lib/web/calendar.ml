@@ -136,12 +136,14 @@ let calendar first_of_month (activities : Models.Activity.t list list) =
   let days = daysOfWeek @ days in
   div [ class_ "calendar" ] days
 
-let main_container first_of_month (activities : Models.Activity.t list list) =
+let main_container first_of_month
+    (athlete : Models.Strava_models.StravaAthlete.t option)
+    (activities : Models.Activity.t list list) =
   div
     [ class_ "mainContainer" ]
     [
       calendar first_of_month activities;
-      div [ class_ "calendarSummary" ] [ txt "%s" "This is where summary goes" ];
+      Summary.component ~type_:Summary.Month athlete activities;
     ]
 
 let head_elems () =
@@ -174,6 +176,12 @@ let head_elems () =
       [
         rel "stylesheet";
         type_ "text/css";
+        path_attr href Static.Assets.Css.summary_css;
+      ];
+    link
+      [
+        rel "stylesheet";
+        type_ "text/css";
         path_attr href Static.Assets.Css.calendar_css;
       ];
   ]
@@ -192,7 +200,7 @@ let page (first_of_month : Date.t)
         [
           Header.header_ ~selected:Header.Calendar ~athlete_name ();
           nav_buttons first_of_month;
-          main_container first_of_month activities;
+          main_container first_of_month athlete activities;
           (* week_table_header monday_date; *)
           (* week_table_activities athlete activities; *)
           (* week_summary athlete activities; *)

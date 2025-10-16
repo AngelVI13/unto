@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 .mainContainer {
   display: flex;
   align-items: flex-start;
@@ -82,15 +88,50 @@
 
 .calendarSummary {
   flex: 1;
-  background: #00f;
-  height: 80vh;
+}
+
+.activityType {
+  font-weight: bold;
+  border-bottom: 2px solid black;
+}
+
+.activityHeader {
+  margin-bottom: 10px;
+}
+
+.stats .verticalLine {
+  display: none;
+}
+
+.stats .horizontalLine {
+  display: inline;
+}
+
+.statsGrid {
+  justify-content: center;
+}
+
+.totalsSummaryContainer {
+  padding-right: 0;
+}
+
+.summaryContainer:nth-child(2n + 1) {
+  border-radius: 8px;
+  background: var(--light-highlight);
+}
+
+.statsGrid > div {
+  padding: 5px 20%;
+  flex: 1 1 100%;
+}
+
+@media screen and (max-width: 1366px) {
+  .statsGrid > div {
+    padding: 5px;
+  }
 }
 
 @media screen and (max-width: 930px) {
-  .calendarSummary {
-    height: 85vh;
-  }
-
   .calendarBigTxt {
     display: none;
   }
@@ -115,6 +156,24 @@
   .calendarSummary {
     flex: 0 0 100%;
     width: 100%;
+  }
+
+  .statsGrid {
+    overflow-y: auto;
+    gap: 5px;
+    justify-content: center;
+  }
+
+  .statsGrid > div {
+    padding: 5px 30vw;
+    flex: 1 1 100%;
+  }
+}
+
+@media screen and (max-width: 750px) {
+  .statsGrid > div {
+    padding: 5px 20vw;
+    flex: 1 1 100%;
   }
 }
 
