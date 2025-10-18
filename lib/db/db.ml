@@ -461,3 +461,7 @@ let load filename =
       create filename
 
 let close db = Or_error.try_with (fun () -> Sqlite3.db_close db.handle)
+
+let test () =
+  let module DB = DbOps (Turso) in
+  DB.create_activities { url = ""; token = "" }

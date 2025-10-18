@@ -125,6 +125,18 @@ let command_test () =
        let _ = Or_error.ok_exn (Db.close db) in
        ())
 
+let command_turso () =
+  Command.basic ~summary:"Test turso traits"
+    (* TODO: temporarily accept db_url and db_token from cli args *)
+    (let%map_open.Command db_url =
+       flag "-db-url" (optional_with_default "app.db" string) ~doc:"DB url"
+     and db_token =
+       flag "-db-token" (optional_with_default "" string) ~doc:"DB token"
+     in
+     fun () ->
+       let _ = (db_url, db_token) in
+       ignore (Db.test ()))
+
 let command_update_db auth_client =
   Command.basic ~summary:"Update db with latest N activities"
     (let%map_open.Command db_filename =
@@ -214,6 +226,7 @@ let command auth_client =
       ("user-info", command_user_info auth_client);
       ("zones", command_zones auth_client);
       ("test", command_test ());
+      ("turso", command_turso ());
       ("update", command_update_db auth_client);
       ("run-app", command_run_app auth_client);
     ]

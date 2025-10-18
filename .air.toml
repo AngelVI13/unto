@@ -3,7 +3,8 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  args_bin = ["run-app -t new_tokens.json"]
+  # args_bin = ["run-app -t new_tokens.json"]
+  args_bin = ["turso"]
   bin = "./_build/default/bin/main.exe"
   # NOTE: official way to build the app is with the opam command
   # cmd = "opam exec -- dune build && sleep 1"
