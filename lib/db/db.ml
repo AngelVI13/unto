@@ -464,4 +464,74 @@ let close db = Or_error.try_with (fun () -> Sqlite3.db_close db.handle)
 
 let test () =
   let module DB = DbOps (Turso) in
-  DB.create_activities { url = ""; token = "" }
+  let today =
+    Time_ns.now ()
+    |> Time_ns.to_date ~zone:Timezone.utc
+    |> Utils.iso8601_of_date
+  in
+  (* DB.create_activities { url = ""; token = "" } *)
+  DB.activities_between { url = ""; token = "" } ~start_date:today
+    ~end_date:today
+    (fun
+      ~id
+      ~athlete_id
+      ~name
+      ~sport_type
+      ~start_date
+      ~timezone
+      ~map_id
+      ~map_summary_polyline
+      ~stats_id
+      ~moving_time
+      ~elapsed_time
+      ~distance
+      ~elev_gain
+      ~elev_loss
+      ~elev_high
+      ~elev_low
+      ~start_lat
+      ~start_lng
+      ~end_lat
+      ~end_lng
+      ~average_speed
+      ~max_speed
+      ~average_cadence
+      ~max_cadence
+      ~average_temp
+      ~average_heartrate
+      ~max_heartrate
+      ~average_power
+      ~max_power
+    ->
+      let _ =
+        ( id,
+          athlete_id,
+          name,
+          sport_type,
+          start_date,
+          timezone,
+          map_id,
+          map_summary_polyline,
+          stats_id,
+          moving_time,
+          elapsed_time,
+          distance,
+          elev_gain,
+          elev_loss,
+          elev_high,
+          elev_low,
+          start_lat,
+          start_lng,
+          end_lat,
+          end_lng,
+          average_speed,
+          max_speed,
+          average_cadence,
+          max_cadence,
+          average_temp,
+          average_heartrate,
+          max_heartrate,
+          average_power,
+          max_power )
+      in
+      ())

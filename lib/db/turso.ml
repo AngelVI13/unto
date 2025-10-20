@@ -127,7 +127,7 @@ module M = struct
   type 'a connection = { url : string; token : string }
   type params = string list ref
   type row = Yojson.Safe.t
-  type result = unit
+  type result = string list
   type execute_response = { affected_rows : int64; insert_id : int64 option }
   type num = int64
   type text = string
@@ -189,7 +189,7 @@ module M = struct
 
   (* set params *)
   let start_params _stmt _n = ref []
-  let finish_params _ = ()
+  let finish_params params = !params
   let set_param_Text params v = params := Text.to_literal v :: !params
   let set_param_Int params v = params := Int.to_literal v :: !params
   let set_param_Bool params v = params := Bool.to_literal v :: !params
@@ -198,42 +198,35 @@ module M = struct
   let set_param_Any = set_param_Text
   let set_param_Decimal = set_param_Float
   let set_param_Datetime = set_param_Float
-  let no_params _ = ()
+  let no_params _ = []
 
-  let try_finally final f x =
-    let r =
-      try f x
-      with exn ->
-        final ();
-        raise exn
-    in
-    final ();
-    r
-
-  let turso_post db sql =
+  let turso_post db sql params =
     (* placeholder: call Turso HTTP API here *)
     (* return JSON response as Yojson.Safe.t list *)
     let _ = db in
-    printf "%s" sql;
+    printf "%s\n" sql;
+    List.iter (fun x -> Printf.printf "%s," x) params;
     []
 
   let select db sql set_params callback =
-    let _ = (db, callback, set_params) in
-    let rows = turso_post db sql in
+    let params = set_params sql in
+    let rows = turso_post db sql params in
     List.iter callback rows
 
   let execute db sql set_params =
     let _ = (db, set_params) in
-    let _ = turso_post db sql in
+    let _ = turso_post db sql [] in
     1L
 
   let select_one_maybe db sql set_params convert =
     let _ = (db, set_params, convert) in
-    match turso_post db sql with [] -> None | row :: _ -> Some (convert row)
+    match turso_post db sql [] with
+    | [] -> None
+    | row :: _ -> Some (convert row)
 
   let select_one db sql set_params convert =
     let _ = (db, set_params, convert) in
-    match turso_post db sql with
+    match turso_post db sql [] with
     | row :: _ -> convert row
     | [] -> raise (Oops "Expected one row, got zero")
 end
