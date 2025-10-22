@@ -1,4 +1,4 @@
-open Printf
+open Core
 
 (* TODO: this is taken from:
   https://github.com/ygrek/sqlgg/blob/master/impl/ocaml/sqlite3/sqlgg_sqlite3.ml
@@ -12,9 +12,9 @@ let rec convert_json = function
   | (`Null | `Bool _ | `Int _ | `Intlit _ | `Float _ | `String _) as x -> x
   | `Assoc assoc_list ->
       let convert_pair (key, value) = (key, convert_json value) in
-      `Assoc (List.map convert_pair assoc_list)
+      `Assoc (List.map ~f:convert_pair assoc_list)
   | `List json_list | `Tuple json_list ->
-      `List (List.map convert_json json_list)
+      `List (List.map ~f:convert_json json_list)
   | `Variant _ -> failwith "Variant type is not supported"
 
 module M = struct
@@ -92,7 +92,7 @@ module M = struct
         let b = Buffer.create (3 + (String.length s * 2)) in
         Buffer.add_string b "x'";
         for i = 0 to String.length s - 1 do
-          let c = Char.code (String.unsafe_get s i) in
+          let c = Char.to_int (String.unsafe_get s i) in
           Buffer.add_char b (Array.unsafe_get to_hex (c lsr 4));
           Buffer.add_char b (Array.unsafe_get to_hex (c land 0x0F))
         done;
@@ -138,7 +138,7 @@ module M = struct
 
   let extract_field row idx =
     match row with
-    | `List lst when idx < List.length lst -> List.nth lst idx
+    | `List lst when idx < List.length lst -> List.nth_exn lst idx
     | _ -> raise (Oops "Invalid row format")
 
   let get_column_Text row i =
@@ -203,15 +203,36 @@ module M = struct
   let turso_post db sql params =
     (* placeholder: call Turso HTTP API here *)
     (* return JSON response as Yojson.Safe.t list *)
+    (* Str. *)
+    let regexp = Re.Perl.re {|\@(\w+)|} |> Re.compile in
+    let matches =
+      Re.all regexp sql |> List.map ~f:(fun group -> Re.Group.get group 1)
+    in
+    let found_question =
+      String.find sql ~f:(fun char -> Char.(char = of_string "?"))
+    in
+    let _ =
+      match found_question with
+      | Some _ ->
+          failwith "SQL contains ? -> not supported, use named arguments @ARG"
+      | None -> ()
+    in
     let _ = db in
     printf "%s\n" sql;
-    List.iter (fun x -> Printf.printf "%s," x) params;
+    List.iter ~f:(fun x -> Printf.printf "%s," x) params;
+    printf "\n";
+    List.iter ~f:(fun x -> Printf.printf "%s|" x) matches;
+    printf "\n";
     []
 
   let select db sql set_params callback =
+    (* NOTE: if there is a `?` then we send unnamed arguments  *)
+    (* if there is a @name then we send named argument.  *)
+    (* Each param responds to the each @argument. If named arg appears 3 times
+    then we get 3 parameters for it  *)
     let params = set_params sql in
     let rows = turso_post db sql params in
-    List.iter callback rows
+    List.iter ~f:callback rows
 
   let execute db sql set_params =
     let _ = (db, set_params) in

@@ -35,6 +35,7 @@ depends: [
   "ppx_fields_conv" {="v0.16.0"}
   "ppx_let" {>="v0.16.0"}
   "odoc" {with-doc}
+  "re" {="1.14.0"}
 ]
 build: [
   [
