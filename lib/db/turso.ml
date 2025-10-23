@@ -22,7 +22,7 @@ module M = struct
     module Bool = struct
       type t = bool
 
-      let to_literal = string_of_bool
+      let to_literal b = if b then "1" else "0"
       let bool_to_literal = to_literal
     end
 
@@ -51,13 +51,11 @@ module M = struct
         SQL." *)
       let to_literal s =
         let b = Buffer.create (String.length s + (String.length s / 4)) in
-        Buffer.add_string b "'";
         for i = 0 to String.length s - 1 do
           match String.unsafe_get s i with
           | '\'' -> Buffer.add_string b "''"
           | c -> Buffer.add_char b c
         done;
-        Buffer.add_string b "'";
         Buffer.contents b
 
       let string_to_literal = to_literal
@@ -125,9 +123,9 @@ module M = struct
 
   type statement = string
   type 'a connection = { url : string; token : string }
-  type params = string list ref
+  type params = (Libsql.argType * string) list ref
   type row = Yojson.Safe.t
-  type result = string list
+  type result = (Libsql.argType * string) list
   type execute_response = { affected_rows : int64; insert_id : int64 option }
   type num = int64
   type text = string
@@ -190,11 +188,22 @@ module M = struct
   (* set params *)
   let start_params _stmt _n = ref []
   let finish_params params = !params
-  let set_param_Text params v = params := Text.to_literal v :: !params
-  let set_param_Int params v = params := Int.to_literal v :: !params
-  let set_param_Bool params v = params := Bool.to_literal v :: !params
-  let set_param_Float params v = params := Float.to_literal v :: !params
-  let set_param_null params = params := "NULL" :: !params
+
+  let set_param_Text params v =
+    params := (Libsql.Text, Text.to_literal v) :: !params
+
+  let set_param_Int params v =
+    params := (Libsql.Integer, Int.to_literal v) :: !params
+
+  let set_param_Bool params v =
+    params := (Libsql.Integer, Bool.to_literal v) :: !params
+
+  let set_param_Float params v =
+    params := (Libsql.Float, Float.to_literal v) :: !params
+
+  let set_param_null params = params := (Libsql.Null, "") :: !params
+
+  (* TODO: are these correct ? *)
   let set_param_Any = set_param_Text
   let set_param_Decimal = set_param_Float
   let set_param_Datetime = set_param_Float
@@ -217,11 +226,15 @@ module M = struct
           failwith "SQL contains ? -> not supported, use named arguments @ARG"
       | None -> ()
     in
+    let args = List.zip_exn matches params in
     let _ = db in
     printf "%s\n" sql;
-    List.iter ~f:(fun x -> Printf.printf "%s," x) params;
-    printf "\n";
-    List.iter ~f:(fun x -> Printf.printf "%s|" x) matches;
+    List.iter
+      ~f:(fun (name, (type_, value)) ->
+        printf "name=%s type=%s value=%s\n" name
+          (Libsql.show_argType type_)
+          value)
+      args;
     printf "\n";
     []
 
