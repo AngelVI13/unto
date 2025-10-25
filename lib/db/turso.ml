@@ -123,9 +123,9 @@ module M = struct
 
   type statement = string
   type 'a connection = { url : string; token : string }
-  type params = (Libsql.argType * string) list ref
+  type params = Libsql.ArgValue.t list ref
   type row = Yojson.Safe.t
-  type result = (Libsql.argType * string) list
+  type result = Libsql.ArgValue.t list
   type execute_response = { affected_rows : int64; insert_id : int64 option }
   type num = int64
   type text = string
@@ -190,18 +190,27 @@ module M = struct
   let finish_params params = !params
 
   let set_param_Text params v =
-    params := (Libsql.Text, Text.to_literal v) :: !params
+    params :=
+      Libsql.ArgValue.make ~type_:Libsql.Text ~value:(Text.to_literal v)
+      :: !params
 
   let set_param_Int params v =
-    params := (Libsql.Integer, Int.to_literal v) :: !params
+    params :=
+      Libsql.ArgValue.make ~type_:Libsql.Integer ~value:(Int.to_literal v)
+      :: !params
 
   let set_param_Bool params v =
-    params := (Libsql.Integer, Bool.to_literal v) :: !params
+    params :=
+      Libsql.ArgValue.make ~type_:Libsql.Integer ~value:(Bool.to_literal v)
+      :: !params
 
   let set_param_Float params v =
-    params := (Libsql.Float, Float.to_literal v) :: !params
+    params :=
+      Libsql.ArgValue.make ~type_:Libsql.Float ~value:(Float.to_literal v)
+      :: !params
 
-  let set_param_null params = params := (Libsql.Null, "") :: !params
+  let set_param_null params =
+    params := Libsql.ArgValue.make ~type_:Libsql.Null ~value:"" :: !params
 
   (* TODO: are these correct ? *)
   let set_param_Any = set_param_Text
@@ -226,16 +235,18 @@ module M = struct
           failwith "SQL contains ? -> not supported, use named arguments @ARG"
       | None -> ()
     in
-    let args = List.zip_exn matches params in
-    let _ = db in
+    let named_args =
+      List.fold2_exn ~init:[]
+        ~f:(fun acc name value -> Libsql.NamedArg.make ~name ~value :: acc)
+        matches params
+    in
+    let stmt = Libsql.Stmt.make ~sql ~named_args in
+    let request = Libsql.Requests.make stmt in
     printf "%s\n" sql;
-    List.iter
-      ~f:(fun (name, (type_, value)) ->
-        printf "name=%s type=%s value=%s\n" name
-          (Libsql.show_argType type_)
-          value)
-      args;
+    printf "%s\n" (Libsql.Requests.show request);
+    printf "%s\n" (Libsql.Requests.to_json_string request);
     printf "\n";
+    let _ = db in
     []
 
   let select db sql set_params callback =

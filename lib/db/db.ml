@@ -464,14 +464,13 @@ let close db = Or_error.try_with (fun () -> Sqlite3.db_close db.handle)
 
 let test () =
   let module DB = DbOps (Turso) in
-  let today =
-    Time_ns.now ()
-    |> Time_ns.to_date ~zone:Timezone.utc
-    |> Utils.iso8601_of_date
-  in
+  let today = Time_ns.now () |> Time_ns.to_date ~zone:Timezone.utc in
+  let start = Date.add_days today (-40) in
+  let end_day = Date.add_days today (-30) in
   (* DB.create_activities { url = ""; token = "" } *)
-  DB.activities_between { url = ""; token = "" } ~start_date:today
-    ~end_date:today
+  DB.activities_between { url = ""; token = "" }
+    ~start_date:(Utils.iso8601_of_date start)
+    ~end_date:(Utils.iso8601_of_date end_day)
     (fun
       ~id
       ~athlete_id
