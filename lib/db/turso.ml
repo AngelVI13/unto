@@ -219,7 +219,7 @@ module M = struct
   let no_params _ = []
 
   let make_turso_request token content =
-    let url = "https://testapp-angelvi13.aws-eu-west-1.turso.io" in
+    let url = "https://testapp-angelvi13.aws-eu-west-1.turso.io/v2/pipeline" in
 
     let headers =
       [

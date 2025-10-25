@@ -462,15 +462,28 @@ let load filename =
 
 let close db = Or_error.try_with (fun () -> Sqlite3.db_close db.handle)
 
+let test2 () =
+  let module DB = DbOps (Turso) in
+  DB.list_athletes { url = ""; token = "" }
+    (fun
+      ~id ~firstname ~lastname ~city ~state ~country ~sex ~created_at ~weight ->
+      let _ =
+        (id, firstname, lastname, city, state, country, sex, created_at, weight)
+      in
+      ())
+
 let test () =
   let module DB = DbOps (Turso) in
   let today = Time_ns.now () |> Time_ns.to_date ~zone:Timezone.utc in
-  let start = Date.add_days today (-40) in
-  let end_day = Date.add_days today (-30) in
+  let start = Date.add_days today (-80) in
+  let end_day = Date.add_days today (-70) in
+  let _ = (start, end_day) in
   (* DB.create_activities { url = ""; token = "" } *)
-  DB.activities_between { url = ""; token = "" }
-    ~start_date:(Utils.iso8601_of_date start)
-    ~end_date:(Utils.iso8601_of_date end_day)
+  DB.activities_between
+    { url = ""; token = "" }
+    (* ~start_date:(Utils.iso8601_of_date start) *)
+    (* ~end_date:(Utils.iso8601_of_date end_day) *)
+    ~start_date:"2025-10-12T00:00:00Z" ~end_date:"2025-10-18T00:00:00Z"
     (fun
       ~id
       ~athlete_id
