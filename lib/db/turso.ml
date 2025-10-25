@@ -218,7 +218,17 @@ module M = struct
   let set_param_Datetime = set_param_Float
   let no_params _ = []
 
+  let make_turso_request token content =
+    let url = "https://testapp-angelvi13.aws-eu-west-1.turso.io" in
+
+    let headers = [ ("Authorization", sprintf "Bearer %s" token) ] in
+    let res = Ezcurl.post ~headers ~url ~content ~params:[] () in
+    let out = match res with Ok c -> c.body | Error (_, s) -> failwith s in
+    out
+
   let turso_post db sql params =
+    let token = Sys.getenv_exn "TURSO_DB_TOKEN" in
+    printf "%s\n" token;
     (* placeholder: call Turso HTTP API here *)
     (* return JSON response as Yojson.Safe.t list *)
     (* Str. *)
@@ -242,11 +252,16 @@ module M = struct
     in
     let stmt = Libsql.Stmt.make ~sql ~named_args in
     let request = Libsql.Requests.make stmt in
-    printf "%s\n" sql;
+    (* printf "%s\n" sql; *)
     printf "%s\n" (Libsql.Requests.show request);
     printf "%s\n" (Libsql.Requests.to_json_string request);
     printf "\n";
     let _ = db in
+    let resp =
+      make_turso_request token
+        (`String (Libsql.Requests.to_json_string request))
+    in
+    printf "%s" resp;
     []
 
   let select db sql set_params callback =

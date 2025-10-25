@@ -64,9 +64,10 @@ module Request = struct
 end
 
 module Requests = struct
-  type t = Request.t list [@@deriving show { with_path = false }, yojson]
+  type t = { requests : Request.t list }
+  [@@deriving show { with_path = false }, yojson]
 
-  let make stmt = [ Request.make stmt ]
+  let make stmt = { requests = [ Request.make stmt ] }
 
   let to_json_string t =
     let json = yojson_of_t t in
