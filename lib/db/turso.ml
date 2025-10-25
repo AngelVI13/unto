@@ -221,7 +221,12 @@ module M = struct
   let make_turso_request token content =
     let url = "https://testapp-angelvi13.aws-eu-west-1.turso.io" in
 
-    let headers = [ ("Authorization", sprintf "Bearer %s" token) ] in
+    let headers =
+      [
+        ("Authorization", sprintf "Bearer %s" token);
+        ("Content-Type", "application/json");
+      ]
+    in
     let res = Ezcurl.post ~headers ~url ~content ~params:[] () in
     let out = match res with Ok c -> c.body | Error (_, s) -> failwith s in
     out
