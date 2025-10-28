@@ -73,3 +73,55 @@ module Requests = struct
     let json = yojson_of_t t in
     Yojson.Safe.to_string json
 end
+
+(* NOTE: Turso JSON Response Schema *)
+module ResultCol = struct
+  type t = { name : string; decltype : string }
+  [@@deriving show { with_path = false }, yojson]
+end
+
+module ResultColValue = struct
+  type t = {
+    type_ : string; [@key "type"]
+    value : string option; [@yojson.option]
+  }
+  [@@deriving show { with_path = false }, yojson_of]
+
+  (* NOTE: Custom converter is needed because Turso returns everything as
+     string except floats and nulls *)
+  let t_of_yojson (json : Yojson.Safe.t) : t =
+    let open Yojson.Safe.Util in
+    let type_ = json |> member "type" |> to_string in
+    let value =
+      match json |> member "value" with
+      | `String s -> Some s
+      | `Float f -> Some (Float.to_string f)
+      | `Null -> None
+      | _ -> failwith "unexpected type of row.value"
+    in
+    { type_; value }
+end
+
+module ResultRow = struct
+  type t = ResultColValue.t list [@@deriving show { with_path = false }, yojson]
+end
+
+module ResultRowsCols = struct
+  type t = { cols : ResultCol.t list; rows : ResultRow.t list }
+  [@@deriving show { with_path = false }, yojson] [@@yojson.allow_extra_fields]
+end
+
+module ResultResp = struct
+  type t = { type_ : string; [@key "type"] result : ResultRowsCols.t }
+  [@@deriving show { with_path = false }, yojson]
+end
+
+module Result = struct
+  type t = { type_ : string; [@key "type"] response : ResultResp.t }
+  [@@deriving show { with_path = false }, yojson]
+end
+
+module Response = struct
+  type t = { results : Result.t list }
+  [@@deriving show { with_path = false }, yojson] [@@yojson.allow_extra_fields]
+end

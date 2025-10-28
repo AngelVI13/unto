@@ -483,7 +483,79 @@ let test () =
     { url = ""; token = "" }
     (* ~start_date:(Utils.iso8601_of_date start) *)
     (* ~end_date:(Utils.iso8601_of_date end_day) *)
-    ~start_date:"2025-10-12T00:00:00Z" ~end_date:"2025-10-18T00:00:00Z"
+    ~start_date:"2025-10-01T00:00:00Z" ~end_date:"2025-10-04T00:00:00Z"
+    (fun
+      ~id
+      ~athlete_id
+      ~name
+      ~sport_type
+      ~start_date
+      ~timezone
+      ~map_id
+      ~map_summary_polyline
+      ~stats_id
+      ~moving_time
+      ~elapsed_time
+      ~distance
+      ~elev_gain
+      ~elev_loss
+      ~elev_high
+      ~elev_low
+      ~start_lat
+      ~start_lng
+      ~end_lat
+      ~end_lng
+      ~average_speed
+      ~max_speed
+      ~average_cadence
+      ~max_cadence
+      ~average_temp
+      ~average_heartrate
+      ~max_heartrate
+      ~average_power
+      ~max_power
+    ->
+      let _ =
+        ( id,
+          athlete_id,
+          name,
+          sport_type,
+          start_date,
+          timezone,
+          map_id,
+          map_summary_polyline,
+          stats_id,
+          moving_time,
+          elapsed_time,
+          distance,
+          elev_gain,
+          elev_loss,
+          elev_high,
+          elev_low,
+          start_lat,
+          start_lng,
+          end_lat,
+          end_lng,
+          average_speed,
+          max_speed,
+          average_cadence,
+          max_cadence,
+          average_temp,
+          average_heartrate,
+          max_heartrate,
+          average_power,
+          max_power )
+      in
+      ())
+
+let test3 () =
+  let module DB = DbOps (Turso) in
+  (* DB.create_activities { url = ""; token = "" } *)
+  DB.activities_after
+    { url = ""; token = "" }
+    (* ~start_date:(Utils.iso8601_of_date start) *)
+    (* ~end_date:(Utils.iso8601_of_date end_day) *)
+    ~start_date:"2025-10-01T00:00:00Z"
     (fun
       ~id
       ~athlete_id

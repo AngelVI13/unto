@@ -1,21 +1,379 @@
 open Core
 
+let test_response =
+  {|
+{
+  "baton": null,
+  "base_url": null,
+  "results": [
+    {
+      "type": "ok",
+      "response": {
+        "type": "execute",
+        "result": {
+          "cols": [
+            {
+              "name": "id",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "athlete_id",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "name",
+              "decltype": "TEXT"
+            },
+            {
+              "name": "sport_type",
+              "decltype": "TEXT"
+            },
+            {
+              "name": "start_date",
+              "decltype": "TEXT"
+            },
+            {
+              "name": "timezone",
+              "decltype": "TEXT"
+            },
+            {
+              "name": "map_id",
+              "decltype": "TEXT"
+            },
+            {
+              "name": "map_summary_polyline",
+              "decltype": "TEXT"
+            },
+            {
+              "name": "stats_id",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "moving_time",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "elapsed_time",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "distance",
+              "decltype": "REAL"
+            },
+            {
+              "name": "elev_gain",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "elev_loss",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "elev_high",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "elev_low",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "start_lat",
+              "decltype": "REAL"
+            },
+            {
+              "name": "start_lng",
+              "decltype": "REAL"
+            },
+            {
+              "name": "end_lat",
+              "decltype": "REAL"
+            },
+            {
+              "name": "end_lng",
+              "decltype": "REAL"
+            },
+            {
+              "name": "average_speed",
+              "decltype": "REAL"
+            },
+            {
+              "name": "max_speed",
+              "decltype": "REAL"
+            },
+            {
+              "name": "average_cadence",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "max_cadence",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "average_temp",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "average_heartrate",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "max_heartrate",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "average_power",
+              "decltype": "INTEGER"
+            },
+            {
+              "name": "max_power",
+              "decltype": "INTEGER"
+            }
+          ],
+          "rows": [
+            [
+              {
+                "type": "integer",
+                "value": "15995758488"
+              },
+              {
+                "type": "integer",
+                "value": "3504239"
+              },
+              {
+                "type": "text",
+                "value": "Lunch Crossfit"
+              },
+              {
+                "type": "text",
+                "value": "Crossfit"
+              },
+              {
+                "type": "text",
+                "value": "2025-10-01T11:23:07Z"
+              },
+              {
+                "type": "text",
+                "value": "(GMT+03:00) Africa/Addis_Ababa"
+              },
+              {
+                "type": "text",
+                "value": "a15995758488"
+              },
+              {
+                "type": "text",
+                "value": ""
+              },
+              {
+                "type": "integer",
+                "value": "21623"
+              },
+              {
+                "type": "integer",
+                "value": "2280"
+              },
+              {
+                "type": "integer",
+                "value": "2280"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "integer",
+                "value": "0"
+              },
+              {
+                "type": "integer",
+                "value": "0"
+              },
+              {
+                "type": "integer",
+                "value": "129"
+              },
+              {
+                "type": "integer",
+                "value": "129"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "integer",
+                "value": "28"
+              },
+              {
+                "type": "integer",
+                "value": "103"
+              },
+              {
+                "type": "integer",
+                "value": "133"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            [
+              {
+                "type": "integer",
+                "value": "16020312195"
+              },
+              {
+                "type": "integer",
+                "value": "3504239"
+              },
+              {
+                "type": "text",
+                "value": "Afternoon Run"
+              },
+              {
+                "type": "text",
+                "value": "Run"
+              },
+              {
+                "type": "text",
+                "value": "2025-10-03T16:19:17Z"
+              },
+              {
+                "type": "text",
+                "value": "(GMT+02:00) Europe/Vilnius"
+              },
+              {
+                "type": "text",
+                "value": "a16020312195"
+              },
+              {
+                "type": "text",
+                "value": "{{zlIihoyCLHLPPNjBbAp@X^JhAf@H@JFNLd@NJHtBf@fA\\hAh@j@f@`AnA~AvCh@v@hAxB@@H?HFX~@VtA\\hCJ~@Ll@d@hAd@jBZxAdAfBb@x@`@l@NZbCpDVZb@RDJ?XQ`@?FBb@Aj@IdAm@tBGFMGe@pAYLE?IEe@m@[YMU[_@m@c@u@w@y@o@y@_AiBeBa@Y_@c@e@a@{@e@oAy@i@[iAe@kAm@y@[gB]o@EeBWk@AQBw@C_@@sBGoFLSEu@EkAMeAE_AOMEQWKa@k@{@K_@Gg@CgAAqGt@oFj@eGEiAGc@_@uACe@Hc@"
+              },
+              {
+                "type": "integer",
+                "value": "21690"
+              },
+              {
+                "type": "integer",
+                "value": "1382"
+              },
+              {
+                "type": "integer",
+                "value": "1478"
+              },
+              {
+                "type": "float",
+                "value": 3655.0
+              },
+              {
+                "type": "integer",
+                "value": "32"
+              },
+              {
+                "type": "integer",
+                "value": "29"
+              },
+              {
+                "type": "integer",
+                "value": "118"
+              },
+              {
+                "type": "integer",
+                "value": "90"
+              },
+              {
+                "type": "float",
+                "value": 54.702965
+              },
+              {
+                "type": "float",
+                "value": 25.317403
+              },
+              {
+                "type": "float",
+                "value": 54.702937
+              },
+              {
+                "type": "float",
+                "value": 25.317482
+              },
+              {
+                "type": "float",
+                "value": 2.647
+              },
+              {
+                "type": "float",
+                "value": 4.8
+              },
+              {
+                "type": "integer",
+                "value": "81"
+              },
+              {
+                "type": "integer",
+                "value": "121"
+              },
+              {
+                "type": "integer",
+                "value": "17"
+              },
+              {
+                "type": "integer",
+                "value": "143"
+              },
+              {
+                "type": "integer",
+                "value": "164"
+              },
+              {
+                "type": "integer",
+                "value": "193"
+              },
+              {
+                "type": "integer",
+                "value": "331"
+              }
+            ]
+          ],
+          "affected_row_count": 0,
+          "last_insert_rowid": null,
+          "replication_index": null,
+          "rows_read": 2474,
+          "rows_written": 0,
+          "query_duration_ms": 485.327
+        }
+      }
+    }
+  ]
+}
+|}
+
 (* TODO: this is taken from:
   https://github.com/ygrek/sqlgg/blob/master/impl/ocaml/sqlite3/sqlgg_sqlite3.ml
   . with the gpt examples from here:
     https://chatgpt.com/s/t_68f34cc041a4819187f3be324feb99d6 -> remove the
     sqlite stuff and replace with the turso stuff. *)
-
-type one_or_all = [ `One | `All ]
-
-let rec convert_json = function
-  | (`Null | `Bool _ | `Int _ | `Intlit _ | `Float _ | `String _) as x -> x
-  | `Assoc assoc_list ->
-      let convert_pair (key, value) = (key, convert_json value) in
-      `Assoc (List.map ~f:convert_pair assoc_list)
-  | `List json_list | `Tuple json_list ->
-      `List (List.map ~f:convert_json json_list)
-  | `Variant _ -> failwith "Variant type is not supported"
 
 module M = struct
   module Types = struct
@@ -108,14 +466,6 @@ module M = struct
     (* you probably want better type, e.g. (int*int) or Z.t *)
     module Decimal = Float
     module Datetime = Float (* ? *)
-
-    module One_or_all = struct
-      type t = one_or_all
-
-      let to_literal = function `One -> "one" | `All -> "all"
-      let one_or_all_to_literal = to_literal
-    end
-
     module Any = Text
   end
 
@@ -239,7 +589,9 @@ module M = struct
     (* Str. *)
     let regexp = Re.Perl.re {|\@(\w+)|} |> Re.compile in
     let matches =
-      Re.all regexp sql |> List.map ~f:(fun group -> Re.Group.get group 1)
+      Re.all regexp sql
+      |> List.map ~f:(fun group -> Re.Group.get group 1)
+      |> List.rev
     in
     let found_question =
       String.find sql ~f:(fun char -> Char.(char = of_string "?"))
@@ -262,11 +614,17 @@ module M = struct
     printf "%s\n" (Libsql.Requests.to_json_string request);
     printf "\n";
     let _ = db in
+    (* let resp = *)
+    (*   make_turso_request token *)
+    (*     (`String (Libsql.Requests.to_json_string request)) *)
+    (* in *)
+    (* printf "%s" resp; *)
     let resp =
-      make_turso_request token
-        (`String (Libsql.Requests.to_json_string request))
+      Yojson.Safe.from_string test_response |> Libsql.Response.t_of_yojson
     in
-    printf "%s" resp;
+    printf "\n\n%s\n\n" (Libsql.Response.show resp);
+    (* TODO: pass the list of rows to the callback and implement
+       all the get_column_X functions *)
     []
 
   let select db sql set_params callback =
