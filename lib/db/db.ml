@@ -6,8 +6,6 @@ module DB = DbOps (Sqlgg_sqlite3)
 
 type t = { filename : string; handle : Sqlite3.db }
 
-let explain msg db = printf "%s : %s\n" msg (Sqlite3.errmsg db)
-
 let create filename =
   let handle = Sqlite3.db_open filename in
   let _ = DB.create_athletes handle in
@@ -369,13 +367,9 @@ let add_stats (t : t) (stats : Models.Stats.t) (activity_id : int) =
       ~average_power:(to_int64_option stats.average_power)
       ~max_power:(to_int64_option stats.max_power)
   in
-  (* explain (sprintf "add_stats %d" activity_id) t.handle; *)
   let stats_id = ref (Int64.of_int (-1)) in
   DB.stats_id_for_activity t.handle ~activity_id:(Int64.of_int activity_id)
     (fun ~id -> stats_id := id);
-  (* explain *)
-  (*   (sprintf "get_stats_id %d -> %d" activity_id (Int64.to_int_exn !stats_id)) *)
-  (*   t.handle; *)
   !stats_id
 
 let add_activity_aux (t : t) (activity : Models.Activity.t) (athlete_id : int)
@@ -388,7 +382,6 @@ let add_activity_aux (t : t) (activity : Models.Activity.t) (athlete_id : int)
       ~map_id:activity.map_id
       ~map_summary_polyline:activity.map_summary_polyline ~stats_id
   in
-  (* explain (sprintf "add_activity %d" activity.id) t.handle; *)
   ()
 
 let add_lap (t : t) (lap : Models.Laps.Lap.t) (activity_id : int) =
@@ -478,6 +471,7 @@ let test () =
   let start = Date.add_days today (-80) in
   let end_day = Date.add_days today (-70) in
   let _ = (start, end_day) in
+  let activities = ref [] in
   (* DB.create_activities { url = ""; token = "" } *)
   DB.activities_between
     { url = ""; token = "" }
@@ -515,38 +509,39 @@ let test () =
       ~average_power
       ~max_power
     ->
-      let _ =
-        ( id,
-          athlete_id,
-          name,
-          sport_type,
-          start_date,
-          timezone,
-          map_id,
-          map_summary_polyline,
-          stats_id,
-          moving_time,
-          elapsed_time,
-          distance,
-          elev_gain,
-          elev_loss,
-          elev_high,
-          elev_low,
-          start_lat,
-          start_lng,
-          end_lat,
-          end_lng,
-          average_speed,
-          max_speed,
-          average_cadence,
-          max_cadence,
-          average_temp,
-          average_heartrate,
-          max_heartrate,
-          average_power,
-          max_power )
+      let _ = stats_id in
+      let stats =
+        Models.Stats.Fields.create ~data_points:(-1)
+          ~moving_time:(Int64.to_int_exn moving_time)
+          ~elapsed_time:(Int64.to_int_exn elapsed_time)
+          ~distance ~elev_gain:(to_int_option elev_gain)
+          ~elev_loss:(to_int_option elev_loss)
+          ~elev_high:(to_int_option elev_high)
+          ~elev_low:(to_int_option elev_low)
+          ~start_latlng:(to_loc_option start_lat start_lng)
+          ~end_latlng:(to_loc_option end_lat end_lng)
+          ~average_speed ~max_speed
+          ~average_cadence:(to_int_option average_cadence)
+          ~max_cadence:(to_int_option max_cadence)
+          ~average_temp:(to_int_option average_temp)
+          ~average_heartrate:(to_int_option average_heartrate)
+          ~max_heartrate:(to_int_option max_heartrate)
+          ~average_power:(to_int_option average_power)
+          ~max_power:(to_int_option max_power)
       in
-      ())
+      let activity =
+        Models.Activity.Fields.create ~id:(Int64.to_int_exn id)
+          ~athlete_id:(Int64.to_int_exn athlete_id)
+          ~name
+          ~sport_type:(Models.Strava_models.sportType_of_string sport_type)
+          ~start_date ~timezone ~map_id ~map_summary_polyline ~stats
+          ~laps:(Models.Laps.Laps.empty ())
+          ~splits:(Models.Splits.Splits.empty ())
+          ~streams:(Models.Streams.Streams.empty ())
+      in
+      printf "%s\n" (Models.Activity.show activity);
+      activities := activity :: !activities);
+  !activities
 
 let test3 () =
   let module DB = DbOps (Turso) in

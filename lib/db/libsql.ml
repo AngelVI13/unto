@@ -124,4 +124,9 @@ end
 module Response = struct
   type t = { results : Result.t list }
   [@@deriving show { with_path = false }, yojson] [@@yojson.allow_extra_fields]
+
+  let rows (t : t) =
+    match List.nth t.results 0 with
+    | None -> []
+    | Some r -> r.response.result.rows
 end

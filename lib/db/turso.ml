@@ -382,6 +382,7 @@ module M = struct
 
       let to_literal b = if b then "1" else "0"
       let bool_to_literal = to_literal
+      let of_string s = if String.(s = "1") then true else false
     end
 
     module Int = struct
@@ -461,6 +462,7 @@ module M = struct
 
       let to_literal = string_of_float
       let float_to_literal = to_literal
+      let of_string s = Float.of_string s
     end
 
     (* you probably want better type, e.g. (int*int) or Z.t *)
@@ -474,7 +476,7 @@ module M = struct
   type statement = string
   type 'a connection = { url : string; token : string }
   type params = Libsql.ArgValue.t list ref
-  type row = Yojson.Safe.t
+  type row = Libsql.ResultColValue.t list
   type result = Libsql.ArgValue.t list
   type execute_response = { affected_rows : int64; insert_id : int64 option }
   type num = int64
@@ -484,56 +486,57 @@ module M = struct
 
   exception Oops of string
 
-  let extract_field row idx =
-    match row with
-    | `List lst when idx < List.length lst -> List.nth_exn lst idx
-    | _ -> raise (Oops "Invalid row format")
+  let extract_field (row : Libsql.ResultColValue.t list) (idx : int) :
+      string option =
+    match List.nth row idx with
+    | Some col -> col.value
+    | None -> raise (Oops "Invalid row format")
 
   let get_column_Text row i =
     match extract_field row i with
-    | `String s -> s
-    | _ -> raise (Oops "Expected text")
+    | Some s -> s
+    | None -> raise (Oops "Expected text")
 
-  let get_column_Text_nullable row i =
-    match extract_field row i with
-    | `Null -> None
-    | `String s -> Some s
-    | _ -> raise (Oops "Expected text")
+  let get_column_Text_nullable row i = extract_field row i
 
   let get_column_Int row i =
     match extract_field row i with
-    | `Intlit s -> Int64.of_string s
-    | `Int n -> Int64.of_int n
-    | _ -> raise (Oops "Expected int")
+    | Some s -> Int64.of_string s
+    | None -> raise (Oops "Expected int")
 
   let get_column_Int_nullable row i =
     match extract_field row i with
-    | `Null -> None
-    | `Intlit s -> Some (Int64.of_string s)
-    | `Int n -> Some (Int64.of_int n)
-    | _ -> raise (Oops "Expected int")
+    | Some s -> Some (Int64.of_string s)
+    | None -> None
 
   let get_column_Bool row i =
     match extract_field row i with
-    | `Bool b -> b
-    | _ -> raise (Oops "Expected bool")
+    | Some s -> Bool.of_string s
+    | None -> raise (Oops "Expected bool")
 
   let get_column_Bool_nullable row i =
     match extract_field row i with
-    | `Null -> None
-    | `Bool b -> Some b
-    | _ -> raise (Oops "Expected bool")
+    | Some s -> Some (Bool.of_string s)
+    | None -> None
 
   let get_column_Any, get_column_Any_nullable =
     (get_column_Text, get_column_Text_nullable)
 
-  (* get columns *)
-  let get_column_Float = fun _ _ -> 0.0
-  let get_column_Float_nullable = fun _ _ -> None
-  let get_column_Decimal = fun _ _ -> 0.0
-  let get_column_Decimal_nullable = fun _ _ -> None
-  let get_column_Datetime = fun _ _ -> 0.0
-  let get_column_Datetime_nullable = fun _ _ -> None
+  let get_column_Float row i =
+    match extract_field row i with
+    | Some s -> Float.of_string s
+    | None -> raise (Oops "Expected float")
+
+  let get_column_Float_nullable row i =
+    match extract_field row i with
+    | Some s -> Some (Float.of_string s)
+    | None -> None
+
+  let get_column_Decimal, get_column_Decimal_nullable =
+    (get_column_Float, get_column_Float_nullable)
+
+  let get_column_Datetime, get_column_Datetime_nullable =
+    (get_column_Float, get_column_Float_nullable)
 
   (* set params *)
   let start_params _stmt _n = ref []
@@ -623,19 +626,21 @@ module M = struct
       Yojson.Safe.from_string test_response |> Libsql.Response.t_of_yojson
     in
     printf "\n\n%s\n\n" (Libsql.Response.show resp);
-    (* TODO: pass the list of rows to the callback and implement
-       all the get_column_X functions *)
-    []
+
+    let rows = Libsql.Response.rows resp in
+    rows
 
   let select db sql set_params callback =
-    (* NOTE: if there is a `?` then we send unnamed arguments  *)
-    (* if there is a @name then we send named argument.  *)
-    (* Each param responds to the each @argument. If named arg appears 3 times
-    then we get 3 parameters for it  *)
+    (* NOTE: if there is a `?` then we send unnamed arguments
+       if there is a @name then we send named argument.
+       Each param responds to the each @argument. If named arg appears 3 times
+       then we get 3 parameters for it  *)
     let params = set_params sql in
     let rows = turso_post db sql params in
+    (* TODO: for some reason the map_summary_polyline has extra escape backslashes -> does it need fixing ? *)
     List.iter ~f:callback rows
 
+  (* TODO: implement the rest of these and then rework lib/db/db.ml to support the new type t for turso *)
   let execute db sql set_params =
     let _ = (db, set_params) in
     let _ = turso_post db sql [] in
