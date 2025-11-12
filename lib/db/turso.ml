@@ -1,5 +1,43 @@
 open Core
 
+let test_response1 =
+  {|
+{
+  "baton": null,
+  "base_url": null,
+  "results": [
+    {
+      "type": "ok",
+      "response": {
+        "type": "execute",
+        "result": {
+          "cols": [
+            {
+              "name": "COUNT(*)",
+              "decltype": null
+            }
+          ],
+          "rows": [
+            [
+              {
+                "type": "integer",
+                "value": "1"
+              }
+            ]
+          ],
+          "affected_row_count": 0,
+          "last_insert_rowid": null,
+          "replication_index": null,
+          "rows_read": 1,
+          "rows_written": 0,
+          "query_duration_ms": 147.602
+        }
+      }
+    }
+  ]
+}
+  |}
+
 let test_response =
   {|
 {
@@ -622,9 +660,11 @@ module M = struct
     (*     (`String (Libsql.Requests.to_json_string request)) *)
     (* in *)
     (* printf "%s" resp; *)
-    let resp =
-      Yojson.Safe.from_string test_response |> Libsql.Response.t_of_yojson
-    in
+    (* let resp = Yojson.Safe.from_string resp |> Libsql.Response.t_of_yojson in *)
+    let resp = Yojson.Safe.from_string test_response1 in
+    printf "-------------\n";
+    let resp = resp |> Libsql.Response.t_of_yojson in
+    printf "+++++++++++++\n";
     printf "\n\n%s\n\n" (Libsql.Response.show resp);
 
     let rows = Libsql.Response.rows resp in
@@ -640,21 +680,21 @@ module M = struct
     (* TODO: for some reason the map_summary_polyline has extra escape backslashes -> does it need fixing ? *)
     List.iter ~f:callback rows
 
-  (* TODO: implement the rest of these and then rework lib/db/db.ml to support the new type t for turso *)
+  (* TODO: TEST all of these *)
   let execute db sql set_params =
-    let _ = (db, set_params) in
-    let _ = turso_post db sql [] in
+    let params = set_params sql in
+    ignore (turso_post db sql params);
     1L
 
   let select_one_maybe db sql set_params convert =
-    let _ = (db, set_params, convert) in
-    match turso_post db sql [] with
+    let params = set_params sql in
+    match turso_post db sql params with
     | [] -> None
     | row :: _ -> Some (convert row)
 
   let select_one db sql set_params convert =
-    let _ = (db, set_params, convert) in
-    match turso_post db sql [] with
+    let params = set_params sql in
+    match turso_post db sql params with
     | row :: _ -> convert row
     | [] -> raise (Oops "Expected one row, got zero")
 end

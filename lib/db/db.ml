@@ -614,3 +614,16 @@ let test3 () =
           max_power )
       in
       ())
+
+let test4 () =
+  let module DB = DbOps (Turso) in
+  (* DB.create_activities { url = ""; token = "" } *)
+  DB.add_athlete { url = ""; token = "" } ~id:(Int64.of_int 2) ~firstname:"John"
+    ~lastname:"Smith" ~city:"Ruse" ~state:"Ruse" ~country:"Bulgaria" ~sex:"M"
+    ~created_at:"1994-03-13" ~weight:68.5
+
+let test5 () =
+  let module DB = DbOps (Turso) in
+  (* DB.create_activities { url = ""; token = "" } *)
+  let num = DB.num_athletes { url = ""; token = "" } in
+  printf "RESULT: %s\n" (Int64.to_string_hum num)

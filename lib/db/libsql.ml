@@ -37,9 +37,18 @@ let requestType_of_yojson (json : Yojson.Safe.t) : requestType =
 
 module ArgValue = struct
   type t = { type_ : argType; [@key "type"] value : string }
-  [@@deriving show { with_path = false }, yojson]
+  [@@deriving show { with_path = false }, of_yojson]
 
   let make ~type_ ~value = { type_; value }
+
+  let yojson_of_t t =
+    let type_json = yojson_of_argType t.type_ in
+    let value_json =
+      match t.type_ with
+      | Float -> `Float (Float.of_string t.value)
+      | _ -> `String t.value
+    in
+    `Assoc [ ("type", type_json); ("value", value_json) ]
 end
 
 module NamedArg = struct
@@ -76,7 +85,7 @@ end
 
 (* NOTE: Turso JSON Response Schema *)
 module ResultCol = struct
-  type t = { name : string; decltype : string }
+  type t = { name : string; decltype : string option }
   [@@deriving show { with_path = false }, yojson]
 end
 
