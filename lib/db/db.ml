@@ -627,3 +627,5 @@ let test5 () =
   (* DB.create_activities { url = ""; token = "" } *)
   let num = DB.num_athletes { url = ""; token = "" } in
   printf "RESULT: %s\n" (Int64.to_string_hum num)
+
+let test6 () = Turso_api.create "new-test-db"

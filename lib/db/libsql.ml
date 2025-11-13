@@ -41,6 +41,8 @@ module ArgValue = struct
 
   let make ~type_ ~value = { type_; value }
 
+  (* NOTE: this custom converter is needed because turso expects
+     all fields except floats to be encoded as strings *)
   let yojson_of_t t =
     let type_json = yojson_of_argType t.type_ in
     let value_json =
