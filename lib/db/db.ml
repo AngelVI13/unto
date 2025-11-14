@@ -629,3 +629,5 @@ let test5 () =
   printf "RESULT: %s\n" (Int64.to_string_hum num)
 
 let test6 () = Turso_api.create "new-test-db"
+let test7 () = Turso_api.delete "new-test-db"
+let test8 () = ()
