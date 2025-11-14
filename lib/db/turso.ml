@@ -610,7 +610,13 @@ module M = struct
   let set_param_Datetime = set_param_Float
   let no_params _ = []
 
+  (* TODO: 
+     need to have a separate db with a hardcoded name & token 
+     that contains usernames and their respective db names, hostnames & tokens.
+     that way the athlete db doesn't have to contain sensitive information.
+   *)
   let make_turso_request token content =
+    (*                 testapp-angelvi13.aws-eu-west-1.turso.io *)
     let url = "https://testapp-angelvi13.aws-eu-west-1.turso.io/v2/pipeline" in
 
     let headers =
@@ -626,9 +632,6 @@ module M = struct
   let turso_post db sql params =
     let token = Sys.getenv_exn "TURSO_DB_TOKEN" in
     printf "%s\n" token;
-    (* placeholder: call Turso HTTP API here *)
-    (* return JSON response as Yojson.Safe.t list *)
-    (* Str. *)
     let regexp = Re.Perl.re {|\@(\w+)|} |> Re.compile in
     let matches =
       Re.all regexp sql

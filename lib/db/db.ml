@@ -641,3 +641,11 @@ let test9 () =
   let%bind delete_info = Turso_api.delete db_info.name in
   printf "DELETE_INFO: %s\n" (Turso_api.DeleteDbResponse.show delete_info);
   Ok ()
+
+let test10 () =
+  let open Or_error.Let_syntax in
+  let%bind dbs = Turso_api.list_dbs () in
+  List.iter
+    ~f:(fun db -> printf "DB: %s\n" (Turso_api.DbEntryResponse.show db))
+    dbs;
+  Ok ()

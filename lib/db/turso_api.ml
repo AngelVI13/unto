@@ -25,6 +25,21 @@ module CreateTokensResponse = struct
   [@@deriving show { with_path = false }, yojson] [@@yojson.allow_extra_fields]
 end
 
+module DbEntryResponse = struct
+  type t = {
+    name : string; [@key "Name"]
+    db_id : string; [@key "DbId"]
+    hostname : string; [@key "Hostname"]
+    group : string;
+  }
+  [@@deriving show { with_path = false }, yojson] [@@yojson.allow_extra_fields]
+end
+
+module ListDbsResponse = struct
+  type t = { databases : DbEntryResponse.t list }
+  [@@deriving show { with_path = false }, yojson] [@@yojson.allow_extra_fields]
+end
+
 module ErrorResponse = struct
   type t = { error : string }
   [@@deriving show { with_path = false }, yojson] [@@yojson.allow_extra_fields]
@@ -91,6 +106,23 @@ let create (name : string) =
 
   match CreateDbResponse.t_of_yojson out with
   | t -> Ok t.database
+  | exception _ ->
+      let err = ErrorResponse.t_of_yojson out in
+      Or_error.error_string err.error
+
+let list_dbs () =
+  let token = Sys.getenv_exn "TURSO_API_TOKEN" in
+  let org_slug = Sys.getenv_exn "TURSO_ORG_SLUG" in
+  let url =
+    sprintf "https://api.turso.tech/v1/organizations/%s/databases" org_slug
+  in
+
+  let headers = [ ("Authorization", sprintf "Bearer %s" token) ] in
+  let res = Ezcurl.get ~headers ~url () in
+  let out = match res with Ok c -> c.body | Error (_, s) -> failwith s in
+  let out = Yojson.Safe.from_string out in
+  match ListDbsResponse.t_of_yojson out with
+  | t -> Ok t.databases
   | exception _ ->
       let err = ErrorResponse.t_of_yojson out in
       Or_error.error_string err.error
