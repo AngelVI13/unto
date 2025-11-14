@@ -630,4 +630,14 @@ let test5 () =
 
 let test6 () = Turso_api.create "new-test-db"
 let test7 () = Turso_api.delete "new-test-db"
-let test8 () = ()
+let test8 () = Ok ()
+
+let test9 () =
+  let open Or_error.Let_syntax in
+  let%bind db_info = Turso_api.create "new-tst" in
+  printf "CREATE_INFO: %s\n" (Turso_api.DbResponse.show db_info);
+  let%bind tokens = Turso_api.create_tokens db_info.name in
+  printf "TOKENS: %s\n" tokens;
+  let%bind delete_info = Turso_api.delete db_info.name in
+  printf "DELETE_INFO: %s\n" (Turso_api.DeleteDbResponse.show delete_info);
+  Ok ()

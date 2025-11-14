@@ -135,7 +135,7 @@ let command_turso () =
      in
      fun () ->
        let _ = (db_url, db_token) in
-       ignore (Db.test8 ()))
+       ignore (Or_error.ok_exn (Db.test8 ())))
 
 let command_update_db auth_client =
   Command.basic ~summary:"Update db with latest N activities"
