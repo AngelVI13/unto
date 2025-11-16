@@ -513,7 +513,7 @@ module M = struct
   open Types
 
   type statement = string
-  type 'a connection = { url : string; token : string }
+  type 'a connection = { hostname : string; token : string }
   type params = Libsql.ArgValue.t list ref
   type row = Libsql.ResultColValue.t list
   type result = Libsql.ArgValue.t list
@@ -615,13 +615,12 @@ module M = struct
      that contains usernames and their respective db names, hostnames & tokens.
      that way the athlete db doesn't have to contain sensitive information.
    *)
-  let make_turso_request token content =
-    (*                 testapp-angelvi13.aws-eu-west-1.turso.io *)
-    let url = "https://testapp-angelvi13.aws-eu-west-1.turso.io/v2/pipeline" in
+  let make_turso_request db content =
+    let url = sprintf "https://%s/v2/pipeline" db.hostname in
 
     let headers =
       [
-        ("Authorization", sprintf "Bearer %s" token);
+        ("Authorization", sprintf "Bearer %s" db.token);
         ("Content-Type", "application/json");
       ]
     in
@@ -630,8 +629,6 @@ module M = struct
     out
 
   let turso_post db sql params =
-    let token = Sys.getenv_exn "TURSO_DB_TOKEN" in
-    printf "%s\n" token;
     let regexp = Re.Perl.re {|\@(\w+)|} |> Re.compile in
     let matches =
       Re.all regexp sql
@@ -659,16 +656,15 @@ module M = struct
     printf "%s\n" (Libsql.Requests.to_json_string request);
     printf "\n";
     let _ = db in
-    (* let resp = *)
-    (*   make_turso_request token *)
-    (*     (`String (Libsql.Requests.to_json_string request)) *)
-    (* in *)
-    (* printf "%s" resp; *)
-    (* let resp = Yojson.Safe.from_string resp |> Libsql.Response.t_of_yojson in *)
-    let resp = Yojson.Safe.from_string test_response1 in
-    printf "-------------\n";
-    let resp = resp |> Libsql.Response.t_of_yojson in
-    printf "+++++++++++++\n";
+    let resp =
+      make_turso_request db (`String (Libsql.Requests.to_json_string request))
+    in
+    printf "%s" resp;
+    let resp = Yojson.Safe.from_string resp |> Libsql.Response.t_of_yojson in
+    (* let resp = Yojson.Safe.from_string test_response1 in *)
+    (* printf "-------------\n"; *)
+    (* let resp = resp |> Libsql.Response.t_of_yojson in *)
+    (* printf "+++++++++++++\n"; *)
     printf "\n\n%s\n\n" (Libsql.Response.show resp);
 
     let rows = Libsql.Response.rows resp in

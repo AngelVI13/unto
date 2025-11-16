@@ -125,7 +125,7 @@ let command_test () =
        let _ = Or_error.ok_exn (Db.close db) in
        ())
 
-let command_turso () =
+let command_turso_testing () =
   Command.basic ~summary:"Test turso traits"
     (* TODO: temporarily accept db_url and db_token from cli args *)
     (let%map_open.Command db_url =
@@ -136,6 +136,15 @@ let command_turso () =
      fun () ->
        let _ = (db_url, db_token) in
        ignore (Or_error.ok_exn (Db.test8 ())))
+
+let command_turso_create_users () =
+  Command.basic ~summary:"Create main users DB in turso"
+    (let%map_open.Command app_name =
+       flag "-app-name" (required string) ~doc:"Application name"
+     in
+     fun () ->
+       let _ = app_name in
+       ignore (Db.test12 ()))
 
 let command_update_db auth_client =
   Command.basic ~summary:"Update db with latest N activities"
@@ -226,7 +235,8 @@ let command auth_client =
       ("user-info", command_user_info auth_client);
       ("zones", command_zones auth_client);
       ("test", command_test ());
-      ("turso", command_turso ());
+      ("turso", command_turso_testing ());
+      ("turso-create", command_turso_create_users ());
       ("update", command_update_db auth_client);
       ("run-app", command_run_app auth_client);
     ]

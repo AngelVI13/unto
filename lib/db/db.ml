@@ -456,8 +456,10 @@ let load filename =
 let close db = Or_error.try_with (fun () -> Sqlite3.db_close db.handle)
 
 let test2 () =
+  let token = Sys.getenv_exn "TURSO_DB_TOKEN" in
+  let hostname = Sys.getenv_exn "TURSO_DB_HOSTNAME" in
   let module DB = DbOps (Turso) in
-  DB.list_athletes { url = ""; token = "" }
+  DB.list_athletes { hostname; token }
     (fun
       ~id ~firstname ~lastname ~city ~state ~country ~sex ~created_at ~weight ->
       let _ =
@@ -473,8 +475,10 @@ let test () =
   let _ = (start, end_day) in
   let activities = ref [] in
   (* DB.create_activities { url = ""; token = "" } *)
+  let token = Sys.getenv_exn "TURSO_DB_TOKEN" in
+  let hostname = Sys.getenv_exn "TURSO_DB_HOSTNAME" in
   DB.activities_between
-    { url = ""; token = "" }
+    { hostname; token }
     (* ~start_date:(Utils.iso8601_of_date start) *)
     (* ~end_date:(Utils.iso8601_of_date end_day) *)
     ~start_date:"2025-10-01T00:00:00Z" ~end_date:"2025-10-04T00:00:00Z"
@@ -546,8 +550,10 @@ let test () =
 let test3 () =
   let module DB = DbOps (Turso) in
   (* DB.create_activities { url = ""; token = "" } *)
+  let token = Sys.getenv_exn "TURSO_DB_TOKEN" in
+  let hostname = Sys.getenv_exn "TURSO_DB_HOSTNAME" in
   DB.activities_after
-    { url = ""; token = "" }
+    { hostname; token }
     (* ~start_date:(Utils.iso8601_of_date start) *)
     (* ~end_date:(Utils.iso8601_of_date end_day) *)
     ~start_date:"2025-10-01T00:00:00Z"
@@ -616,16 +622,21 @@ let test3 () =
       ())
 
 let test4 () =
+  let token = Sys.getenv_exn "TURSO_DB_TOKEN" in
+  let hostname = Sys.getenv_exn "TURSO_DB_HOSTNAME" in
+  printf "%s\n" token;
   let module DB = DbOps (Turso) in
   (* DB.create_activities { url = ""; token = "" } *)
-  DB.add_athlete { url = ""; token = "" } ~id:(Int64.of_int 2) ~firstname:"John"
+  DB.add_athlete { hostname; token } ~id:(Int64.of_int 2) ~firstname:"John"
     ~lastname:"Smith" ~city:"Ruse" ~state:"Ruse" ~country:"Bulgaria" ~sex:"M"
     ~created_at:"1994-03-13" ~weight:68.5
 
 let test5 () =
+  let token = Sys.getenv_exn "TURSO_DB_TOKEN" in
+  let hostname = Sys.getenv_exn "TURSO_DB_HOSTNAME" in
   let module DB = DbOps (Turso) in
   (* DB.create_activities { url = ""; token = "" } *)
-  let num = DB.num_athletes { url = ""; token = "" } in
+  let num = DB.num_athletes { hostname; token } in
   printf "RESULT: %s\n" (Int64.to_string_hum num)
 
 let test6 () = Turso_api.create "new-test-db"
@@ -649,3 +660,31 @@ let test10 () =
     ~f:(fun db -> printf "DB: %s\n" (Turso_api.DbEntryResponse.show db))
     dbs;
   Ok ()
+
+let test11 app_name =
+  let open Or_error.Let_syntax in
+  let%bind db_info = Turso_api.create (sprintf "%s-users" app_name) in
+  printf "CREATE_INFO: %s\n" (Turso_api.DbResponse.show db_info);
+  let%bind tokens = Turso_api.create_tokens db_info.name in
+  printf "TOKENS: %s\n" tokens;
+  let%bind dbs = Turso_api.list_dbs () in
+  List.iter
+    ~f:(fun db -> printf "DB: %s\n" (Turso_api.DbEntryResponse.show db))
+    dbs;
+  Ok ()
+
+let test12 () =
+  let token = Sys.getenv_exn "TURSO_USERS_TOKEN" in
+  let hostname = Sys.getenv_exn "TURSO_USERS_HOSTNAME" in
+  let open Users_ops in
+  let module DB = UsersOps (Turso) in
+  let _ = DB.create_users { hostname; token } in
+  let _ =
+    DB.add_user { hostname; token } ~id:None ~user:"Angel" ~db_name:"app"
+      ~hostname:"app-angelvi13.aws-eu-west-1.turso.io" ~token:""
+  in
+  let _ =
+    DB.add_user { hostname; token } ~id:None ~user:"Test" ~db_name:"testapp"
+      ~hostname:"testapp-angelvi13.aws-eu-west-1.turso.io" ~token:""
+  in
+  ()
