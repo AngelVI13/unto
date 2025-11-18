@@ -2,28 +2,31 @@ open Core
 open Db_ops
 open Models.Strava_models
 open Models.Stats
-module DB = DbOps (Sqlgg_sqlite3)
+module DB = DbOps (Turso)
 
-type t = { filename : string; handle : Sqlite3.db }
+type t = Turso.conn
 
-let create filename =
-  let handle = Sqlite3.db_open filename in
+let make ~hostname ~token : Turso.conn =
+  (* TODO: check if db exists and if not, create it *)
+  { hostname; token }
+
+let create_tables handle =
   let _ = DB.create_athletes handle in
   let _ = DB.create_activities handle in
   let _ = DB.create_stats handle in
   let _ = DB.create_laps handle in
   let _ = DB.create_splits handle in
   let _ = DB.create_streams handle in
-  { filename; handle }
+  ()
 
-let add_test_split { handle; _ } =
+let add_test_split handle =
   let _ =
     DB.add_split handle ~id:None ~activity_id:12345L ~start:0L ~len:15L
       ~split_index:7L ~stats_id:13L
   in
   ()
 
-let add_test_activity { handle; _ } id =
+let add_test_activity handle id =
   let _ =
     DB.add_activity handle ~id ~athlete_id:1L
       ~name:(sprintf "run %d" (Int64.to_int_exn id))
@@ -44,9 +47,9 @@ let to_loc_option (a : float option) (b : float option) =
   | Some a, Some b -> Some (a, b)
   | _ -> assert false
 
-let get_num_athletes { handle; _ } = DB.num_athletes handle |> Int64.to_int_exn
+let get_num_athletes handle = DB.num_athletes handle |> Int64.to_int_exn
 
-let add_athlete_if_not_exist { handle; _ } (athlete : StravaAthlete.t) =
+let add_athlete_if_not_exist handle (athlete : StravaAthlete.t) =
   let athlete_ids = ref [] in
   DB.list_athlete_ids handle (fun ~id -> athlete_ids := id :: !athlete_ids);
 
@@ -58,7 +61,7 @@ let add_athlete_if_not_exist { handle; _ } (athlete : StravaAthlete.t) =
          ~city:athlete.city ~state:athlete.state ~country:athlete.country
          ~sex:athlete.sex ~created_at:athlete.created_at ~weight:athlete.weight)
 
-let get_athlete { handle; _ } : StravaAthlete.t option =
+let get_athlete handle : StravaAthlete.t option =
   let athletes = ref [] in
   DB.list_athletes handle
     (fun
@@ -138,15 +141,15 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       activities := activity :: !activities);
   !activities
 
-let get_weeks_activities { handle; _ } ~(start_date : Date.t) :
-    Models.Activity.t list =
+let get_weeks_activities handle ~(start_date : Date.t) : Models.Activity.t list
+    =
   let end_date = Date.add_days start_date 7 in
   let start_date = Utils.iso8601_of_date start_date in
   let end_date = Utils.iso8601_of_date end_date in
   get_activities_between ~start_date ~end_date handle
 
-let get_months_activities { handle; _ } ~(start_date : Date.t)
-    ~(end_date : Date.t) : Models.Activity.t list =
+let get_months_activities handle ~(start_date : Date.t) ~(end_date : Date.t) :
+    Models.Activity.t list =
   let start_date = Utils.iso8601_of_date start_date in
   let end_date = Utils.iso8601_of_date ~end_of_day:true end_date in
   get_activities_between ~start_date ~end_date handle
@@ -265,7 +268,7 @@ let get_splits_by_activity_id handle ~(activity_id : int) :
   List.rev !splits
 
 (* NOTE: currently this is the same as other activity methods but it will change with addition of laps and splits *)
-let get_activity { handle; _ } ~(activity_id : int) : Models.Activity.t option =
+let get_activity handle ~(activity_id : int) : Models.Activity.t option =
   let activities = ref [] in
   DB.activity_by_id handle ~activity_id:(Int64.of_int activity_id)
     (fun
@@ -343,9 +346,9 @@ let get_activity { handle; _ } ~(activity_id : int) : Models.Activity.t option =
       activities := activity :: !activities);
   List.hd !activities
 
-let add_stats (t : t) (stats : Models.Stats.t) (activity_id : int) =
+let add_stats handle (stats : Models.Stats.t) (activity_id : int) =
   let _ =
-    DB.add_stats t.handle ~id:None ~activity_id:(Int64.of_int activity_id)
+    DB.add_stats handle ~id:None ~activity_id:(Int64.of_int activity_id)
       ~data_points:(Int64.of_int stats.data_points)
       ~moving_time:(Int64.of_int stats.moving_time)
       ~elapsed_time:(Int64.of_int stats.elapsed_time)
@@ -368,14 +371,14 @@ let add_stats (t : t) (stats : Models.Stats.t) (activity_id : int) =
       ~max_power:(to_int64_option stats.max_power)
   in
   let stats_id = ref (Int64.of_int (-1)) in
-  DB.stats_id_for_activity t.handle ~activity_id:(Int64.of_int activity_id)
+  DB.stats_id_for_activity handle ~activity_id:(Int64.of_int activity_id)
     (fun ~id -> stats_id := id);
   !stats_id
 
-let add_activity_aux (t : t) (activity : Models.Activity.t) (athlete_id : int)
+let add_activity_aux handle (activity : Models.Activity.t) (athlete_id : int)
     (stats_id : Int64.t) =
   let _ =
-    DB.add_activity t.handle ~id:(Int64.of_int activity.id)
+    DB.add_activity handle ~id:(Int64.of_int activity.id)
       ~athlete_id:(Int64.of_int athlete_id) ~name:activity.name
       ~sport_type:(Models.Strava_models.show_sportType activity.sport_type)
       ~start_date:activity.start_date ~timezone:activity.timezone
@@ -384,42 +387,44 @@ let add_activity_aux (t : t) (activity : Models.Activity.t) (athlete_id : int)
   in
   ()
 
-let add_lap (t : t) (lap : Models.Laps.Lap.t) (activity_id : int) =
-  let stats_id = add_stats t lap.stats activity_id in
+let add_lap handle (lap : Models.Laps.Lap.t) (activity_id : int) =
+  let stats_id = add_stats handle lap.stats activity_id in
   ignore
-    (DB.add_lap t.handle ~id:None ~activity_id:(Int64.of_int activity_id)
+    (DB.add_lap handle ~id:None ~activity_id:(Int64.of_int activity_id)
        ~lap_index:(Int64.of_int lap.lap_index)
        ~moving_time:(Int64.of_int lap.moving_time)
        ~start:(Int64.of_int lap.start) ~len:(Int64.of_int lap.len) ~stats_id)
 
-let add_split (t : t) (split : Models.Splits.Split.t) (activity_id : int) =
-  let stats_id = add_stats t split.stats activity_id in
+let add_split handle (split : Models.Splits.Split.t) (activity_id : int) =
+  let stats_id = add_stats handle split.stats activity_id in
   ignore
-    (DB.add_split t.handle ~id:None ~activity_id:(Int64.of_int activity_id)
+    (DB.add_split handle ~id:None ~activity_id:(Int64.of_int activity_id)
        ~split_index:(Int64.of_int split.split_index)
        ~start:(Int64.of_int split.start) ~len:(Int64.of_int split.len) ~stats_id)
 
-let add_streams (t : t) (streams : Models.Streams.Streams.t) (activity_id : int)
+let add_streams handle (streams : Models.Streams.Streams.t) (activity_id : int)
     =
   let streams = Models.Streams.Streams.yojson_of_t streams in
   let streams = Yojson.Safe.to_string streams in
   let streams_bin = Bytes.of_string streams in
   let compressed = LZ4.Bytes.compress streams_bin in
   ignore
-    (DB.add_streams t.handle ~id:None ~activity_id:(Int64.of_int activity_id)
+    (DB.add_streams handle ~id:None ~activity_id:(Int64.of_int activity_id)
        ~data:
          (Bytes.unsafe_to_string ~no_mutation_while_string_reachable:compressed)
        ~data_len:(Int64.of_int @@ String.length streams))
 
-let add_activity (t : t) (activity : Models.Activity.t) (athlete_id : int) =
-  let stats_id = add_stats t activity.stats activity.id in
-  add_activity_aux t activity athlete_id stats_id;
-  ignore (List.map ~f:(fun lap -> add_lap t lap activity.id) activity.laps);
+let add_activity handle (activity : Models.Activity.t) (athlete_id : int) =
+  let stats_id = add_stats handle activity.stats activity.id in
+  add_activity_aux handle activity athlete_id stats_id;
+  ignore (List.map ~f:(fun lap -> add_lap handle lap activity.id) activity.laps);
   ignore
-    (List.map ~f:(fun split -> add_split t split activity.id) activity.splits);
-  add_streams t activity.streams activity.id
+    (List.map
+       ~f:(fun split -> add_split handle split activity.id)
+       activity.splits);
+  add_streams handle activity.streams activity.id
 
-let all_activities { handle; _ } =
+let all_activities handle =
   let activities = ref [] in
   let _ =
     DB.list_activities handle (fun ~id ->
@@ -428,7 +433,7 @@ let all_activities { handle; _ } =
   in
   !activities
 
-let stream_for_activity { handle; _ } (activity_id : int) =
+let stream_for_activity handle (activity_id : int) =
   DB.streams_for_activity handle ~activity_id:(Int64.of_int activity_id)
     (fun ~id ~activity_id ~data ~data_len ->
       let _ = (id, activity_id) in
@@ -444,16 +449,8 @@ let stream_for_activity { handle; _ } (activity_id : int) =
       printf "%s\n" (Models.Streams.Streams.show streams);
       ())
 
-let load filename =
-  match Sys_unix.file_exists filename with
-  | `Yes ->
-      printf "Opening existing db %s\n" filename;
-      { handle = Sqlite3.db_open filename; filename }
-  | _ ->
-      printf "Creating new db file %s\n" filename;
-      create filename
-
-let close db = Or_error.try_with (fun () -> Sqlite3.db_close db.handle)
+(* NOTE: this is not needed for turso connection *)
+let close _ = Ok ()
 
 let test2 () =
   let token = Sys.getenv_exn "TURSO_DB_TOKEN" in

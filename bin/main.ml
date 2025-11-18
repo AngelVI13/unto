@@ -111,14 +111,16 @@ let command_zones auth_client =
 
 let command_test () =
   Command.basic ~summary:"Test things"
-    (let%map_open.Command db_filename =
-       flag "-d"
-         (optional_with_default "app.db" Filename_unix.arg_type)
-         ~doc:"DB filename"
+    (let%map_open.Command activity =
+       flag "-a"
+         (optional_with_default 15310528167 int)
+         ~doc:"activity id for test"
      in
      fun () ->
-       let db = Db.load db_filename in
-       Db.stream_for_activity db 15310528167;
+       let test_db_hostname = Sys.getenv_exn "TURSO_TEST_DB_HOSTNAME" in
+       let test_db_token = Sys.getenv_exn "TURSO_TEST_DB_TOKEN" in
+       let db = Db.make ~hostname:test_db_hostname ~token:test_db_token in
+       Db.stream_for_activity db activity;
        (* Unto.Db.add_test_activity db 123L; *)
        (* Unto.Db.add_test_activity db 345L; *)
        (* Unto.Db.add_test_activity db 567L; *)
@@ -148,11 +150,7 @@ let command_turso_create_users () =
 
 let command_update_db auth_client =
   Command.basic ~summary:"Update db with latest N activities"
-    (let%map_open.Command db_filename =
-       flag "-d"
-         (optional_with_default "app.db" Filename_unix.arg_type)
-         ~doc:"DB filename"
-     and auth_filename =
+    (let%map_open.Command auth_filename =
        flag "-t"
          (optional_with_default "tokens.json" Filename_unix.arg_type)
          ~doc:"Filename where to read access and refresh tokens from"
@@ -168,7 +166,9 @@ let command_update_db auth_client =
             pages of activities."
      in
      fun () ->
-       let db = Db.load db_filename in
+       let test_db_hostname = Sys.getenv_exn "TURSO_TEST_DB_HOSTNAME" in
+       let test_db_token = Sys.getenv_exn "TURSO_TEST_DB_TOKEN" in
+       let db = Db.make ~hostname:test_db_hostname ~token:test_db_token in
        let present_activities = Db.all_activities db in
        Fun.protect
          ~finally:(fun () ->
@@ -200,11 +200,7 @@ let command_update_db auth_client =
 
 let command_run_app auth_client =
   Command.basic ~summary:"Run the web app"
-    (let%map_open.Command db_filename =
-       flag "-d"
-         (optional_with_default "app.db" Filename_unix.arg_type)
-         ~doc:"DB filename"
-     and auth_filename =
+    (let%map_open.Command auth_filename =
        flag "-t"
          (optional_with_default "tokens.json" Filename_unix.arg_type)
          ~doc:"Filename where to read access and refresh tokens from"
@@ -217,7 +213,10 @@ let command_run_app auth_client =
          Strava.Auth.Auth.make ~client:auth_client ~tokens:auth_tokens
            ~filename:auth_filename
        in
-       let db = Db.load db_filename in
+       (* TODO: change this to prod db later *)
+       let test_db_hostname = Sys.getenv_exn "TURSO_TEST_DB_HOSTNAME" in
+       let test_db_token = Sys.getenv_exn "TURSO_TEST_DB_TOKEN" in
+       let db = Db.make ~hostname:test_db_hostname ~token:test_db_token in
        Fun.protect
          ~finally:(fun () ->
            printf "Closing the db\n";
