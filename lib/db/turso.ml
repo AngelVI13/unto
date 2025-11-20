@@ -413,7 +413,12 @@ let test_response =
     https://chatgpt.com/s/t_68f34cc041a4819187f3be324feb99d6 -> remove the
     sqlite stuff and replace with the turso stuff. *)
 
-type conn = { hostname : string; token : string }
+type conn = { hostname : string; token : string; log_name : string }
+[@@deriving show { with_path = false }]
+
+let log_conn (c : conn) (s : string) : unit =
+  Out_channel.with_file ~append:true c.log_name ~f:(fun oc ->
+      Out_channel.output_string oc s)
 
 (* TODO: remove not used modules below *)
 module M = struct
@@ -654,14 +659,13 @@ module M = struct
     let stmt = Libsql.Stmt.make ~sql ~named_args in
     let request = Libsql.Requests.make stmt in
     (* printf "%s\n" sql; *)
-    printf "%s\n" (Libsql.Requests.show request);
-    printf "%s\n" (Libsql.Requests.to_json_string request);
-    printf "\n";
-    let _ = db in
+    (* log_conn db (sprintf "%s\n" (Libsql.Requests.show request)); *)
+    log_conn db (sprintf "%s\n" (Libsql.Requests.to_json_string request));
+    (* printf "\n"; *)
     let resp =
       make_turso_request db (`String (Libsql.Requests.to_json_string request))
     in
-    printf "%s" resp;
+    log_conn db (sprintf "%s\n" resp);
     let resp = Yojson.Safe.from_string resp |> Libsql.Response.t_of_yojson in
     (* let resp = Yojson.Safe.from_string test_response1 in *)
     (* printf "-------------\n"; *)

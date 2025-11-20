@@ -4,11 +4,11 @@ open Models.Strava_models
 open Models.Stats
 module DB = DbOps (Turso)
 
-type t = Turso.conn
+type t = Turso.conn [@@deriving show { with_path = false }]
 
 let make ~hostname ~token : Turso.conn =
   (* TODO: check if db exists and if not, create it *)
-  { hostname; token }
+  { hostname; token; log_name = "db_logs.txt" }
 
 let create_tables handle =
   let _ = DB.create_athletes handle in
@@ -456,7 +456,7 @@ let test2 () =
   let token = Sys.getenv_exn "TURSO_DB_TOKEN" in
   let hostname = Sys.getenv_exn "TURSO_DB_HOSTNAME" in
   let module DB = DbOps (Turso) in
-  DB.list_athletes { hostname; token }
+  DB.list_athletes (make ~hostname ~token)
     (fun
       ~id ~firstname ~lastname ~city ~state ~country ~sex ~created_at ~weight ->
       let _ =
@@ -475,7 +475,7 @@ let test () =
   let token = Sys.getenv_exn "TURSO_DB_TOKEN" in
   let hostname = Sys.getenv_exn "TURSO_DB_HOSTNAME" in
   DB.activities_between
-    { hostname; token }
+    (make ~hostname ~token)
     (* ~start_date:(Utils.iso8601_of_date start) *)
     (* ~end_date:(Utils.iso8601_of_date end_day) *)
     ~start_date:"2025-10-01T00:00:00Z" ~end_date:"2025-10-04T00:00:00Z"
@@ -550,7 +550,7 @@ let test3 () =
   let token = Sys.getenv_exn "TURSO_DB_TOKEN" in
   let hostname = Sys.getenv_exn "TURSO_DB_HOSTNAME" in
   DB.activities_after
-    { hostname; token }
+    (make ~hostname ~token)
     (* ~start_date:(Utils.iso8601_of_date start) *)
     (* ~end_date:(Utils.iso8601_of_date end_day) *)
     ~start_date:"2025-10-01T00:00:00Z"
@@ -624,7 +624,7 @@ let test4 () =
   printf "%s\n" token;
   let module DB = DbOps (Turso) in
   (* DB.create_activities { url = ""; token = "" } *)
-  DB.add_athlete { hostname; token } ~id:(Int64.of_int 2) ~firstname:"John"
+  DB.add_athlete (make ~hostname ~token) ~id:(Int64.of_int 2) ~firstname:"John"
     ~lastname:"Smith" ~city:"Ruse" ~state:"Ruse" ~country:"Bulgaria" ~sex:"M"
     ~created_at:"1994-03-13" ~weight:68.5
 
@@ -633,7 +633,7 @@ let test5 () =
   let hostname = Sys.getenv_exn "TURSO_DB_HOSTNAME" in
   let module DB = DbOps (Turso) in
   (* DB.create_activities { url = ""; token = "" } *)
-  let num = DB.num_athletes { hostname; token } in
+  let num = DB.num_athletes (make ~hostname ~token) in
   printf "RESULT: %s\n" (Int64.to_string_hum num)
 
 let test6 () = Turso_api.create "new-test-db"
@@ -675,13 +675,46 @@ let test12 () =
   let hostname = Sys.getenv_exn "TURSO_USERS_HOSTNAME" in
   let open Users_ops in
   let module DB = UsersOps (Turso) in
-  let _ = DB.create_users { hostname; token } in
+  let _ = DB.create_users (make ~hostname ~token) in
   let _ =
-    DB.add_user { hostname; token } ~id:None ~user:"Angel" ~db_name:"app"
+    DB.add_user (make ~hostname ~token) ~id:None ~user:"Angel" ~db_name:"app"
       ~hostname:"app-angelvi13.aws-eu-west-1.turso.io" ~token:""
   in
   let _ =
-    DB.add_user { hostname; token } ~id:None ~user:"Test" ~db_name:"testapp"
+    DB.add_user (make ~hostname ~token) ~id:None ~user:"Test" ~db_name:"testapp"
       ~hostname:"testapp-angelvi13.aws-eu-west-1.turso.io" ~token:""
   in
   ()
+
+let test13 () =
+  let hostname = Sys.getenv_exn "TURSO_TEST_DB_HOSTNAME" in
+  let token = Sys.getenv_exn "TURSO_TEST_DB_TOKEN" in
+  let db = make ~hostname ~token in
+  (* "sql": "SELECT a.id, st.data, st.data_len FROM activities a JOIN streams st ON a.id = st.activity_id WHERE a.id == @activity_id;", *)
+  let req =
+    {|
+{
+  "requests": [
+    {
+      "type": "execute",
+      "stmt": {
+        "sql": "SELECT a.id, st.data_len FROM activities a JOIN streams st ON a.id = st.activity_id WHERE a.id == @activity_id;",
+        "named_args": [
+          {
+            "name": "activity_id",
+            "value": {
+              "type": "integer",
+              "value": "16167913862"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+  |}
+  in
+  let resp = Turso.make_turso_request db (`String req) in
+
+  printf "%s" resp;
+  Ok ()

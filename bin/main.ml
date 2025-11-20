@@ -216,6 +216,7 @@ let command_run_app auth_client =
        (* TODO: change this to prod db later *)
        let test_db_hostname = Sys.getenv_exn "TURSO_TEST_DB_HOSTNAME" in
        let test_db_token = Sys.getenv_exn "TURSO_TEST_DB_TOKEN" in
+       (* TODO: this should check if db exists *)
        let db = Db.make ~hostname:test_db_hostname ~token:test_db_token in
        Fun.protect
          ~finally:(fun () ->
