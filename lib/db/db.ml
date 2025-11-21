@@ -325,6 +325,7 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
           ~max_power:(to_int_option max_power)
       in
       (* decode streams blob into type *)
+      let data = Base64.decode_exn ~pad:false data in
       let data_bin = Bytes.of_string data in
       let data =
         LZ4.Bytes.decompress ~length:(Int64.to_int_exn data_len) data_bin
@@ -408,10 +409,13 @@ let add_streams handle (streams : Models.Streams.Streams.t) (activity_id : int)
   let streams = Yojson.Safe.to_string streams in
   let streams_bin = Bytes.of_string streams in
   let compressed = LZ4.Bytes.compress streams_bin in
+  let data =
+    Bytes.unsafe_to_string ~no_mutation_while_string_reachable:compressed
+  in
+  let data = Base64.encode_exn ~pad:false data in
   ignore
     (DB.add_streams handle ~id:None ~activity_id:(Int64.of_int activity_id)
-       ~data:
-         (Bytes.unsafe_to_string ~no_mutation_while_string_reachable:compressed)
+       ~data
        ~data_len:(Int64.of_int @@ String.length streams))
 
 let add_activity handle (activity : Models.Activity.t) (athlete_id : int) =
@@ -437,6 +441,7 @@ let stream_for_activity handle (activity_id : int) =
   DB.streams_for_activity handle ~activity_id:(Int64.of_int activity_id)
     (fun ~id ~activity_id ~data ~data_len ->
       let _ = (id, activity_id) in
+      let data = Base64.decode_exn ~pad:false data in
       let data_bin = Bytes.of_string data in
       let data =
         LZ4.Bytes.decompress ~length:(Int64.to_int_exn data_len) data_bin
@@ -717,4 +722,20 @@ let test13 () =
   let resp = Turso.make_turso_request db (`String req) in
 
   printf "%s" resp;
+  Ok ()
+
+let test14 () =
+  (* let module DB = DbOps (Sqlgg_sqlite3) in *)
+  (* let handle = Sqlite3.db_open "testapp.db" in *)
+  (* ignore (DB.create_new_streams handle); *)
+  (* let stream_rows = ref [] in *)
+  (* DB.list_streams handle (fun ~id ~activity_id ~data ~data_len -> *)
+  (*     let _ = (id, activity_id, data, data_len) in *)
+  (*     let data = Base64.encode_exn ~pad:false data in *)
+  (*     stream_rows := (id, activity_id, data, data_len) :: !stream_rows; *)
+  (*     ()); *)
+  (* List.iter !stream_rows ~f:(fun (id, activity_id, data, data_len) -> *)
+  (*     ignore *)
+  (*       (DB.add_new_streams handle ~id:(Some id) ~activity_id ~data ~data_len)); *)
+  (* ignore (Sqlite3.db_close handle); *)
   Ok ()

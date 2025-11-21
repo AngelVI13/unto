@@ -2,4 +2,4 @@
  (name db)
  (preprocess
   (pps ppx_jane ppx_deriving.show ppx_yojson_conv))
- (libraries models utils core core_unix.sys_unix core_unix.time_ns_unix sqlite3 sqlgg.sqlite3 sqlgg.traits lz4 re yojson))
+ (libraries models utils core core_unix.sys_unix core_unix.time_ns_unix sqlite3 sqlgg.sqlite3 sqlgg.traits lz4 re yojson base64))

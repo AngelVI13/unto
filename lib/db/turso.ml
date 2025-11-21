@@ -660,18 +660,18 @@ module M = struct
     let request = Libsql.Requests.make stmt in
     (* printf "%s\n" sql; *)
     (* log_conn db (sprintf "%s\n" (Libsql.Requests.show request)); *)
-    log_conn db (sprintf "%s\n" (Libsql.Requests.to_json_string request));
+    (* log_conn db (sprintf "%s\n" (Libsql.Requests.to_json_string request)); *)
     (* printf "\n"; *)
     let resp =
       make_turso_request db (`String (Libsql.Requests.to_json_string request))
     in
-    log_conn db (sprintf "%s\n" resp);
+    (* log_conn db (sprintf "%s\n" resp); *)
     let resp = Yojson.Safe.from_string resp |> Libsql.Response.t_of_yojson in
     (* let resp = Yojson.Safe.from_string test_response1 in *)
     (* printf "-------------\n"; *)
     (* let resp = resp |> Libsql.Response.t_of_yojson in *)
     (* printf "+++++++++++++\n"; *)
-    printf "\n\n%s\n\n" (Libsql.Response.show resp);
+    (* printf "\n\n%s\n\n" (Libsql.Response.show resp); *)
 
     let rows = Libsql.Response.rows resp in
     rows

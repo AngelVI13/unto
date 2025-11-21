@@ -36,6 +36,7 @@ depends: [
   "ppx_let" {>="v0.16.0"}
   "odoc" {with-doc}
   "re" {="1.14.0"}
+  "base64" {>="3.5.2"}
 ]
 build: [
   [

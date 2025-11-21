@@ -230,7 +230,7 @@ ORDER BY sp.split_index;
 CREATE TABLE IF NOT EXISTS streams (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     activity_id INTEGER NOT NULL,
-    data BLOB NOT NULL,
+    data TEXT NOT NULL,
     data_len INTEGER NOT NULL, -- decompressed string length
     FOREIGN KEY (activity_id) REFERENCES activities (id) ON DELETE CASCADE
 );
