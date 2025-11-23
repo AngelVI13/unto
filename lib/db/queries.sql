@@ -69,40 +69,11 @@ CREATE TABLE IF NOT EXISTS activities (
     timezone TEXT NOT NULL,
     map_id TEXT NOT NULL,
     map_summary_polyline TEXT NOT NULL,
-    stats_id INTEGER NOT NULL,
-    FOREIGN KEY (athlete_id) REFERENCES athletes (id) ON DELETE CASCADE,
-    FOREIGN KEY (stats_id) REFERENCES stats (id) ON DELETE CASCADE
+    FOREIGN KEY (athlete_id) REFERENCES athletes (id) ON DELETE CASCADE
 );
 
 -- @add_activity
 INSERT INTO activities VALUES;
-
--- @activities_after
-SELECT 
-    a.*,
-    s.moving_time,
-    s.elapsed_time,
-    s.distance,
-    s.elev_gain,
-    s.elev_loss,
-    s.elev_high,
-    s.elev_low,
-    s.start_lat,
-    s.start_lng,
-    s.end_lat,
-    s.end_lng,
-    s.average_speed,
-    s.max_speed,
-    s.average_cadence,
-    s.max_cadence,
-    s.average_temp,
-    s.average_heartrate,
-    s.max_heartrate,
-    s.average_power,
-    s.max_power
-FROM activities a
-JOIN stats s ON a.stats_id = s.id
-WHERE a.start_date > @start_date;
 
 -- @activities_between
 SELECT 
@@ -128,7 +99,7 @@ SELECT
     s.average_power,
     s.max_power
 FROM activities a
-JOIN stats s ON a.stats_id = s.id
+LEFT JOIN stats s ON s.activity_id = a.id
 WHERE a.start_date > @start_date AND a.start_date < @end_date;
 
 -- @list_activities
@@ -267,6 +238,6 @@ SELECT
     st.data,
     st.data_len
 FROM activities a
-JOIN stats s ON a.stats_id = s.id
+LEFT JOIN stats s ON s.activity_id = a.id
 JOIN streams st ON a.id = st.activity_id
 WHERE a.id == @activity_id;

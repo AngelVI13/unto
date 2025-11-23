@@ -129,7 +129,7 @@ let update_activities ~(db : Db.t) ~(strava_auth : Strava.Auth.Auth.t) =
   in
   let%bind new_activities =
     Strava.Api.fetch_activities ~token:strava_auth.tokens.access_token
-      ~num_activities:100 ~start_page:1 ~exclude:present_activities
+      ~num_activities:1 ~start_page:1 ~exclude:present_activities
   in
   ignore
     (List.map

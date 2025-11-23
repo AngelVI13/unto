@@ -31,7 +31,7 @@ let add_test_activity handle id =
     DB.add_activity handle ~id ~athlete_id:1L
       ~name:(sprintf "run %d" (Int64.to_int_exn id))
       ~sport_type:"Run" ~start_date:"date" ~timezone:"EEST" ~map_id:"asasdsad"
-      ~map_summary_polyline:"asda1221" ~stats_id:14L
+      ~map_summary_polyline:"asda1221"
   in
   ()
 
@@ -86,7 +86,6 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       ~timezone
       ~map_id
       ~map_summary_polyline
-      ~stats_id
       ~moving_time
       ~elapsed_time
       ~distance
@@ -108,7 +107,6 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       ~average_power
       ~max_power
     ->
-      let _ = stats_id in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -280,7 +278,6 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~timezone
       ~map_id
       ~map_summary_polyline
-      ~stats_id
       ~moving_time
       ~elapsed_time
       ~distance
@@ -304,7 +301,6 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~data
       ~data_len
     ->
-      let _ = stats_id in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -376,15 +372,14 @@ let add_stats handle (stats : Models.Stats.t) (activity_id : int) =
     (fun ~id -> stats_id := id);
   !stats_id
 
-let add_activity_aux handle (activity : Models.Activity.t) (athlete_id : int)
-    (stats_id : Int64.t) =
+let add_activity_aux handle (activity : Models.Activity.t) (athlete_id : int) =
   let _ =
     DB.add_activity handle ~id:(Int64.of_int activity.id)
       ~athlete_id:(Int64.of_int athlete_id) ~name:activity.name
       ~sport_type:(Models.Strava_models.show_sportType activity.sport_type)
       ~start_date:activity.start_date ~timezone:activity.timezone
       ~map_id:activity.map_id
-      ~map_summary_polyline:activity.map_summary_polyline ~stats_id
+      ~map_summary_polyline:activity.map_summary_polyline
   in
   ()
 
@@ -419,8 +414,8 @@ let add_streams handle (streams : Models.Streams.Streams.t) (activity_id : int)
        ~data_len:(Int64.of_int @@ String.length streams))
 
 let add_activity handle (activity : Models.Activity.t) (athlete_id : int) =
-  let stats_id = add_stats handle activity.stats activity.id in
-  add_activity_aux handle activity athlete_id stats_id;
+  add_activity_aux handle activity athlete_id;
+  ignore (add_stats handle activity.stats activity.id);
   ignore (List.map ~f:(fun lap -> add_lap handle lap activity.id) activity.laps);
   ignore
     (List.map
@@ -493,7 +488,6 @@ let test () =
       ~timezone
       ~map_id
       ~map_summary_polyline
-      ~stats_id
       ~moving_time
       ~elapsed_time
       ~distance
@@ -515,7 +509,6 @@ let test () =
       ~average_power
       ~max_power
     ->
-      let _ = stats_id in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -548,80 +541,6 @@ let test () =
       printf "%s\n" (Models.Activity.show activity);
       activities := activity :: !activities);
   !activities
-
-let test3 () =
-  let module DB = DbOps (Turso) in
-  (* DB.create_activities { url = ""; token = "" } *)
-  let token = Sys.getenv_exn "TURSO_DB_TOKEN" in
-  let hostname = Sys.getenv_exn "TURSO_DB_HOSTNAME" in
-  DB.activities_after
-    (make ~hostname ~token)
-    (* ~start_date:(Utils.iso8601_of_date start) *)
-    (* ~end_date:(Utils.iso8601_of_date end_day) *)
-    ~start_date:"2025-10-01T00:00:00Z"
-    (fun
-      ~id
-      ~athlete_id
-      ~name
-      ~sport_type
-      ~start_date
-      ~timezone
-      ~map_id
-      ~map_summary_polyline
-      ~stats_id
-      ~moving_time
-      ~elapsed_time
-      ~distance
-      ~elev_gain
-      ~elev_loss
-      ~elev_high
-      ~elev_low
-      ~start_lat
-      ~start_lng
-      ~end_lat
-      ~end_lng
-      ~average_speed
-      ~max_speed
-      ~average_cadence
-      ~max_cadence
-      ~average_temp
-      ~average_heartrate
-      ~max_heartrate
-      ~average_power
-      ~max_power
-    ->
-      let _ =
-        ( id,
-          athlete_id,
-          name,
-          sport_type,
-          start_date,
-          timezone,
-          map_id,
-          map_summary_polyline,
-          stats_id,
-          moving_time,
-          elapsed_time,
-          distance,
-          elev_gain,
-          elev_loss,
-          elev_high,
-          elev_low,
-          start_lat,
-          start_lng,
-          end_lat,
-          end_lng,
-          average_speed,
-          max_speed,
-          average_cadence,
-          max_cadence,
-          average_temp,
-          average_heartrate,
-          max_heartrate,
-          average_power,
-          max_power )
-      in
-      ())
 
 let test4 () =
   let token = Sys.getenv_exn "TURSO_DB_TOKEN" in
