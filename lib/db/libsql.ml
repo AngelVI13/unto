@@ -75,10 +75,14 @@ module Request = struct
 end
 
 module Requests = struct
-  type t = { requests : Request.t list }
+  type t = {
+    baton : string option; [@default None] [@yojson_drop_default.equal]
+    requests : Request.t list;
+  }
   [@@deriving show { with_path = false }, yojson]
 
-  let make stmt = { requests = [ Request.make stmt ] }
+  let make ?(baton = None) statements =
+    { requests = List.map ~f:Request.make statements; baton }
 
   let to_json_string t =
     let json = yojson_of_t t in
@@ -133,7 +137,7 @@ module Result = struct
 end
 
 module Response = struct
-  type t = { results : Result.t list }
+  type t = { baton : string option; results : Result.t list }
   [@@deriving show { with_path = false }, yojson] [@@yojson.allow_extra_fields]
 
   let rows (t : t) =

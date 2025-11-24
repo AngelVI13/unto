@@ -413,7 +413,14 @@ let test_response =
     https://chatgpt.com/s/t_68f34cc041a4819187f3be324feb99d6 -> remove the
     sqlite stuff and replace with the turso stuff. *)
 
-type conn = { hostname : string; token : string; log_name : string }
+type conn = {
+  hostname : string;
+  token : string;
+  log_name : string;
+  mutable immediate : bool;
+  mutable baton : string option;
+  mutable statements : Libsql.Stmt.t list;
+}
 [@@deriving show { with_path = false }]
 
 let log_conn (c : conn) (s : string) : unit =
@@ -657,24 +664,27 @@ module M = struct
         matches params
     in
     let stmt = Libsql.Stmt.make ~sql ~named_args in
-    let request = Libsql.Requests.make stmt in
-    (* printf "%s\n" sql; *)
-    (* log_conn db (sprintf "%s\n" (Libsql.Requests.show request)); *)
-    log_conn db (sprintf "%s\n" (Libsql.Requests.to_json_string request));
-    (* printf "\n"; *)
-    let resp =
-      make_turso_request db (`String (Libsql.Requests.to_json_string request))
-    in
-    log_conn db (sprintf "%s\n" resp);
-    let resp = Yojson.Safe.from_string resp |> Libsql.Response.t_of_yojson in
-    (* let resp = Yojson.Safe.from_string test_response1 in *)
-    (* printf "-------------\n"; *)
-    (* let resp = resp |> Libsql.Response.t_of_yojson in *)
-    (* printf "+++++++++++++\n"; *)
-    (* printf "\n\n%s\n\n" (Libsql.Response.show resp); *)
+    db.statements <- stmt :: db.statements;
 
-    let rows = Libsql.Response.rows resp in
-    rows
+    if db.immediate then (
+      let request =
+        Libsql.Requests.make ~baton:db.baton (List.rev db.statements)
+      in
+
+      (* reset statements after preparing outbound request *)
+      db.statements <- [];
+
+      log_conn db (sprintf "%s\n" (Libsql.Requests.to_json_string request));
+      let resp =
+        make_turso_request db (`String (Libsql.Requests.to_json_string request))
+      in
+      log_conn db (sprintf "%s\n" resp);
+      let resp = Yojson.Safe.from_string resp |> Libsql.Response.t_of_yojson in
+      db.baton <- resp.baton;
+
+      let rows = Libsql.Response.rows resp in
+      rows)
+    else []
 
   let select db sql set_params callback =
     (* NOTE: if there is a `?` then we send unnamed arguments

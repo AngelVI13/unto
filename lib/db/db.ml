@@ -8,7 +8,16 @@ type t = Turso.conn [@@deriving show { with_path = false }]
 
 let make ~hostname ~token : Turso.conn =
   (* TODO: check if db exists and if not, create it *)
-  { hostname; token; log_name = "db_logs.txt" }
+  (* TODO: if you want to make use of the baton you have to first execute the
+     following req "sql": "BEGIN"  *)
+  {
+    hostname;
+    token;
+    log_name = "db_logs.txt";
+    baton = None;
+    immediate = true;
+    statements = [];
+  }
 
 let log_db_conn t =
   Turso.log_conn t (sprintf "\n\n\t>>>NEW CONN (%s) <<<\n\n" t.hostname);
@@ -430,17 +439,21 @@ let add_streams handle (streams : Models.Streams.Streams.t) (activity_id : int)
        ~data_len:(Int64.of_int @@ String.length streams))
 
 let add_activity handle (activity : Models.Activity.t) (athlete_id : int) =
-  (* TODO: this should group all SQL commands into 1 and execute in bulk cause
-     otherwise for 1 activity it takes ages to send the data *)
+  Turso.log_conn handle (sprintf "\t> Add activity %d<\n" activity.id);
   add_activity_aux handle activity athlete_id;
   let stats_id = add_stats handle activity.stats activity.id in
+
+  handle.immediate <- false;
   set_activity_stats_id handle activity stats_id;
+  (* TODO: laps and splits have the same dependency to stats so can't be added at the same time *)
   ignore (List.map ~f:(fun lap -> add_lap handle lap activity.id) activity.laps);
   ignore
     (List.map
        ~f:(fun split -> add_split handle split activity.id)
        activity.splits);
-  add_streams handle activity.streams activity.id
+  handle.immediate <- true;
+  add_streams handle activity.streams activity.id;
+  Turso.log_conn handle (sprintf "\t> End %d<\n\n" activity.id)
 
 let all_activities handle =
   let activities = ref [] in
