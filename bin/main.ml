@@ -137,6 +137,7 @@ let command_turso_testing () =
      in
      fun () ->
        let _ = (db_url, db_token) in
+       (* ignore (Or_error.ok_exn (Db.test11 "unto"))) *)
        ignore (Or_error.ok_exn (Db.test8 ())))
 
 let command_turso_create_users () =
@@ -218,6 +219,8 @@ let command_run_app auth_client =
        let test_db_token = Sys.getenv_exn "TURSO_TEST_DB_TOKEN" in
        (* TODO: this should check if db exists *)
        let db = Db.make ~hostname:test_db_hostname ~token:test_db_token in
+       Db.create_tables db;
+       Db.log_db_conn db;
        Fun.protect
          ~finally:(fun () ->
            printf "Closing the db\n";

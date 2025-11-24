@@ -69,11 +69,15 @@ CREATE TABLE IF NOT EXISTS activities (
     timezone TEXT NOT NULL,
     map_id TEXT NOT NULL,
     map_summary_polyline TEXT NOT NULL,
+    stats_id INTEGER DEFAULT NULL,
     FOREIGN KEY (athlete_id) REFERENCES athletes (id) ON DELETE CASCADE
 );
 
 -- @add_activity
 INSERT INTO activities VALUES;
+
+-- @set_activity_stats_id
+UPDATE activities SET stats_id = @stats_id WHERE id = @activity_id;
 
 -- @activities_between
 SELECT 
@@ -99,7 +103,7 @@ SELECT
     s.average_power,
     s.max_power
 FROM activities a
-LEFT JOIN stats s ON s.activity_id = a.id
+LEFT JOIN stats s ON a.stats_id = s.id
 WHERE a.start_date > @start_date AND a.start_date < @end_date;
 
 -- @list_activities
@@ -238,6 +242,6 @@ SELECT
     st.data,
     st.data_len
 FROM activities a
-LEFT JOIN stats s ON s.activity_id = a.id
+LEFT JOIN stats s ON a.stats_id = s.id
 JOIN streams st ON a.id = st.activity_id
 WHERE a.id == @activity_id;

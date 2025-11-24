@@ -10,6 +10,10 @@ let make ~hostname ~token : Turso.conn =
   (* TODO: check if db exists and if not, create it *)
   { hostname; token; log_name = "db_logs.txt" }
 
+let log_db_conn t =
+  Turso.log_conn t (sprintf "\n\n\t>>>NEW CONN (%s) <<<\n\n" t.hostname);
+  ()
+
 let create_tables handle =
   let _ = DB.create_athletes handle in
   let _ = DB.create_activities handle in
@@ -31,7 +35,7 @@ let add_test_activity handle id =
     DB.add_activity handle ~id ~athlete_id:1L
       ~name:(sprintf "run %d" (Int64.to_int_exn id))
       ~sport_type:"Run" ~start_date:"date" ~timezone:"EEST" ~map_id:"asasdsad"
-      ~map_summary_polyline:"asda1221"
+      ~map_summary_polyline:"asda1221" ~stats_id:None
   in
   ()
 
@@ -86,6 +90,7 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       ~timezone
       ~map_id
       ~map_summary_polyline
+      ~stats_id
       ~moving_time
       ~elapsed_time
       ~distance
@@ -107,6 +112,7 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       ~average_power
       ~max_power
     ->
+      let _ = stats_id in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -278,6 +284,7 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~timezone
       ~map_id
       ~map_summary_polyline
+      ~stats_id
       ~moving_time
       ~elapsed_time
       ~distance
@@ -301,6 +308,7 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~data
       ~data_len
     ->
+      let _ = stats_id in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -379,7 +387,15 @@ let add_activity_aux handle (activity : Models.Activity.t) (athlete_id : int) =
       ~sport_type:(Models.Strava_models.show_sportType activity.sport_type)
       ~start_date:activity.start_date ~timezone:activity.timezone
       ~map_id:activity.map_id
-      ~map_summary_polyline:activity.map_summary_polyline
+      ~map_summary_polyline:activity.map_summary_polyline ~stats_id:None
+  in
+  ()
+
+let set_activity_stats_id handle (activity : Models.Activity.t)
+    (stats_id : Int64.t) =
+  let _ =
+    DB.set_activity_stats_id handle ~activity_id:(Int64.of_int activity.id)
+      ~stats_id:(Some stats_id)
   in
   ()
 
@@ -414,8 +430,11 @@ let add_streams handle (streams : Models.Streams.Streams.t) (activity_id : int)
        ~data_len:(Int64.of_int @@ String.length streams))
 
 let add_activity handle (activity : Models.Activity.t) (athlete_id : int) =
+  (* TODO: this should group all SQL commands into 1 and execute in bulk cause
+     otherwise for 1 activity it takes ages to send the data *)
   add_activity_aux handle activity athlete_id;
-  ignore (add_stats handle activity.stats activity.id);
+  let stats_id = add_stats handle activity.stats activity.id in
+  set_activity_stats_id handle activity stats_id;
   ignore (List.map ~f:(fun lap -> add_lap handle lap activity.id) activity.laps);
   ignore
     (List.map
@@ -488,6 +507,7 @@ let test () =
       ~timezone
       ~map_id
       ~map_summary_polyline
+      ~stats_id
       ~moving_time
       ~elapsed_time
       ~distance
@@ -509,6 +529,7 @@ let test () =
       ~average_power
       ~max_power
     ->
+      let _ = stats_id in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -584,7 +605,7 @@ let test10 () =
 
 let test11 app_name =
   let open Or_error.Let_syntax in
-  let%bind db_info = Turso_api.create (sprintf "%s-users" app_name) in
+  let%bind db_info = Turso_api.create app_name in
   printf "CREATE_INFO: %s\n" (Turso_api.DbResponse.show db_info);
   let%bind tokens = Turso_api.create_tokens db_info.name in
   printf "TOKENS: %s\n" tokens;
