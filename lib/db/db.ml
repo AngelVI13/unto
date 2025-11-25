@@ -23,19 +23,21 @@ let log_db_conn t =
   Turso.log_conn t (sprintf "\n\n\t>>>NEW CONN (%s) <<<\n\n" t.hostname);
   ()
 
-let create_tables handle =
+let create_tables (handle : Turso.conn) =
+  handle.immediate <- false;
   let _ = DB.create_athletes handle in
   let _ = DB.create_activities handle in
   let _ = DB.create_stats handle in
   let _ = DB.create_laps handle in
   let _ = DB.create_splits handle in
+  handle.immediate <- true;
   let _ = DB.create_streams handle in
   ()
 
 let add_test_split handle =
   let _ =
     DB.add_split handle ~id:None ~activity_id:12345L ~start:0L ~len:15L
-      ~split_index:7L ~stats_id:13L
+      ~split_index:7L
   in
   ()
 
@@ -44,7 +46,7 @@ let add_test_activity handle id =
     DB.add_activity handle ~id ~athlete_id:1L
       ~name:(sprintf "run %d" (Int64.to_int_exn id))
       ~sport_type:"Run" ~start_date:"date" ~timezone:"EEST" ~map_id:"asasdsad"
-      ~map_summary_polyline:"asda1221" ~stats_id:None
+      ~map_summary_polyline:"asda1221"
   in
   ()
 
@@ -99,7 +101,6 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       ~timezone
       ~map_id
       ~map_summary_polyline
-      ~stats_id
       ~moving_time
       ~elapsed_time
       ~distance
@@ -121,7 +122,6 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       ~average_power
       ~max_power
     ->
-      let _ = stats_id in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -167,6 +167,7 @@ let get_months_activities handle ~(start_date : Date.t) ~(end_date : Date.t) :
   let end_date = Utils.iso8601_of_date ~end_of_day:true end_date in
   get_activities_between ~start_date ~end_date handle
 
+(* TODO: this query currently returns me duplicates of all lap indexes *)
 let get_laps_by_activity_id handle ~(activity_id : int) : Models.Laps.Laps.t =
   let laps = ref [] in
   DB.laps_by_activity_id handle ~activity_id:(Int64.of_int activity_id)
@@ -282,6 +283,7 @@ let get_splits_by_activity_id handle ~(activity_id : int) :
 
 (* NOTE: currently this is the same as other activity methods but it will change with addition of laps and splits *)
 let get_activity handle ~(activity_id : int) : Models.Activity.t option =
+  Turso.log_conn handle (sprintf "\t> Get activity %d<\n" activity_id);
   let activities = ref [] in
   DB.activity_by_id handle ~activity_id:(Int64.of_int activity_id)
     (fun
@@ -293,7 +295,6 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~timezone
       ~map_id
       ~map_summary_polyline
-      ~stats_id
       ~moving_time
       ~elapsed_time
       ~distance
@@ -317,7 +318,6 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~data
       ~data_len
     ->
-      let _ = stats_id in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -358,11 +358,14 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
           ~splits ~streams
       in
       activities := activity :: !activities);
+  Turso.log_conn handle (sprintf "\t> End %d<\n\n" activity_id);
   List.hd !activities
 
-let add_stats handle (stats : Models.Stats.t) (activity_id : int) =
+let add_stats ?(lap_idx = None) ?(split_idx = None) handle
+    (stats : Models.Stats.t) (activity_id : int) =
   let _ =
     DB.add_stats handle ~id:None ~activity_id:(Int64.of_int activity_id)
+      ~lap_idx ~split_idx
       ~data_points:(Int64.of_int stats.data_points)
       ~moving_time:(Int64.of_int stats.moving_time)
       ~elapsed_time:(Int64.of_int stats.elapsed_time)
@@ -384,10 +387,7 @@ let add_stats handle (stats : Models.Stats.t) (activity_id : int) =
       ~average_power:(to_int64_option stats.average_power)
       ~max_power:(to_int64_option stats.max_power)
   in
-  let stats_id = ref (Int64.of_int (-1)) in
-  DB.stats_id_for_activity handle ~activity_id:(Int64.of_int activity_id)
-    (fun ~id -> stats_id := id);
-  !stats_id
+  ()
 
 let add_activity_aux handle (activity : Models.Activity.t) (athlete_id : int) =
   let _ =
@@ -396,32 +396,28 @@ let add_activity_aux handle (activity : Models.Activity.t) (athlete_id : int) =
       ~sport_type:(Models.Strava_models.show_sportType activity.sport_type)
       ~start_date:activity.start_date ~timezone:activity.timezone
       ~map_id:activity.map_id
-      ~map_summary_polyline:activity.map_summary_polyline ~stats_id:None
-  in
-  ()
-
-let set_activity_stats_id handle (activity : Models.Activity.t)
-    (stats_id : Int64.t) =
-  let _ =
-    DB.set_activity_stats_id handle ~activity_id:(Int64.of_int activity.id)
-      ~stats_id:(Some stats_id)
+      ~map_summary_polyline:activity.map_summary_polyline
   in
   ()
 
 let add_lap handle (lap : Models.Laps.Lap.t) (activity_id : int) =
-  let stats_id = add_stats handle lap.stats activity_id in
+  add_stats
+    ~lap_idx:(Some (Int64.of_int lap.lap_index))
+    handle lap.stats activity_id;
   ignore
     (DB.add_lap handle ~id:None ~activity_id:(Int64.of_int activity_id)
        ~lap_index:(Int64.of_int lap.lap_index)
        ~moving_time:(Int64.of_int lap.moving_time)
-       ~start:(Int64.of_int lap.start) ~len:(Int64.of_int lap.len) ~stats_id)
+       ~start:(Int64.of_int lap.start) ~len:(Int64.of_int lap.len))
 
 let add_split handle (split : Models.Splits.Split.t) (activity_id : int) =
-  let stats_id = add_stats handle split.stats activity_id in
+  add_stats
+    ~split_idx:(Some (Int64.of_int split.split_index))
+    handle split.stats activity_id;
   ignore
     (DB.add_split handle ~id:None ~activity_id:(Int64.of_int activity_id)
        ~split_index:(Int64.of_int split.split_index)
-       ~start:(Int64.of_int split.start) ~len:(Int64.of_int split.len) ~stats_id)
+       ~start:(Int64.of_int split.start) ~len:(Int64.of_int split.len))
 
 let add_streams handle (streams : Models.Streams.Streams.t) (activity_id : int)
     =
@@ -440,11 +436,10 @@ let add_streams handle (streams : Models.Streams.Streams.t) (activity_id : int)
 
 let add_activity handle (activity : Models.Activity.t) (athlete_id : int) =
   Turso.log_conn handle (sprintf "\t> Add activity %d<\n" activity.id);
-  add_activity_aux handle activity athlete_id;
-  let stats_id = add_stats handle activity.stats activity.id in
-
   handle.immediate <- false;
-  set_activity_stats_id handle activity stats_id;
+  add_activity_aux handle activity athlete_id;
+  add_stats handle activity.stats activity.id;
+
   (* TODO: laps and splits have the same dependency to stats so can't be added at the same time *)
   ignore (List.map ~f:(fun lap -> add_lap handle lap activity.id) activity.laps);
   ignore
@@ -520,7 +515,6 @@ let test () =
       ~timezone
       ~map_id
       ~map_summary_polyline
-      ~stats_id
       ~moving_time
       ~elapsed_time
       ~distance
@@ -542,7 +536,6 @@ let test () =
       ~average_power
       ~max_power
     ->
-      let _ = stats_id in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)

@@ -28,6 +28,8 @@ SELECT id FROM athletes;
 CREATE TABLE IF NOT EXISTS stats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     activity_id INTEGER NOT NULL,
+    lap_idx INTEGER DEFAULT NULL,
+    split_idx INTEGER DEFAULT NULL,
     data_points INTEGER NOT NULL,
     moving_time INTEGER NOT NULL,
     elapsed_time INTEGER NOT NULL,
@@ -48,9 +50,7 @@ CREATE TABLE IF NOT EXISTS stats (
     average_heartrate INTEGER NULL, -- optional
     max_heartrate INTEGER NULL,     -- optional
     average_power INTEGER NULL,     -- optional
-    max_power INTEGER NULL,          -- optional
-
-    FOREIGN KEY (activity_id) REFERENCES activities (id) ON DELETE CASCADE
+    max_power INTEGER NULL          -- optional
 );
 
 -- @add_stats
@@ -69,15 +69,11 @@ CREATE TABLE IF NOT EXISTS activities (
     timezone TEXT NOT NULL,
     map_id TEXT NOT NULL,
     map_summary_polyline TEXT NOT NULL,
-    stats_id INTEGER DEFAULT NULL,
     FOREIGN KEY (athlete_id) REFERENCES athletes (id) ON DELETE CASCADE
 );
 
 -- @add_activity
 INSERT INTO activities VALUES;
-
--- @set_activity_stats_id
-UPDATE activities SET stats_id = @stats_id WHERE id = @activity_id;
 
 -- @activities_between
 SELECT 
@@ -103,8 +99,11 @@ SELECT
     s.average_power,
     s.max_power
 FROM activities a
-LEFT JOIN stats s ON a.stats_id = s.id
-WHERE a.start_date > @start_date AND a.start_date < @end_date;
+JOIN stats s ON s.activity_id = a.id
+WHERE a.start_date > @start_date 
+    AND a.start_date < @end_date 
+    AND s.lap_idx IS NULL 
+    AND s.split_idx IS NULL;
 
 -- @list_activities
 SELECT id FROM activities;
@@ -117,10 +116,7 @@ CREATE TABLE IF NOT EXISTS laps (
     lap_index INTEGER NOT NULL,
     moving_time INTEGER NOT NULL,
     start INTEGER NOT NULL,
-    len INTEGER NOT NULL,
-    stats_id INTEGER NOT NULL,
-    FOREIGN KEY (activity_id) REFERENCES activities (id) ON DELETE CASCADE,
-    FOREIGN KEY (stats_id) REFERENCES stats (id) ON DELETE CASCADE
+    len INTEGER NOT NULL
 );
 
 -- @add_lap
@@ -152,8 +148,8 @@ SELECT
     s.average_power,
     s.max_power
 FROM laps l
-JOIN stats s ON l.stats_id = s.id
-WHERE l.activity_id = @activity_id
+JOIN stats s ON s.activity_id = l.activity_id
+WHERE l.activity_id = @activity_id AND s.lap_idx IS NOT NULL
 ORDER BY l.lap_index;
 
 -- @create_splits
@@ -162,10 +158,7 @@ CREATE TABLE IF NOT EXISTS splits (
     activity_id INTEGER NOT NULL,
     split_index INTEGER NOT NULL,
     start INTEGER NOT NULL,
-    len INTEGER NOT NULL,
-    stats_id INTEGER NOT NULL,
-    FOREIGN KEY (activity_id) REFERENCES activities (id) ON DELETE CASCADE,
-    FOREIGN KEY (stats_id) REFERENCES stats (id) ON DELETE CASCADE
+    len INTEGER NOT NULL
 );
 
 -- @add_split
@@ -197,8 +190,8 @@ SELECT
     s.average_power,
     s.max_power
 FROM splits sp
-JOIN stats s ON sp.stats_id = s.id
-WHERE sp.activity_id = @activity_id
+JOIN stats s ON s.activity_id = sp.activity_id
+WHERE sp.activity_id = @activity_id AND s.split_idx IS NOT NULL
 ORDER BY sp.split_index;
 
 -- @create_streams
@@ -206,8 +199,7 @@ CREATE TABLE IF NOT EXISTS streams (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     activity_id INTEGER NOT NULL,
     data TEXT NOT NULL,
-    data_len INTEGER NOT NULL, -- decompressed string length
-    FOREIGN KEY (activity_id) REFERENCES activities (id) ON DELETE CASCADE
+    data_len INTEGER NOT NULL -- decompressed string length
 );
 
 -- @add_streams
@@ -242,6 +234,6 @@ SELECT
     st.data,
     st.data_len
 FROM activities a
-LEFT JOIN stats s ON a.stats_id = s.id
+JOIN stats s ON a.id = s.activity_id
 JOIN streams st ON a.id = st.activity_id
-WHERE a.id == @activity_id;
+WHERE a.id == @activity_id AND s.lap_idx IS NULL and s.split_idx IS NULL;
