@@ -99,11 +99,9 @@ SELECT
     s.average_power,
     s.max_power
 FROM activities a
-JOIN stats s ON s.activity_id = a.id
+JOIN stats s ON s.activity_id = a.id AND s.lap_idx IS NULL AND s.split_idx IS NULL
 WHERE a.start_date > @start_date 
-    AND a.start_date < @end_date 
-    AND s.lap_idx IS NULL 
-    AND s.split_idx IS NULL;
+    AND a.start_date < @end_date;
 
 -- @list_activities
 SELECT id FROM activities;
@@ -148,8 +146,8 @@ SELECT
     s.average_power,
     s.max_power
 FROM laps l
-JOIN stats s ON s.activity_id = l.activity_id
-WHERE l.activity_id = @activity_id AND s.lap_idx IS NOT NULL
+JOIN stats s ON s.activity_id = l.activity_id AND s.lap_idx = l.lap_index
+WHERE l.activity_id = @activity_id
 ORDER BY l.lap_index;
 
 -- @create_splits
@@ -190,8 +188,8 @@ SELECT
     s.average_power,
     s.max_power
 FROM splits sp
-JOIN stats s ON s.activity_id = sp.activity_id
-WHERE sp.activity_id = @activity_id AND s.split_idx IS NOT NULL
+JOIN stats s ON s.activity_id = sp.activity_id AND s.split_idx = sp.split_index
+WHERE sp.activity_id = @activity_id
 ORDER BY sp.split_index;
 
 -- @create_streams
@@ -234,6 +232,6 @@ SELECT
     st.data,
     st.data_len
 FROM activities a
-JOIN stats s ON a.id = s.activity_id
+JOIN stats s ON a.id = s.activity_id AND s.lap_idx IS NULL and s.split_idx IS NULL
 JOIN streams st ON a.id = st.activity_id
-WHERE a.id == @activity_id AND s.lap_idx IS NULL and s.split_idx IS NULL;
+WHERE a.id == @activity_id;
