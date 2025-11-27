@@ -407,11 +407,10 @@ let test_response =
 }
 |}
 
-(* TODO: this is taken from:
+(* NOTE: this is taken from:
   https://github.com/ygrek/sqlgg/blob/master/impl/ocaml/sqlite3/sqlgg_sqlite3.ml
   . with the gpt examples from here:
-    https://chatgpt.com/s/t_68f34cc041a4819187f3be324feb99d6 -> remove the
-    sqlite stuff and replace with the turso stuff. *)
+    https://chatgpt.com/s/t_68f34cc041a4819187f3be324feb99d6 *)
 
 type conn = {
   hostname : string;
@@ -618,7 +617,6 @@ module M = struct
   let set_param_null params =
     params := Libsql.ArgValue.make ~type_:Libsql.Null ~value:"" :: !params
 
-  (* TODO: are these correct ? *)
   let set_param_Any = set_param_Text
   let set_param_Decimal = set_param_Float
   let set_param_Datetime = set_param_Float

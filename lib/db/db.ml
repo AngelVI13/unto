@@ -167,7 +167,6 @@ let get_months_activities handle ~(start_date : Date.t) ~(end_date : Date.t) :
   let end_date = Utils.iso8601_of_date ~end_of_day:true end_date in
   get_activities_between ~start_date ~end_date handle
 
-(* TODO: this query currently returns me duplicates of all lap indexes *)
 let get_laps_by_activity_id handle ~(activity_id : int) : Models.Laps.Laps.t =
   let laps = ref [] in
   DB.laps_by_activity_id handle ~activity_id:(Int64.of_int activity_id)
@@ -440,7 +439,6 @@ let add_activity handle (activity : Models.Activity.t) (athlete_id : int) =
   add_activity_aux handle activity athlete_id;
   add_stats handle activity.stats activity.id;
 
-  (* TODO: laps and splits have the same dependency to stats so can't be added at the same time *)
   ignore (List.map ~f:(fun lap -> add_lap handle lap activity.id) activity.laps);
   ignore
     (List.map
