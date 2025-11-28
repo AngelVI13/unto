@@ -1,8 +1,24 @@
 open Core
 open Db_ops
+open Users_ops
 open Models.Strava_models
 open Models.Stats
 module DB = DbOps (Turso)
+module UsersDB = UsersOps (Turso)
+
+module User = struct
+  type t = {
+    id : int;
+    user : string;
+    pass : string;
+    db_name : string;
+    hostname : string;
+    token : string;
+  }
+
+  let make ~id ~user ~pass ~db_name ~hostname ~token =
+    { id; user; pass; db_name; hostname; token }
+end
 
 type t = Turso.conn [@@deriving show { with_path = false }]
 
@@ -474,6 +490,16 @@ let stream_for_activity handle (activity_id : int) =
       printf "%s\n" (Models.Streams.Streams.show streams);
       ())
 
+let get_user_by_name handle (user_name : string) =
+  let users = ref [] in
+  UsersDB.user_by_name handle ~user_name
+    (fun ~id ~user ~pass ~db_name ~hostname ~token ->
+      users :=
+        User.make ~id:(Int64.to_int_exn id) ~user ~pass ~db_name ~hostname
+          ~token
+        :: !users);
+  List.nth !users 0
+
 (* NOTE: this is not needed for turso connection *)
 let close _ = Ok ()
 
@@ -626,12 +652,13 @@ let test12 () =
   let module DB = UsersOps (Turso) in
   let _ = DB.create_users (make ~hostname ~token) in
   let _ =
-    DB.add_user (make ~hostname ~token) ~id:None ~user:"Angel" ~db_name:"app"
-      ~hostname:"app-angelvi13.aws-eu-west-1.turso.io" ~token:""
+    DB.add_user (make ~hostname ~token) ~id:None ~user:"Angel" ~pass:""
+      ~db_name:"app" ~hostname:"app-angelvi13.aws-eu-west-1.turso.io" ~token:""
   in
   let _ =
-    DB.add_user (make ~hostname ~token) ~id:None ~user:"Test" ~db_name:"testapp"
-      ~hostname:"testapp-angelvi13.aws-eu-west-1.turso.io" ~token:""
+    DB.add_user (make ~hostname ~token) ~id:None ~user:"Test" ~pass:""
+      ~db_name:"testapp" ~hostname:"testapp-angelvi13.aws-eu-west-1.turso.io"
+      ~token:""
   in
   ()
 

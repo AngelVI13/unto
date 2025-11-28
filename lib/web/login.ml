@@ -42,6 +42,8 @@ let page csrf_token =
                   input
                     [ type_ "hidden"; name "dream.csrf"; value "%s" csrf_token ];
                   input
+                    [ type_ "text"; name "username"; placeholder "Username" ];
+                  input
                     [
                       type_ "password"; name "password"; placeholder "Password";
                     ];

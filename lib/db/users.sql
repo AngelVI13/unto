@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user TEXT NOT NULL,
+    pass TEXT NOT NULL,
     db_name TEXT NOT NULL,
     hostname TEXT NOT NULL,
     token TEXT NOT NULL
