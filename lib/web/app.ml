@@ -1,19 +1,24 @@
 open Core
 module Time_ns = Time_ns_unix
 
-module State = struct
+module User = struct
   type t = {
     db : Db.t;
-    (* TODO: invalidate cache if it becomes possible to edit activities *)
-    (* TODO: this caching solution works when we only have 1 user - Figure out how to attach this to a user session *)
-    (* TODO: cache the user as well cause now we keep asking the db for the athlete info *)
-    (* TODO: in theory we don;t care about how big this map grows because
-       fly.io will stop the container during inactivity. If this changes then
-         add logic to reset hashtabl at certain length. *)
+    created_at : Date.t;
     activity_cache : (int, Models.Activity.t) Hashtbl.t;
+    athlete : Models.Strava_models.StravaAthlete.t option;
   }
 
-  let make ~db = { db; activity_cache = Hashtbl.create (module Int) }
+  (* TODO: finish this *)
+  let make ~db =
+    let today = Time_ns.now () |> Time_ns.to_date ~zone:Timezone.utc in
+    let athlete = Db.get_athlete db in
+    {
+      db;
+      activity_cache = Hashtbl.create (module Int);
+      created_at = today;
+      athlete;
+    }
 
   let add_activity t (activity : Models.Activity.t) (athlete_id : int) =
     Hashtbl.set t.activity_cache ~key:activity.id ~data:activity;
@@ -29,6 +34,21 @@ module State = struct
             Hashtbl.set t.activity_cache ~key:activity_id ~data:a;
             Some a)
     | Some a -> Some a
+end
+
+module State = struct
+  type t = {
+    (* TODO: invalidate cache if it becomes possible to edit activities *)
+    (* TODO: this caching solution works when we only have 1 user - Figure out how to attach this to a user session *)
+    (* TODO: cache the user as well cause now we keep asking the db for the athlete info *)
+    (* TODO: in theory we don;t care about how big this map grows because
+       fly.io will stop the container during inactivity. If this changes then
+         add logic to reset hashtabl at certain length. *)
+    app_users : Db.t;
+    users : (string, User.t) Hashtbl.t;
+  }
+
+  let make app_users = { app_users; users = Hashtbl.create (module String) }
 end
 
 let stored_pass = "$2y$16$Nzi5uZoqsxrwQ20kMg4Fneht2PFTKg6LThzDr5.iOJ1tT3XE/6Q8a"
