@@ -39,10 +39,10 @@ let page csrf_token =
         ];
       body []
         [
-          Header.header_ ~athlete_name:"" ();
           div
             [ class_ "loginDiv card" ]
             [
+              h1 [] [ txt "Unto" ];
               form
                 [
                   class_ "loginForm";
@@ -53,12 +53,22 @@ let page csrf_token =
                   input
                     [ type_ "hidden"; name "dream.csrf"; value "%s" csrf_token ];
                   input
-                    [ type_ "text"; name "username"; placeholder "Username" ];
+                    [
+                      class_ "formEl";
+                      type_ "text";
+                      name "username";
+                      placeholder "Username";
+                    ];
                   input
                     [
-                      type_ "password"; name "password"; placeholder "Password";
+                      class_ "formEl";
+                      type_ "password";
+                      name "password";
+                      placeholder "Password";
                     ];
-                  button [ type_ "submit" ] [ txt "Login" ];
+                  button
+                    [ class_ "submitBtn formEl"; type_ "submit" ]
+                    [ txt "Login" ];
                 ];
             ];
         ];

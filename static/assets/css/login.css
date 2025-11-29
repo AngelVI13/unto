@@ -1,8 +1,17 @@
-.loginDiv {
-  padding: 10px;
+body {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.loginDiv {
+  padding: 20px 10px 20px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 400px;
 }
 
 .loginForm {
@@ -11,4 +20,15 @@
   gap: 10px;
   width: 100%;
   max-width: 300px;
+}
+
+.formEl {
+  border-radius: 14px;
+  font-size: 16px;
+  padding: 6px;
+}
+
+.submitBtn {
+  background-color: var(--accent-color);
+  font-weight: bold;
 }
