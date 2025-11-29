@@ -30,14 +30,25 @@ let page csrf_token =
               type_ "text/css";
               path_attr href Static.Assets.Css.header_css;
             ];
+          link
+            [
+              rel "stylesheet";
+              type_ "text/css";
+              path_attr href Static.Assets.Css.login_css;
+            ];
         ];
       body []
         [
           Header.header_ ~athlete_name:"" ();
-          div []
+          div
+            [ class_ "loginDiv card" ]
             [
               form
-                [ method_ `POST; path_attr action Paths.login ]
+                [
+                  class_ "loginForm";
+                  method_ `POST;
+                  path_attr action Paths.login;
+                ]
                 [
                   input
                     [ type_ "hidden"; name "dream.csrf"; value "%s" csrf_token ];
