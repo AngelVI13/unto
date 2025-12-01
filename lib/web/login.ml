@@ -42,7 +42,16 @@ let page csrf_token =
           div
             [ class_ "loginDiv card" ]
             [
-              h1 [] [ txt "Unto" ];
+              div
+                [ class_ "loginHeader" ]
+                [
+                  img
+                    [
+                      class_ "loginLogo";
+                      path_attr src Static.Assets.Images.favicon_small_png;
+                    ];
+                  h1 [] [ txt "Unto" ];
+                ];
               form
                 [
                   class_ "loginForm";

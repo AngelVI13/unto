@@ -22,13 +22,35 @@ body {
   max-width: 300px;
 }
 
+.loginHeader {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.loginLogo {
+  width: 32px;
+  height: 32px;
+  padding-top: 21px;
+}
+
 .formEl {
   border-radius: 14px;
   font-size: 16px;
   padding: 6px;
 }
 
+.loginForm > input {
+  border: 2px solid var(--accent-color);
+}
+
 .submitBtn {
-  background-color: var(--accent-color);
+  background-color: var(--light-highlight);
   font-weight: bold;
+  color: var(--accent-color);
+  border: 2px solid var(--accent-color);
+}
+
+.submitBtn:hover {
+  background-color: var(--accent-color);
+  color: var(--light-highlight);
 }
