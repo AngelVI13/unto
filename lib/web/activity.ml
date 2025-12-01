@@ -137,7 +137,6 @@ let activity_laps_splits_card ~(activity : Models.Activity.t)
             ]
             [ a (select_btn Laps) [ txt "Laps" ] ];
         ];
-      (* TODO: generate the splits/laps tab as well but set it to display:none so we don't have to make additional requests to db later *)
       Activity_splits.activity_splits_table ~activity ~split_select stats;
     ]
 

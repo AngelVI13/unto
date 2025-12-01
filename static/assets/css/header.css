@@ -110,13 +110,14 @@ header .athlete-txt {
     display: none;
   }
 
- .headerTxtMedium {
-     display: none;
- }
+  .headerTxtMedium {
+    display: none;
+  }
 
   .headerTxtSmall {
     display: inline;
   }
+}
 
 .htmx-request .update-indicator,
 .htmx-request.update-indicator {
