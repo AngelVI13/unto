@@ -65,7 +65,9 @@ module StreamType = struct
     | DistanceStream s ->
         let data = List.sub ~pos ~len s.data in
         let distance = List.last_exn data -. List.hd_exn data in
-        let average_speed = distance /. Float.of_int (List.length data - 2) in
+        let data_points = List.length data - 2 in
+        let data_points = if data_points <= 0 then 1 else data_points in
+        let average_speed = distance /. Float.of_int data_points in
         let average_speed =
           Float.round_decimal ~decimal_digits:3 average_speed
         in

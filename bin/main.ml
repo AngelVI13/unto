@@ -45,7 +45,9 @@ let command_pull_streams auth_client =
          Or_error.ok_exn
            (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
-       Or_error.ok_exn (Strava.Api.pull_streams auth.tokens.access_token id))
+       ignore
+         (Or_error.ok_exn
+            (Strava.Api.pull_streams_aux auth.tokens.access_token id)))
 
 let command_download auth_client =
   Command.basic ~summary:"Download activities"
@@ -187,7 +189,7 @@ let command_update_db auth_client =
            let new_activities =
              Or_error.ok_exn
                (Strava.Api.fetch_activities ~token:auth.tokens.access_token
-                  ~num_activities:n ~start_page ~exclude:present_activities)
+                  ~num_activities:n ~start_page ~exclude:present_activities ())
            in
            ignore
              (List.map

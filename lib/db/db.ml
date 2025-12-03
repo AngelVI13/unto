@@ -451,6 +451,8 @@ let add_streams handle (streams : Models.Streams.Streams.t) (activity_id : int)
 
 let add_activity handle (activity : Models.Activity.t) (athlete_id : int) =
   Turso.log_conn handle (sprintf "\t> Add activity %d<\n" activity.id);
+  (* Turso.log_conn handle *)
+  (*   (sprintf "Activity:\n %s\n" (Models.Activity.show activity)); *)
   handle.immediate <- false;
   add_activity_aux handle activity athlete_id;
   add_stats handle activity.stats activity.id;
