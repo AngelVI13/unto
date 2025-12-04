@@ -74,5 +74,5 @@ COPY ./new_tokens.json .
 EXPOSE 8080
 
 # Run the executable
-CMD ["unto", "run-app", "-t", "new_tokens.json", "-d", "app.db"]
+CMD ["unto", "run-app", "-t", "new_tokens.json"]
 
