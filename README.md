@@ -68,3 +68,21 @@ docker run --env-file .env -p 8080:8080 unto
 
 NOTE: here the slack client and client secrets are loaded into the docker
 container from a `.env` file with the `--env-file` flag.
+
+### Deploy
+
+#### Fly.io
+
+Deploying to fly.io is very simple. Just run the command
+
+```sh
+fly deploy
+```
+
+It will look for a Dockerfile in the repository, it will build it and send the image to your app's machine.
+
+> NOTE: to set environment variables for the app's machine (so you don't expose
+> any tokens etc.) use the fly secrets command.
+```sh
+fly secrets VAR=VALUE
+```
