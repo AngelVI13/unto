@@ -1,6 +1,11 @@
 open Core
 module Time_ns = Time_ns_unix
 
+(* TODO: to calculate the similarities between routes we have to calculate the  *)
+(* hausdorf distance between 2 routes: https://en.wikipedia.org/wiki/Hausdorff_distance *)
+(* to calculate the distance between 2 points we can use the harvesine formula: *)
+(* from this recipe: https://ocaml.org/cookbook/calculate-geodistance-between-points/stdlib *)
+(* in our case, we already have the lat/lng in degrees (i think?) so we don't have to convert them *)
 module User = struct
   type t = {
     db : Db.t;
@@ -133,8 +138,6 @@ let handle_activity ~(user : User.t) request =
   in
   Dream_html.respond page
 
-(* TODO: handle_activity_map and handle_activity_graph both make a db request to an activity that we already fetched. *)
-(* add an activity cache to the server or eliminate those separate requests *)
 let handle_activity_map ~(user : User.t) request =
   let activity_id = Dream.param request "id" |> Int.of_string_opt in
   let activity =
@@ -189,7 +192,7 @@ let update_activities ~(user : User.t) ~(strava_auth : Strava.Auth.Auth.t) =
   in
   let%bind new_activities =
     Strava.Api.fetch_activities ~token:strava_auth.tokens.access_token
-      ~num_activities:80 ~start_page:1 ~max_pages:10 ~exclude:present_activities
+      ~num_activities:20 ~start_page:1 ~max_pages:1 ~exclude:present_activities
       ()
   in
   ignore
@@ -284,15 +287,6 @@ let handle_calendar ~(user : User.t) request =
   let page = Calendar.page first_of_month user.athlete grouped_activities in
   Dream_html.respond page
 
-(* TODO: activity fails to download streams 113217900 *)
-(* processing activity=113217900 2014-02-12T16:00:00Z *)
-(*   downloading streams *)
-(*   downloading laps *)
-(*   error while downloading/parsing streams: ("Yojson__Safe.Util.Type_error(\"Expected array, got object\", _)") *)
-(* processing activity=103428817 2014-01-02T00:09:30Z *)
-(*   downloading streams *)
-(*   downloading laps *)
-(*   error while downloading/parsing streams: ("Yojson__Safe.Util.Type_error(\"Expected array, got object\", _)") *)
 let run ~(db : Db.t) ~(strava_auth : Strava.Auth.Auth.t) =
   (* NOTE: rotate cookie secret about once per year, you can use the code bellow to generate it  *)
   (* let secret = Dream.to_base64url (Dream.random 32) in *)

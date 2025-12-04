@@ -131,7 +131,6 @@ let command_test () =
 
 let command_turso_testing () =
   Command.basic ~summary:"Test turso traits"
-    (* TODO: temporarily accept db_url and db_token from cli args *)
     (let%map_open.Command _ =
        flag "-db-url" (optional_with_default "app.db" string) ~doc:"DB url"
      in

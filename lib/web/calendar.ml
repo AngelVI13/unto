@@ -98,10 +98,6 @@ let calendar first_of_month (activities : Models.Activity.t list list) =
           else List.nth_exn activities day_idx
         in
         let activity_divs = List.map ~f:activity_div day_activities in
-        (* TODO: currently 4 activities per day breaks the
-           calendar view -> make each calendar day scrollable ??
-           by default it should show preview of activity and a
-           half so you knowto scroll *)
         (* TODO: add .calendarToday class to highlight today  *)
         let extra_css_class =
           if day_idx < 0 || day_idx >= month_days then "calendarInactive"
