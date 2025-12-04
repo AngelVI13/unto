@@ -4,6 +4,7 @@
   --light-highlight: #f0f0f0;
   /* --accent-color: darkolivegreen; */
   --accent-color: #005000;
+  --accent-color-rgb: 0, 80, 0;
 }
 
 body {

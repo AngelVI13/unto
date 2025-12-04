@@ -89,20 +89,24 @@ let calendar first_of_month (activities : Models.Activity.t list list) =
   let num_weeks = num_weeks first_of_month in
   let month_start_idx = day_of_week_to_int (Date.day_of_week first_of_month) in
   let month_days = days_in_month first_of_month in
+  let today = Time_ns.now () |> Time_ns.to_date ~zone:Timezone.utc in
   let days =
     List.init (num_weeks * 7) ~f:(fun i ->
         let day_idx = i - month_start_idx in
         let day_num = Date.add_days first_of_month day_idx in
-        let day_activities =
-          if day_idx < 0 || day_idx >= month_days then []
-          else List.nth_exn activities day_idx
+        let day_activities, extra_css_class =
+          match day_idx with
+          | x when x < 0 || x >= month_days -> ([], "calendarInactive")
+          | _ ->
+              let day_activities = List.nth_exn activities day_idx in
+              let extra_css_class =
+                if Date.equal today day_num then "calendarToday" else ""
+              in
+              (day_activities, extra_css_class)
         in
+
         let activity_divs = List.map ~f:activity_div day_activities in
-        (* TODO: add .calendarToday class to highlight today  *)
-        let extra_css_class =
-          if day_idx < 0 || day_idx >= month_days then "calendarInactive"
-          else ""
-        in
+
         div
           [ class_ "card calendarDay %s" extra_css_class ]
           [

@@ -25,7 +25,7 @@
 }
 
 .calendarToday {
-  border: 1px solid var(--accent-color);
+  box-shadow: 0 0 10px var(--accent-color);
 }
 
 .calendarDay {
