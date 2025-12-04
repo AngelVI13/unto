@@ -68,7 +68,6 @@ RUN rm -rf /var/lib/apt/lists/*
 # Copy built binaries from the builder
 COPY --from=build /home/opam/app/_build/default/bin/main.exe /usr/local/bin/unto
 COPY --from=build /home/opam/app/static ./static
-COPY ./app.db .
 COPY ./new_tokens.json .
 
 # Expose port Dream listens on
