@@ -591,7 +591,7 @@ let test () =
           ~splits:(Models.Splits.Splits.empty ())
           ~streams:(Models.Streams.Streams.empty ())
       in
-      printf "%s\n" (Models.Activity.show activity);
+      (* printf "%s\n" (Models.Activity.show activity); *)
       activities := activity :: !activities);
   !activities
 

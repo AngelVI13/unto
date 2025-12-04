@@ -423,8 +423,10 @@ type conn = {
 [@@deriving show { with_path = false }]
 
 let log_conn (c : conn) (s : string) : unit =
-  Out_channel.with_file ~append:true c.log_name ~f:(fun oc ->
-      Out_channel.output_string oc s)
+  if true then ()
+  else
+    Out_channel.with_file ~append:true c.log_name ~f:(fun oc ->
+        Out_channel.output_string oc s)
 
 (* TODO: remove not used modules below *)
 module M = struct
