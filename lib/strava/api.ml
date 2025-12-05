@@ -231,6 +231,35 @@ let fetch_activities ?(max_pages = 1) ~token ~num_activities ~start_page
   in
   Ok activities
 
+(* TODO: new stuff where to put it ? *)
+let deg2rad angle = angle /. 180. *. Float.pi
+
+(** computes distance between 2 geo points in kms *)
+let haversine_distance (lat1, lon1) (lat2, lon2) =
+  let open Float in
+  let r = 6371. in
+  let dLat = deg2rad (lat2 - lat1) in
+  let dLon = deg2rad (lon2 - lon1) in
+  let a =
+    square (sin (dLat / 2.))
+    + (cos (deg2rad lat1) * cos (deg2rad lat2) * square (sin (dLon / 2.)))
+  in
+  let c = 2. * atan2 (sqrt a) (sqrt (1. -. a)) in
+  r * c
+
+let%expect_test "harvesine_distance" =
+  let loop1_start = (54.70299, 25.317408) in
+  let orient_start = (54.719005, 25.253187) in
+  let d = haversine_distance loop1_start orient_start in
+  printf "%f" d;
+  [%expect {| 4.493334 |}]
+
+(* 5.13km usual loop from 2025/11/26 16575000264 *)
+(* 4.89km similar but not the same as usual loop from 2025/11/17 16487742395 *)
+(* 5.31km different than loop but same start end 2025/11/15 16463319760 *)
+(* 5.08km usual loop from 2025/11/12 16434068435 *)
+(* 8.03km different than loop different start 2025/12/05 16649027802 *)
+
 (* let%expect_test "deserialize get_stream.json" = *)
 (*   let json = *)
 (*     Yojson.Safe.from_file *)
@@ -448,12 +477,12 @@ let%expect_test "sportType of string" =
   printf "%b" success;
   [%expect {| true |}]
 
-let%expect_test "activity_bug" =
-  let json =
-    Yojson.Safe.from_file
-      "/home/angel/Documents/ocaml/unto/raw_streams_15666941870.json"
-  in
-  let streams = Streams.t_of_yojson_smoothed json in
-  let stats = Streams.activity_stats streams in
-  printf "%s" (Models.Stats.show stats);
-  [%expect {| |}]
+(* let%expect_test "activity_bug" = *)
+(*   let json = *)
+(*     Yojson.Safe.from_file *)
+(*       "/home/angel/Documents/ocaml/unto/raw_streams_15666941870.json" *)
+(*   in *)
+(*   let streams = Streams.t_of_yojson_smoothed json in *)
+(*   let stats = Streams.activity_stats streams in *)
+(*   printf "%s" (Models.Stats.show stats); *)
+(*   [%expect {| |}] *)
