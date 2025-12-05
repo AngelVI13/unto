@@ -247,6 +247,13 @@ let haversine_distance (lat1, lon1) (lat2, lon2) =
   let c = 2. * atan2 (sqrt a) (sqrt (1. -. a)) in
   r * c
 
+(* TODO: add function to remove unnecessary points using the Ramer-Douglas-Peucker algorithm *)
+(* https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm *)
+
+(* TODO: then implement algorithm to create polyline from geo points so we can
+   plot them in the ui and see if it works correctly or alternatively give it a
+   set of float points and maybe it works with that ? *)
+
 let%expect_test "harvesine_distance" =
   let loop1_start = (54.70299, 25.317408) in
   let orient_start = (54.719005, 25.253187) in
