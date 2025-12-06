@@ -254,12 +254,75 @@ let haversine_distance (lat1, lon1) (lat2, lon2) =
    plot them in the ui and see if it works correctly or alternatively give it a
    set of float points and maybe it works with that ? *)
 
-let%expect_test "harvesine_distance" =
+(** Measure the distance from a point to line (formed by start and end points).
+    It is calculated by creating a triangle from all 3 points and then
+    calculating the height of the perpendicular line starting from the point to
+    the line. *)
+let distance_from_line line_start line_end point =
+  let open Float in
+  (* calculate the lengths of the 3 sides of the triangle *)
+  let line_dist = haversine_distance line_start line_end in
+  let start_to_point_dist = haversine_distance line_start point in
+  let end_to_point_dist = haversine_distance line_end point in
+
+  (* calculate the triangle's semi perimeter: s = (a + b + c) / 2 *)
+  let semi_perimeter =
+    (line_dist + start_to_point_dist + end_to_point_dist) / 2.
+  in
+  (* calculate the triangle's area (heron's formula) *)
+  let area =
+    sqrt
+      (semi_perimeter
+      * (semi_perimeter - line_dist)
+      * (semi_perimeter - start_to_point_dist)
+      * (semi_perimeter - end_to_point_dist))
+  in
+  (* calculate the height of the perpendicular from the point to the line *)
+  let distance_from_line = 2. * area / line_dist in
+  distance_from_line
+
+let normalize_route (points : (float * float) list) =
+  let rec normalize_aux points to_keep =
+    let start_point = List.hd_exn points in
+    let end_point = List.tl_exn points in
+    to_keep
+  in
+
+  assert (List.length points > 2);
+  let to_keep = normalize_aux points [] in
+  List.iter ~f:(fun i -> printf "%d " i) to_keep;
+  ()
+
+let%expect_test "haversine_distance" =
   let loop1_start = (54.70299, 25.317408) in
   let orient_start = (54.719005, 25.253187) in
   let d = haversine_distance loop1_start orient_start in
   printf "%f" d;
   [%expect {| 4.493334 |}]
+
+let%expect_test "distance_from_line_acute_triangle" =
+  let line_start = (54.703534, 25.315630) in
+  let line_end = (54.70476848383893, 25.316215439902518) in
+  let point = (54.70365225960127, 25.319627533102445) in
+  let d = distance_from_line line_start line_end point in
+  printf "%f" d;
+  [%expect {| 0.244230 |}]
+
+let%expect_test "distance_from_line_acute_obtuse" =
+  let line_start = (54.703534, 25.315630) in
+  let line_end = (54.70476848383893, 25.316215439902518) in
+  let point = (54.70496050212048, 25.318387068033555) in
+  let d = distance_from_line line_start line_end point in
+  printf "%f" d;
+  [%expect {| 0.128917 |}]
+
+let%expect_test "distance_from_line_acute_obtuse_other_side" =
+  let line_start = (54.703534, 25.315630) in
+  let line_end = (54.70476848383893, 25.316215439902518) in
+  let point = (54.70295308022377, 25.30984663815214) in
+  let d = distance_from_line line_start line_end point in
+  printf "%f" d;
+  [%expect {| 0.341305 |}]
 
 (* 5.13km usual loop from 2025/11/26 16575000264 *)
 (* 4.89km similar but not the same as usual loop from 2025/11/17 16487742395 *)
