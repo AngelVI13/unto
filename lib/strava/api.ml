@@ -231,7 +231,7 @@ let fetch_activities ?(max_pages = 1) ~token ~num_activities ~start_page
   in
   Ok activities
 
-(* TODO: new stuff where to put it ? *)
+(* TODO: new stuff - where to put it ? *)
 let deg2rad angle = angle /. 180. *. Float.pi
 
 (** computes distance between 2 geo points in kms *)
@@ -258,12 +258,12 @@ let haversine_distance (lat1, lon1) (lat2, lon2) =
     It is calculated by creating a triangle from all 3 points and then
     calculating the height of the perpendicular line starting from the point to
     the line. *)
-let distance_from_line line_start line_end point =
+let distance_from_line ~start ~end_ ~point =
   let open Float in
   (* calculate the lengths of the 3 sides of the triangle *)
-  let line_dist = haversine_distance line_start line_end in
-  let start_to_point_dist = haversine_distance line_start point in
-  let end_to_point_dist = haversine_distance line_end point in
+  let line_dist = haversine_distance start end_ in
+  let start_to_point_dist = haversine_distance start point in
+  let end_to_point_dist = haversine_distance end_ point in
 
   (* calculate the triangle's semi perimeter: s = (a + b + c) / 2 *)
   let semi_perimeter =
@@ -281,17 +281,64 @@ let distance_from_line line_start line_end point =
   let distance_from_line = 2. * area / line_dist in
   distance_from_line
 
-let normalize_route (points : (float * float) list) =
-  let rec normalize_aux points to_keep =
-    let start_point = List.hd_exn points in
-    let end_point = List.tl_exn points in
-    to_keep
+let normalize_route ~(threshold : float) (points : (float * float) list) =
+  let rec normalize_aux start_idx end_idx points to_keep =
+    let start_point = List.nth_exn points start_idx in
+    let end_point = List.nth_exn points end_idx in
+
+    (* loop through all points between start and end idx and find the point
+       furthest from the line *)
+    let max_idx, max_distance, _max_point =
+      List.foldi
+        ~init:(0, 0.0, (0.0, 0.0))
+          (* keep track of current max idx, distance, point *)
+        ~f:(fun i (curr_max_idx, curr_max_dist, curr_max_point) point ->
+          let distance =
+            if i > start_idx && i < end_idx then
+              distance_from_line ~start:start_point ~end_:end_point ~point
+            else 0.
+          in
+          if Float.(distance > curr_max_dist) then (i, distance, point)
+          else (curr_max_idx, curr_max_dist, curr_max_point))
+        points
+    in
+
+    if Float.(max_distance > threshold) then
+      let to_keep = max_idx :: to_keep in
+      let to_keep1 = normalize_aux start_idx max_idx points [] in
+      let to_keep2 = normalize_aux max_idx end_idx points [] in
+      to_keep @ to_keep1 @ to_keep2
+    else to_keep
   in
 
   assert (List.length points > 2);
-  let to_keep = normalize_aux points [] in
+  let start_idx = 0 in
+  let end_idx = List.length points - 1 in
+  let to_keep = normalize_aux start_idx end_idx points [ start_idx; end_idx ] in
+  let to_keep = List.dedup_and_sort ~compare:Int.compare to_keep in
   List.iter ~f:(fun i -> printf "%d " i) to_keep;
+  printf "\nThreshold:%f Initial:%d Final:%d\n" threshold (List.length points)
+    (List.length to_keep);
+  (* TODO: test this *)
   ()
+
+let%expect_test "normalize_route" =
+  let json =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/5kloop_streams_16575000264.json"
+  in
+  let streams = Streams.t_of_yojson_smoothed json in
+  List.iter
+    ~f:(fun stream ->
+      match stream with
+      | Models.Streams.StreamType.LatLngStream s ->
+          let data =
+            List.map ~f:(fun p -> (List.nth_exn p 0, List.nth_exn p 1)) s.data
+          in
+          normalize_route ~threshold:0.02 data
+      | _ -> ())
+    streams;
+  [%expect {| |}]
 
 let%expect_test "haversine_distance" =
   let loop1_start = (54.70299, 25.317408) in
@@ -304,7 +351,7 @@ let%expect_test "distance_from_line_acute_triangle" =
   let line_start = (54.703534, 25.315630) in
   let line_end = (54.70476848383893, 25.316215439902518) in
   let point = (54.70365225960127, 25.319627533102445) in
-  let d = distance_from_line line_start line_end point in
+  let d = distance_from_line ~start:line_start ~end_:line_end ~point in
   printf "%f" d;
   [%expect {| 0.244230 |}]
 
@@ -312,7 +359,7 @@ let%expect_test "distance_from_line_acute_obtuse" =
   let line_start = (54.703534, 25.315630) in
   let line_end = (54.70476848383893, 25.316215439902518) in
   let point = (54.70496050212048, 25.318387068033555) in
-  let d = distance_from_line line_start line_end point in
+  let d = distance_from_line ~start:line_start ~end_:line_end ~point in
   printf "%f" d;
   [%expect {| 0.128917 |}]
 
@@ -320,7 +367,7 @@ let%expect_test "distance_from_line_acute_obtuse_other_side" =
   let line_start = (54.703534, 25.315630) in
   let line_end = (54.70476848383893, 25.316215439902518) in
   let point = (54.70295308022377, 25.30984663815214) in
-  let d = distance_from_line line_start line_end point in
+  let d = distance_from_line ~start:line_start ~end_:line_end ~point in
   printf "%f" d;
   [%expect {| 0.341305 |}]
 
