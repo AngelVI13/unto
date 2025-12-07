@@ -2,7 +2,8 @@ open Core
 
 (* TODO: this is very very hacky. I can attach a script section instead and
    load a js file but how to pass attributes to the js?? *)
-let activity_map_script (locations : float list list) : string =
+let activity_map_script (map_id : string) (locations : float list list) : string
+    =
   let latlng_str =
     List.fold ~init:""
       ~f:(fun acc latlng ->
@@ -11,8 +12,8 @@ let activity_map_script (locations : float list list) : string =
       locations
   in
   let pretxt =
-    {|
-var map = L.map('map');
+    sprintf "var map = L.map('%s');" map_id
+    ^ {|
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'

@@ -13,22 +13,27 @@ let activity_map ~(activity : Models.Activity.t) ?(full_load = true) () =
   let locations =
     List.find_map
       ~f:(fun stream ->
-        match stream with LatLngStream s -> Some s.data | _ -> None)
+        match stream with
+        | LatLngStream s ->
+            Some (s.data, Strava.Api.normalize_route ~threshold:0.02 s.data)
+        | _ -> None)
       activity.streams
   in
 
   match locations with
   | None -> null []
-  | Some locs ->
+  | Some (locs, normalized) ->
+      let _ = locs in
+      let map_id = "map" in
       if full_load then
-        let map_script = Activity_map.activity_map_script locs in
-        null [ div [ id "map" ] []; script [] "%s" map_script ]
+        let map_script = Activity_map.activity_map_script map_id normalized in
+        null [ div [ id "%s" map_id ] []; script [] "%s" map_script ]
       else
         null
           [
             div
               [
-                id "map";
+                id "%s" map_id;
                 Hx.trigger "load";
                 path_attr Hx.get Paths.activity_map_url activity.id;
               ]
