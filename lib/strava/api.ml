@@ -249,13 +249,6 @@ let haversine_distance point1 point2 =
   let c = 2. * atan2 (sqrt a) (sqrt (1. -. a)) in
   r * c
 
-(* TODO: add function to remove unnecessary points using the Ramer-Douglas-Peucker algorithm *)
-(* https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm *)
-
-(* TODO: then implement algorithm to create polyline from geo points so we can
-   plot them in the ui and see if it works correctly or alternatively give it a
-   set of float points and maybe it works with that ? *)
-
 (** Measure the distance from a point to line (formed by start and end points).
     It is calculated by creating a triangle from all 3 points and then
     calculating the height of the perpendicular line starting from the point to
@@ -321,6 +314,10 @@ let normalize_route ~(threshold : float) (points : float list list) =
   List.fold ~init:[]
     ~f:(fun acc point_idx -> List.nth_exn points point_idx :: acc)
     to_keep
+
+(* TODO: implement geohashing in order to create a hash from the normalized route *)
+(* wikipedia technical description: https://en.wikipedia.org/wiki/Geohash#Technical_description *)
+(* webpage to visualize geohashes: https://geohash.softeng.co/ezs42pke *)
 
 let%expect_test "normalize_route" =
   let json =
