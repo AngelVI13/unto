@@ -315,6 +315,140 @@ let normalize_route ~(threshold : float) (points : float list list) =
     ~f:(fun acc point_idx -> List.nth_exn points point_idx :: acc)
     to_keep
 
+(* NOTE: this is geohash specific table *)
+let base32 =
+  [
+    "0";
+    "1";
+    "2";
+    "3";
+    "4";
+    "5";
+    "6";
+    "7";
+    "8";
+    "9";
+    "b";
+    "c";
+    "d";
+    "e";
+    "f";
+    "g";
+    "h";
+    "j";
+    "k";
+    "m";
+    "n";
+    "p";
+    "q";
+    "r";
+    "s";
+    "t";
+    "u";
+    "v";
+    "w";
+    "x";
+    "y";
+    "z";
+  ]
+
+module GeoHashState = struct
+  type t = {
+    lat_min : float;
+    lat_max : float;
+    lng_min : float;
+    lng_max : float;
+    even_bit : bool;
+    index : int;
+    bit : int;
+    hash : string list;
+  }
+
+  let make () =
+    {
+      lat_min = -90.;
+      lat_max = 90.;
+      lng_min = -180.;
+      lng_max = 180.;
+      even_bit = true;
+      index = 0;
+      bit = 0;
+      hash = [];
+    }
+
+  let bisect_east_west_longitude t lng =
+    let lng_mid = (t.lng_min +. t.lng_max) /. 2. in
+    let upper_range = Float.(lng >= lng_mid) in
+    {
+      t with
+      lng_min = (if upper_range then lng_mid else t.lng_min);
+      index = (if upper_range then (t.index * 2) + 1 else t.index * 2);
+      lng_max = (if upper_range then t.lng_max else lng_mid);
+    }
+
+  let bisect_north_south_latitude t lat =
+    let lat_mid = (t.lat_min +. t.lat_max) /. 2. in
+    let upper_range = Float.(lat >= lat_mid) in
+    {
+      t with
+      lat_min = (if upper_range then lat_mid else t.lat_min);
+      index = (if upper_range then (t.index * 2) + 1 else t.index * 2);
+      lat_max = (if upper_range then t.lat_max else lat_mid);
+    }
+
+  let do_encode_step t lat lng =
+    let t =
+      if t.even_bit then bisect_east_west_longitude t lng
+      else bisect_north_south_latitude t lat
+    in
+
+    let t = { t with bit = t.bit + 1 } in
+    let t =
+      if t.bit = 5 then
+        {
+          t with
+          hash = t.hash @ [ List.nth_exn base32 t.index ];
+          bit = 0;
+          index = 0;
+        }
+      else t
+    in
+
+    { t with even_bit = not t.even_bit }
+end
+
+(* TODO: this works but the actual location is not always in the middle of the
+   square if we use precision 8, check if this is ok. We can switch to
+   precision 7 which makes the square bigger but then we might have overlap
+   with other points ? *)
+let geohash_from_latlng ?(precision = 8) (point : float list) =
+  assert (List.length point = 2);
+  let lat = List.nth_exn point 0 in
+  let lng = List.nth_exn point 1 in
+  let geohash = GeoHashState.make () in
+
+  (* TODO: this looks very ugly and not really functional style - how to improve it? *)
+  let rec geohash_aux (state : GeoHashState.t) =
+    if List.length state.hash < precision then
+      geohash_aux (GeoHashState.do_encode_step state lat lng)
+    else state
+  in
+
+  let geohash = geohash_aux geohash in
+  String.concat geohash.hash
+
+let%expect_test "geohash_from_latlng" =
+  let loop1_start = [ 54.70299; 25.317408 ] in
+  let hash = geohash_from_latlng loop1_start in
+  printf "%s" hash;
+  [%expect {| u9dp0n7s |}]
+
+let%expect_test "geohash_from_latlng2" =
+  let loop1_start = [ 54.70365225960127; 25.319627533102445 ] in
+  let hash = geohash_from_latlng loop1_start in
+  printf "%s" hash;
+  [%expect {| u9dp0nmp |}]
+
 (* TODO: implement geohashing in order to create a hash from the normalized route *)
 (* wikipedia technical description: https://en.wikipedia.org/wiki/Geohash#Technical_description *)
 (* webpage to visualize geohashes: https://geohash.softeng.co/ezs42pke *)
