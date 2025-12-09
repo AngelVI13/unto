@@ -219,4 +219,10 @@ module Streams = struct
             s.data
         in
         Some splits
+
+  let latlng_points (streams : t) : float list list option =
+    List.find_map
+      ~f:(fun stream ->
+        match stream with LatLngStream s -> Some s.data | _ -> None)
+      streams
 end

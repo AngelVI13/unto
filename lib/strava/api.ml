@@ -437,6 +437,38 @@ let geohash_from_latlng ?(precision = 8) (point : float list) =
   let geohash = geohash_aux geohash in
   String.concat geohash.hash
 
+let hash_route (streams : Streams.t) =
+  let open Option.Let_syntax in
+  let threshold = 0.02 in
+  let%bind latlng_points = Streams.latlng_points streams in
+  let points = normalize_route ~threshold latlng_points in
+  Some (List.map ~f:geohash_from_latlng points)
+
+(* let route_similarity (route1: string list) (route2: string list) =  *)
+(*   let r1 = Set.of_list *)
+
+let%expect_test "hash_route" =
+  let json =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/5kloop_streams_16575000264.json"
+  in
+  let streams = Streams.t_of_yojson_smoothed json in
+  let hash = Option.value_exn (hash_route streams) in
+  printf "%s" (String.concat ~sep:"," hash);
+  [%expect
+    {| u9dp0n7e,u9dp0n6q,u9dp0ndd,u9dp0n8y,u99zpyxv,u99zpyfe,u99zpybd,u99zpw82,u99zpqwc,u99zpqqw,u99zptep,u99zptm1,u99zptnw,u99zptnb,u99zpu9x,u99zpudq,u99zpvh2,u99zpvnw,u9dp0j2r,u9dp0n6q,u9dp0n7s |}]
+
+let%expect_test "hash_route2" =
+  let json =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/5kloop2_16434068435.json"
+  in
+  let streams = Streams.t_of_yojson_smoothed json in
+  let hash = Option.value_exn (hash_route streams) in
+  printf "%s" (String.concat ~sep:"," hash);
+  [%expect
+    {| u9dp0n7e,u9dp0n6q,u9dp0ndd,u9dp0n8y,u99zpyxv,u99zpyfe,u99zpybd,u99zpw82,u99zpqwc,u99zpqqw,u99zptep,u99zptm1,u99zptnw,u99zptnb,u99zpu9x,u99zpudq,u99zpvh2,u99zpvnw,u9dp0j2r,u9dp0n6q,u9dp0n7s |}]
+
 let%expect_test "geohash_from_latlng" =
   let loop1_start = [ 54.70299; 25.317408 ] in
   let hash = geohash_from_latlng loop1_start in
@@ -460,19 +492,15 @@ let%expect_test "normalize_route" =
   in
   let streams = Streams.t_of_yojson_smoothed json in
   let threshold = 0.02 in
-  List.iter
-    ~f:(fun stream ->
-      match stream with
-      | Models.Streams.StreamType.LatLngStream s ->
-          let points = normalize_route ~threshold s.data in
-          List.iter
-            ~f:(fun pt ->
-              printf "[%f, %f] " (List.nth_exn pt 0) (List.nth_exn pt 1))
-            points;
-          printf "\nThreshold:%f Initial:%d Final:%d\n" threshold
-            (List.length points) (List.length points)
-      | _ -> ())
-    streams;
+  let latlng_points = Streams.latlng_points streams in
+  Option.iter latlng_points ~f:(fun points ->
+      let points = normalize_route ~threshold points in
+      List.iter
+        ~f:(fun pt ->
+          printf "[%f, %f] " (List.nth_exn pt 0) (List.nth_exn pt 1))
+        points;
+      printf "\nThreshold:%f Initial:%d Final:%d\n" threshold
+        (List.length points) (List.length points));
   [%expect
     {|
     [54.702978, 25.317535] [54.703360, 25.315758] [54.704130, 25.316015] [54.704773, 25.313622] [54.704548, 25.312432] [54.705585, 25.305288] [54.705488, 25.302508] [54.703718, 25.291140] [54.703872, 25.288903] [54.703490, 25.288602] [54.699428, 25.294660] [54.697145, 25.297430] [54.696523, 25.299663] [54.695500, 25.299957] [54.693957, 25.303665] [54.693733, 25.304918] [54.695475, 25.307480] [54.696563, 25.310775] [54.698098, 25.312912] [54.703378, 25.315702] [54.702990, 25.317408]
