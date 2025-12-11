@@ -444,6 +444,69 @@ let hash_route (streams : Streams.t) =
   let points = normalize_route ~threshold latlng_points in
   Some (List.map ~f:geohash_from_latlng points)
 
+type direction = North | South | East | West [@@deriving eq]
+
+let neighbors =
+  [
+    ( North,
+      [ "p0r21436x8zb9dcf5h7kjnmqesgutwvy"; "bc01fg45238967deuvhjyznpkmstqrwx" ]
+    );
+    ( South,
+      [ "14365h7k9dcfesgujnmqp0r2twvyx8zb"; "238967debc01fg45kmstqrwxuvhjyznp" ]
+    );
+    ( East,
+      [ "bc01fg45238967deuvhjyznpkmstqrwx"; "p0r21436x8zb9dcf5h7kjnmqesgutwvy" ]
+    );
+    ( West,
+      [ "238967debc01fg45kmstqrwxuvhjyznp"; "14365h7k9dcfesgujnmqp0r2twvyx8zb" ]
+    );
+  ]
+
+let borders =
+  [
+    (North, [ "prxz"; "bcfguvyz" ]);
+    (South, [ "028b"; "0145hjnp" ]);
+    (East, [ "bcfguvyz"; "prxz" ]);
+    (West, [ "0145hjnp"; "028b" ]);
+  ]
+
+(* TODO: Add comments & pictures to each line explaining how this works *)
+let rec calculate_adjacent (hash : string) (dir : direction) =
+  let hash_len = String.length hash in
+  let last_char = String.nget hash (hash_len - 1) in
+
+  let type_idx = hash_len % 2 in
+
+  let dir_borders = List.Assoc.find_exn ~equal:equal_direction borders dir in
+  let dir_border = List.nth_exn dir_borders type_idx in
+
+  let parent = String.slice hash 0 (hash_len - 1) in
+  let parent =
+    if String.contains dir_border last_char then calculate_adjacent parent dir
+    else parent
+  in
+
+  let neighbors = List.Assoc.find_exn ~equal:equal_direction neighbors dir in
+  let neighbor_base = List.nth_exn neighbors type_idx in
+  let neighbor_idx = String.index_exn neighbor_base last_char in
+  let neighbor = List.nth_exn base32 neighbor_idx in
+  parent ^ neighbor
+
+(* TODO: implement function to calculate all the neighbors (8 directions) *)
+
+(* TODO: add test for a hash that is on the edge of the box *)
+let%expect_test "calculate_adjacent" =
+  let hash = "u9dp0n7e" in
+  let north = calculate_adjacent hash North in
+  printf "%s," north;
+  let south = calculate_adjacent hash South in
+  printf "%s," south;
+  let east = calculate_adjacent hash East in
+  printf "%s," east;
+  let west = calculate_adjacent hash West in
+  printf "%s," west;
+  [%expect {| u9dp0n7s,u9dp0n7d,u9dp0n7g,u9dp0n77, |}]
+
 (* let route_similarity (route1: string list) (route2: string list) =  *)
 (*   let r1 = Set.of_list *)
 
@@ -467,7 +530,7 @@ let%expect_test "hash_route2" =
   let hash = Option.value_exn (hash_route streams) in
   printf "%s" (String.concat ~sep:"," hash);
   [%expect
-    {| u9dp0n7e,u9dp0n6q,u9dp0ndd,u9dp0n8y,u99zpyxv,u99zpyfe,u99zpybd,u99zpw82,u99zpqwc,u99zpqqw,u99zptep,u99zptm1,u99zptnw,u99zptnb,u99zpu9x,u99zpudq,u99zpvh2,u99zpvnw,u9dp0j2r,u9dp0n6q,u9dp0n7s |}]
+    {| u9dp0n7e,u9dp0n6q,u9dp0nd7,u9dp0n8y,u99zpyxv,u99zpyfe,u99zpybd,u99zpw82,u99zpqwc,u99zpqqx,u99zptm2,u99zptnw,u99zptnb,u99zpu9r,u99zpudq,u99zpuup,u99zpvnw,u9dp0j2r,u9dp0n6q,u9dp0n7s |}]
 
 let%expect_test "geohash_from_latlng" =
   let loop1_start = [ 54.70299; 25.317408 ] in
