@@ -417,10 +417,6 @@ module GeoHashState = struct
     { t with even_bit = not t.even_bit }
 end
 
-(* TODO: this works but the actual location is not always in the middle of the
-   square if we use precision 8, check if this is ok. We can switch to
-   precision 7 which makes the square bigger but then we might have overlap
-   with other points ? *)
 let geohash_from_latlng ?(precision = 8) (point : float list) =
   assert (List.length point = 2);
   let lat = List.nth_exn point 0 in
@@ -437,16 +433,9 @@ let geohash_from_latlng ?(precision = 8) (point : float list) =
   let geohash = geohash_aux geohash in
   String.concat geohash.hash
 
-let hash_route (streams : Streams.t) =
-  let open Option.Let_syntax in
-  let threshold = 0.02 in
-  let%bind latlng_points = Streams.latlng_points streams in
-  let points = normalize_route ~threshold latlng_points in
-  Some (List.map ~f:geohash_from_latlng points)
-
 type direction = North | South | East | West [@@deriving eq]
 
-let neighbors =
+let hash_neighbors =
   [
     ( North,
       [ "p0r21436x8zb9dcf5h7kjnmqesgutwvy"; "bc01fg45238967deuvhjyznpkmstqrwx" ]
@@ -462,7 +451,7 @@ let neighbors =
     );
   ]
 
-let borders =
+let hash_borders =
   [
     (North, [ "prxz"; "bcfguvyz" ]);
     (South, [ "028b"; "0145hjnp" ]);
@@ -470,45 +459,110 @@ let borders =
     (West, [ "0145hjnp"; "028b" ]);
   ]
 
-(* TODO: Add comments & pictures to each line explaining how this works *)
+(* NOTE: https://chatgpt.com/s/t_693b205c31948191b5ae5f811f7451d6 *)
 let rec calculate_adjacent (hash : string) (dir : direction) =
   let hash_len = String.length hash in
   let last_char = String.nget hash (hash_len - 1) in
 
+  (* Each geohash is in rectangular shape. Even length hashes are tall and odd
+     length hashes are wide. The type_idx is holding information if the hash is
+     even length or odd. Based on this information we index into map containing
+     the chars for bordering hashes. *)
   let type_idx = hash_len % 2 in
 
-  let dir_borders = List.Assoc.find_exn ~equal:equal_direction borders dir in
+  let dir_borders =
+    List.Assoc.find_exn ~equal:equal_direction hash_borders dir
+  in
+  (* This includes all hashes at the direction border *)
   let dir_border = List.nth_exn dir_borders type_idx in
 
   let parent = String.slice hash 0 (hash_len - 1) in
   let parent =
+    (* If the last char of the hash is at the border -> the neighbor is in another hash *)
     if String.contains dir_border last_char then calculate_adjacent parent dir
     else parent
   in
 
-  let neighbors = List.Assoc.find_exn ~equal:equal_direction neighbors dir in
+  let neighbors =
+    List.Assoc.find_exn ~equal:equal_direction hash_neighbors dir
+  in
   let neighbor_base = List.nth_exn neighbors type_idx in
   let neighbor_idx = String.index_exn neighbor_base last_char in
   let neighbor = List.nth_exn base32 neighbor_idx in
   parent ^ neighbor
 
-(* TODO: implement function to calculate all the neighbors (8 directions) *)
+let calculate_all_neighbors (hash : string) : string list =
+  let north = calculate_adjacent hash North in
+  let south = calculate_adjacent hash South in
+  let east = calculate_adjacent hash East in
+  let west = calculate_adjacent hash West in
+  let north_east = calculate_adjacent north East in
+  let north_west = calculate_adjacent north West in
+  let south_east = calculate_adjacent south East in
+  let south_west = calculate_adjacent south West in
+  [ north; south; east; west; north_east; north_west; south_east; south_west ]
+
+let hash_route (streams : Streams.t) =
+  let open Option.Let_syntax in
+  let threshold = 0.02 in
+  let%bind latlng_points = Streams.latlng_points streams in
+  let points = normalize_route ~threshold latlng_points in
+  Some (List.map ~f:geohash_from_latlng points)
+
+let calculate_route_similarity ~(base : string list) ~(to_compare : string list)
+    : float =
+  (* TODO: finish this, Is it worth it to do a hausdorf distance
+         calculation here ? what if 2 routes (very similar) produce a different
+         amount of points ? then i can't just compare them. But if i have
+         routes with differnet points then my primary filter won't match so
+         here its safe to assume that both routes will be with same number of
+         points  *)
+  let _ = (base, to_compare) in
+  0.0
 
 (* TODO: add test for a hash that is on the edge of the box *)
 let%expect_test "calculate_adjacent" =
   let hash = "u9dp0n7e" in
   let north = calculate_adjacent hash North in
-  printf "%s," north;
+  printf "N:%s," north;
   let south = calculate_adjacent hash South in
-  printf "%s," south;
+  printf "S:%s," south;
   let east = calculate_adjacent hash East in
-  printf "%s," east;
+  printf "E:%s," east;
   let west = calculate_adjacent hash West in
-  printf "%s," west;
-  [%expect {| u9dp0n7s,u9dp0n7d,u9dp0n7g,u9dp0n77, |}]
+  printf "W:%s," west;
+  [%expect {| N:u9dp0n7s,S:u9dp0n7d,E:u9dp0n7g,W:u9dp0n77, |}]
 
-(* let route_similarity (route1: string list) (route2: string list) =  *)
-(*   let r1 = Set.of_list *)
+let%expect_test "calculate_adjacent_top_rigth_corner" =
+  let hash = "u9dp0n7z" in
+  let north = calculate_adjacent hash North in
+  printf "N:%s," north;
+  let south = calculate_adjacent hash South in
+  printf "S:%s," south;
+  let east = calculate_adjacent hash East in
+  printf "E:%s," east;
+  let west = calculate_adjacent hash West in
+  printf "W:%s," west;
+  [%expect {| N:u9dp0neb,S:u9dp0n7y,E:u9dp0nkp,W:u9dp0n7x, |}]
+
+let%expect_test "calculate_adjacent_bottom_left_corner" =
+  let hash = "u9dp0n70" in
+  let north = calculate_adjacent hash North in
+  printf "N:%s," north;
+  let south = calculate_adjacent hash South in
+  printf "S:%s," south;
+  let east = calculate_adjacent hash East in
+  printf "E:%s," east;
+  let west = calculate_adjacent hash West in
+  printf "W:%s," west;
+  [%expect {| N:u9dp0n71,S:u9dp0n5p,E:u9dp0n72,W:u9dp0n6b, |}]
+
+let%expect_test "calculate_all_neighbors" =
+  let hash = "u9dp0n70" in
+  let neighbors = calculate_all_neighbors hash in
+  List.iter ~f:(fun hash -> printf "%s," hash) neighbors;
+  [%expect
+    {| u9dp0n71,u9dp0n5p,u9dp0n72,u9dp0n6b,u9dp0n73,u9dp0n6c,u9dp0n5r,u9dp0n4z, |}]
 
 let%expect_test "hash_route" =
   let json =
