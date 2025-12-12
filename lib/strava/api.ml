@@ -507,25 +507,61 @@ let calculate_all_neighbors (hash : string) : string list =
   let south_west = calculate_adjacent south West in
   [ north; south; east; west; north_east; north_west; south_east; south_west ]
 
-let hash_route (streams : Streams.t) =
+type route_hash8 = string list list [@@deriving yojson]
+
+let hash_route_precise (streams : Streams.t) : route_hash8 option =
   let open Option.Let_syntax in
   let threshold = 0.02 in
   let%bind latlng_points = Streams.latlng_points streams in
   let points = normalize_route ~threshold latlng_points in
-  Some (List.map ~f:geohash_from_latlng points)
+  Some
+    (List.map
+       ~f:(fun point ->
+         let hash = geohash_from_latlng point in
+         let neighbors = calculate_all_neighbors hash in
+         hash :: neighbors)
+       points)
 
-let calculate_route_similarity ~(base : string list) ~(to_compare : string list)
+(* TODO: any 2 consecutive same hashes should collapse to a single hash. This
+   will make sure we have a more uniform processing ??  *)
+(* TODO: maybe for coarse hashes i should use a bigger threshold to make sure
+   that small variations in gps data does not add additional points in the
+   hash? *)
+let hash_route_coarse (streams : Streams.t) : string list option =
+  let open Option.Let_syntax in
+  (* TODO: both coarse and precise hashing should use the same normalized route
+     so maybe this should be done somewhere else ? *)
+  let threshold = 0.02 in
+  let%bind latlng_points = Streams.latlng_points streams in
+  let points = normalize_route ~threshold latlng_points in
+  Some (List.map ~f:(geohash_from_latlng ~precision:7) points)
+
+(* TODO: how to calculate the similarity for routes that have different amount of points ? *)
+let calculate_route_similarity ~(base : route_hash8) ~(candidate : route_hash8)
     : float =
-  (* TODO: finish this, Is it worth it to do a hausdorf distance
-         calculation here ? what if 2 routes (very similar) produce a different
-         amount of points ? then i can't just compare them. But if i have
-         routes with differnet points then my primary filter won't match so
-         here its safe to assume that both routes will be with same number of
-         points  *)
-  let _ = (base, to_compare) in
-  0.0
+  (* TODO: should this count neighbor matches as 0.5 or same as main hash matches ? *)
+  printf "base: %d candidate: %d" (List.length base) (List.length candidate);
+  assert (List.length base = List.length candidate);
+  let matches =
+    List.foldi ~init:0.0
+      ~f:(fun i acc hash ->
+        let base_hash = List.hd_exn hash in
+        let candidate_hash = List.nth_exn candidate i in
+        let candidate_main_hash = List.hd_exn candidate_hash in
+        let candidate_neighbor_hashes = List.tl_exn candidate_hash in
+        if String.(base_hash = candidate_main_hash) then acc +. 1.0
+        else if
+          List.count
+            ~f:(fun h -> String.(base_hash = h))
+            candidate_neighbor_hashes
+          > 0
+        then acc +. 0.5
+        else acc)
+      base
+  in
+  let total_points = List.length base in
+  matches /. float_of_int total_points
 
-(* TODO: add test for a hash that is on the edge of the box *)
 let%expect_test "calculate_adjacent" =
   let hash = "u9dp0n7e" in
   let north = calculate_adjacent hash North in
@@ -569,27 +605,70 @@ let%expect_test "calculate_all_neighbors" =
   [%expect
     {| u9dp0n71,u9dp0n5p,u9dp0n72,u9dp0n6b,u9dp0n73,u9dp0n6c,u9dp0n5r,u9dp0n4z, |}]
 
-let%expect_test "hash_route" =
+let%expect_test "hash_route_precise" =
   let json =
     Yojson.Safe.from_file
       "/home/angel/Documents/ocaml/unto/5kloop_streams_16575000264.json"
   in
   let streams = Streams.t_of_yojson_smoothed json in
-  let hash = Option.value_exn (hash_route streams) in
+  let hash = Option.value_exn (hash_route_precise streams) in
+  let json = yojson_of_route_hash8 hash in
+  printf "%s" (Yojson.Safe.to_string json);
+  [%expect
+    {| [["u9dp0n7e","u9dp0n7s","u9dp0n7d","u9dp0n7g","u9dp0n77","u9dp0n7u","u9dp0n7k","u9dp0n7f","u9dp0n76"],["u9dp0n6q","u9dp0n6r","u9dp0n6m","u9dp0n6w","u9dp0n6n","u9dp0n6x","u9dp0n6p","u9dp0n6t","u9dp0n6j"],["u9dp0ndd","u9dp0nde","u9dp0nd9","u9dp0ndf","u9dp0nd6","u9dp0ndg","u9dp0nd7","u9dp0ndc","u9dp0nd3"],["u9dp0n8y","u9dp0n8z","u9dp0n8v","u9dp0n9n","u9dp0n8w","u9dp0n9p","u9dp0n8x","u9dp0n9j","u9dp0n8t"],["u99zpyxv","u99zpyxy","u99zpyxu","u9dp0n8j","u99zpyxt","u9dp0n8n","u99zpyxw","u9dp0n8h","u99zpyxs"],["u99zpyfe","u99zpyfs","u99zpyfd","u99zpyfg","u99zpyf7","u99zpyfu","u99zpyfk","u99zpyff","u99zpyf6"],["u99zpybd","u99zpybe","u99zpyb9","u99zpybf","u99zpyb6","u99zpybg","u99zpyb7","u99zpybc","u99zpyb3"],["u99zpw82","u99zpw83","u99zpw2r","u99zpw88","u99zpw80","u99zpw89","u99zpw81","u99zpw2x","u99zpw2p"],["u99zpqwc","u99zpqwf","u99zpqwb","u99zpqx1","u99zpqw9","u99zpqx4","u99zpqwd","u99zpqx0","u99zpqw8"],["u99zpqqw","u99zpqqx","u99zpqqt","u99zpqqy","u99zpqqq","u99zpqqz","u99zpqqr","u99zpqqv","u99zpqqm"],["u99zptep","u99zptg0","u99zpten","u99zpter","u99zptdz","u99zptg2","u99zptfb","u99zpteq","u99zptdy"],["u99zptm1","u99zptm4","u99zptm0","u99zptm3","u99zptkc","u99zptm6","u99zptkf","u99zptm2","u99zptkb"],["u99zptnw","u99zptnx","u99zptnt","u99zptny","u99zptnq","u99zptnz","u99zptnr","u99zptnv","u99zptnm"],["u99zptnb","u99zptnc","u99zpsyz","u99zptp0","u99zptn8","u99zptp1","u99zptn9","u99zpszp","u99zpsyx"],["u99zpu9x","u99zpuc8","u99zpu9w","u99zpu9z","u99zpu9r","u99zpucb","u99zpuc2","u99zpu9y","u99zpu9q"],["u99zpudq","u99zpudr","u99zpudm","u99zpudw","u99zpudn","u99zpudx","u99zpudp","u99zpudt","u99zpudj"],["u99zpvh2","u99zpvh3","u99zpuur","u99zpvh8","u99zpvh0","u99zpvh9","u99zpvh1","u99zpuux","u99zpuup"],["u99zpvnw","u99zpvnx","u99zpvnt","u99zpvny","u99zpvnq","u99zpvnz","u99zpvnr","u99zpvnv","u99zpvnm"],["u9dp0j2r","u9dp0j82","u9dp0j2q","u9dp0j2x","u9dp0j2p","u9dp0j88","u9dp0j80","u9dp0j2w","u9dp0j2n"],["u9dp0n6q","u9dp0n6r","u9dp0n6m","u9dp0n6w","u9dp0n6n","u9dp0n6x","u9dp0n6p","u9dp0n6t","u9dp0n6j"],["u9dp0n7s","u9dp0n7t","u9dp0n7e","u9dp0n7u","u9dp0n7k","u9dp0n7v","u9dp0n7m","u9dp0n7g","u9dp0n77"]] |}]
+
+let%expect_test "hash_route_coarse" =
+  let json =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/5kloop_streams_16575000264.json"
+  in
+  let streams = Streams.t_of_yojson_smoothed json in
+  let hash = Option.value_exn (hash_route_coarse streams) in
   printf "%s" (String.concat ~sep:"," hash);
   [%expect
-    {| u9dp0n7e,u9dp0n6q,u9dp0ndd,u9dp0n8y,u99zpyxv,u99zpyfe,u99zpybd,u99zpw82,u99zpqwc,u99zpqqw,u99zptep,u99zptm1,u99zptnw,u99zptnb,u99zpu9x,u99zpudq,u99zpvh2,u99zpvnw,u9dp0j2r,u9dp0n6q,u9dp0n7s |}]
+    {| u9dp0n7,u9dp0n6,u9dp0nd,u9dp0n8,u99zpyx,u99zpyf,u99zpyb,u99zpw8,u99zpqw,u99zpqq,u99zpte,u99zptm,u99zptn,u99zptn,u99zpu9,u99zpud,u99zpvh,u99zpvn,u9dp0j2,u9dp0n6,u9dp0n7 |}]
 
-let%expect_test "hash_route2" =
-  let json =
+let%expect_test "calculate_route_similarity" =
+  let json1 =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/5kloop_streams_16575000264.json"
+  in
+  let streams1 = Streams.t_of_yojson_smoothed json1 in
+  let hash1 = Option.value_exn (hash_route_precise streams1) in
+
+  let json2 =
     Yojson.Safe.from_file
       "/home/angel/Documents/ocaml/unto/5kloop2_16434068435.json"
   in
-  let streams = Streams.t_of_yojson_smoothed json in
-  let hash = Option.value_exn (hash_route streams) in
-  printf "%s" (String.concat ~sep:"," hash);
-  [%expect
-    {| u9dp0n7e,u9dp0n6q,u9dp0nd7,u9dp0n8y,u99zpyxv,u99zpyfe,u99zpybd,u99zpw82,u99zpqwc,u99zpqqx,u99zptm2,u99zptnw,u99zptnb,u99zpu9r,u99zpudq,u99zpuup,u99zpvnw,u9dp0j2r,u9dp0n6q,u9dp0n7s |}]
+  let streams2 = Streams.t_of_yojson_smoothed json2 in
+  let hash2 = Option.value_exn (hash_route_precise streams2) in
+
+  let json3 =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/4k_sim_loop_16487742395.json"
+  in
+  let streams3 = Streams.t_of_yojson_smoothed json3 in
+  let hash3 = Option.value_exn (hash_route_precise streams3) in
+
+  let json4 =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/5k_not_loop_16463319760.json"
+  in
+  let streams4 = Streams.t_of_yojson_smoothed json4 in
+  let hash4 = Option.value_exn (hash_route_precise streams4) in
+
+  let similarity_1_2 =
+    calculate_route_similarity ~base:hash1 ~candidate:hash2
+  in
+  let similarity_1_3 =
+    calculate_route_similarity ~base:hash1 ~candidate:hash3
+  in
+  let similarity_1_4 =
+    calculate_route_similarity ~base:hash1 ~candidate:hash4
+  in
+  printf "Route 1<%f>2; Route 1<%f>3; Route 1<%f>4" similarity_1_2
+    similarity_1_3 similarity_1_4;
+  [%expect {||}]
 
 let%expect_test "geohash_from_latlng" =
   let loop1_start = [ 54.70299; 25.317408 ] in
