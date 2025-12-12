@@ -276,6 +276,11 @@ let distance_from_line ~start ~end_ ~point =
   let distance_from_line = 2. * area / line_dist in
   distance_from_line
 
+(** Normalize route with Douglas-Peucker algorithm.
+
+    More info can be found here:
+    https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
+*)
 let normalize_route ~(threshold : float) (points : float list list) =
   let rec normalize_aux start_idx end_idx points to_keep =
     let start_point = List.nth_exn points start_idx in
