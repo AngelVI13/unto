@@ -543,8 +543,6 @@ let hash_route_coarse (streams : Streams.t) : string list option =
   let points = normalize_route ~threshold latlng_points in
   Some (List.map ~f:(geohash_from_latlng ~precision:7) points)
 
-(* TODO: how to calculate the similarity for routes that have different amount of points ? *)
-
 let match_cost (hash_a : string list) (hash_b : string list) =
   let main_hash_a = List.hd_exn hash_a in
   let neighbors_a = List.tl_exn hash_a in
@@ -561,10 +559,12 @@ let match_cost (hash_a : string list) (hash_b : string list) =
   else 1.
 
 (** Calculate route similarity by using dynamic time warping. This technique
-    deals with routes that can have different number of points. More info can be
-    found here: https://en.wikipedia.org/wiki/Dynamic_time_warping *)
-let calculate_route_similarity_new ~(route_a : route_hash8)
-    ~(route_b : route_hash8) : float =
+    deals with routes that can have different number of points. Similarity of
+    0.0 means the routes are identical whereas similarity of 1.0 means routes
+    are completely diffrent. More info can be found here:
+    https://en.wikipedia.org/wiki/Dynamic_time_warping *)
+let calculate_route_similarity ~(route_a : route_hash8) ~(route_b : route_hash8)
+    : float =
   (* TODO: should this be called - route_difference (cause it returns 0.0
      for equal routes and 1.0 for completely different routes ? *)
   let len_a = List.length route_a in
@@ -580,7 +580,7 @@ let calculate_route_similarity_new ~(route_a : route_hash8)
       let cost =
         match_cost (List.nth_exn route_a (i - 1)) (List.nth_exn route_b (j - 1))
       in
-      dtw.(j).(j) <-
+      dtw.(i).(j) <-
         cost
         +. Float.min
              (Float.min dtw.(i - 1).(j) dtw.(i).(j - 1))
@@ -588,31 +588,6 @@ let calculate_route_similarity_new ~(route_a : route_hash8)
     done
   done;
   dtw.(len_a).(len_b) /. float_of_int (max len_a len_b)
-
-let calculate_route_similarity ~(base : route_hash8) ~(candidate : route_hash8)
-    : float =
-  (* TODO: should this count neighbor matches as 0.5 or same as main hash matches ? *)
-  printf "base: %d candidate: %d" (List.length base) (List.length candidate);
-  assert (List.length base = List.length candidate);
-  let matches =
-    List.foldi ~init:0.0
-      ~f:(fun i acc hash ->
-        let base_hash = List.hd_exn hash in
-        let candidate_hash = List.nth_exn candidate i in
-        let candidate_main_hash = List.hd_exn candidate_hash in
-        let candidate_neighbor_hashes = List.tl_exn candidate_hash in
-        if String.(base_hash = candidate_main_hash) then acc +. 1.0
-        else if
-          List.count
-            ~f:(fun h -> String.(base_hash = h))
-            candidate_neighbor_hashes
-          > 0
-        then acc +. 0.5
-        else acc)
-      base
-  in
-  let total_points = List.length base in
-  matches /. float_of_int total_points
 
 let%expect_test "calculate_adjacent" =
   let hash = "u9dp0n7e" in
@@ -680,64 +655,167 @@ let%expect_test "hash_route_coarse" =
   [%expect
     {| u9dp0n7,u9dp0n6,u9dp0nd,u9dp0n8,u99zpyx,u99zpyf,u99zpyb,u99zpw8,u99zpqw,u99zpqq,u99zpte,u99zptm,u99zptn,u99zptn,u99zpu9,u99zpud,u99zpvh,u99zpvn,u9dp0j2,u9dp0n6,u9dp0n7 |}]
 
-(* let%expect_test "calculate_route_similarity" = *)
-(*   let json1 = *)
-(*     Yojson.Safe.from_file *)
-(*       "/home/angel/Documents/ocaml/unto/5kloop_streams_16575000264.json" *)
-(*   in *)
-(*   let streams1 = Streams.t_of_yojson_smoothed json1 in *)
-(*   let hash1 = Option.value_exn (hash_route_precise streams1) in *)
-(*   let json2 = *)
-(*     Yojson.Safe.from_file *)
-(*       "/home/angel/Documents/ocaml/unto/5kloop2_16434068435.json" *)
-(*   in *)
-(*   let streams2 = Streams.t_of_yojson_smoothed json2 in *)
-(*   let hash2 = Option.value_exn (hash_route_precise streams2) in *)
-(*   let json3 = *)
-(*     Yojson.Safe.from_file *)
-(*       "/home/angel/Documents/ocaml/unto/4k_sim_loop_16487742395.json" *)
-(*   in *)
-(*   let streams3 = Streams.t_of_yojson_smoothed json3 in *)
-(*   let hash3 = Option.value_exn (hash_route_precise streams3) in *)
-(*   let json4 = *)
-(*     Yojson.Safe.from_file *)
-(*       "/home/angel/Documents/ocaml/unto/5k_not_loop_16463319760.json" *)
-(*   in *)
-(*   let streams4 = Streams.t_of_yojson_smoothed json4 in *)
-(*   let hash4 = Option.value_exn (hash_route_precise streams4) in *)
-(*   let similarity_1_2 = *)
-(*     calculate_route_similarity ~base:hash1 ~candidate:hash2 *)
-(*   in *)
-(*   let similarity_1_3 = *)
-(*     calculate_route_similarity ~base:hash1 ~candidate:hash3 *)
-(*   in *)
-(*   let similarity_1_4 = *)
-(*     calculate_route_similarity ~base:hash1 ~candidate:hash4 *)
-(*   in *)
-(*   printf "Route 1<%f>2; Route 1<%f>3; Route 1<%f>4" similarity_1_2 *)
-(*     similarity_1_3 similarity_1_4; *)
-(*   [%expect {||}] *)
+let%expect_test "calculate_route_similarity" =
+  let json1 =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/5kloop_streams_16575000264.json"
+  in
+  let streams1 = Streams.t_of_yojson_smoothed json1 in
+  let hash1 = Option.value_exn (hash_route_precise streams1) in
+  let json2 =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/5kloop2_16434068435.json"
+  in
+  let streams2 = Streams.t_of_yojson_smoothed json2 in
+  let hash2 = Option.value_exn (hash_route_precise streams2) in
+  let json3 =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/4k_sim_loop_16487742395.json"
+  in
+  let streams3 = Streams.t_of_yojson_smoothed json3 in
+  let hash3 = Option.value_exn (hash_route_precise streams3) in
+  let json4 =
+    Yojson.Safe.from_file
+      "/home/angel/Documents/ocaml/unto/5k_not_loop_16463319760.json"
+  in
+  let streams4 = Streams.t_of_yojson_smoothed json4 in
+  let hash4 = Option.value_exn (hash_route_precise streams4) in
+  let similarity_1_2 =
+    calculate_route_similarity ~route_a:hash1 ~route_b:hash2
+  in
+  let similarity_1_3 =
+    calculate_route_similarity ~route_a:hash1 ~route_b:hash3
+  in
+  let similarity_1_4 =
+    calculate_route_similarity ~route_a:hash1 ~route_b:hash4
+  in
+  printf "Route 1<%f>2; Route 1<%f>3; Route 1<%f>4" similarity_1_2
+    similarity_1_3 similarity_1_4;
+  [%expect {| Route 1<0.166667>2; Route 1<0.632353>3; Route 1<0.851852>4 |}]
 
 let%expect_test "calculate_route_similarity_dtw" =
   let route_a = [ [ "a"; "a1" ] ] in
   let route_b = [ [ "b"; "b1" ] ] in
-  let similarity = calculate_route_similarity_new ~route_a ~route_b in
+  let similarity = calculate_route_similarity ~route_a ~route_b in
   printf "Different routes with same amount of points: %f" similarity;
   [%expect {| Different routes with same amount of points: 1.000000 |}];
 
-  let similarity = calculate_route_similarity_new ~route_a ~route_b:route_a in
+  let similarity = calculate_route_similarity ~route_a ~route_b:route_a in
   printf "Same routes with same amount of points: %f" similarity;
   [%expect {| Same routes with same amount of points: 0.000000 |}];
 
-  let route_ab = [ [ "a"; "b1" ] ] in
-  let similarity = calculate_route_similarity_new ~route_a ~route_b:route_ab in
+  let route_a = [ [ "a"; "a1" ] ] in
+  let route_b = [ [ "a"; "b1" ] ] in
+  let similarity = calculate_route_similarity ~route_a ~route_b in
   printf
     "Same routes (same hash but different neighbors) with same amount of \
      points: %f"
     similarity;
   [%expect
-    {| Same routes (same hash but different neighbors) with same amount of points: 0.000000 |}]
-(* TODO: continue to add more tests here *)
+    {| Same routes (same hash but different neighbors) with same amount of points: 0.000000 |}];
+
+  let route_a = [ [ "a"; "a1" ] ] in
+  let route_b = [ [ "b"; "a" ] ] in
+  let similarity = calculate_route_similarity ~route_a ~route_b in
+  printf
+    "Same routes (different hash but same neighbors) with same amount of \
+     points: %f"
+    similarity;
+  [%expect
+    {| Same routes (different hash but same neighbors) with same amount of points: 0.500000 |}];
+
+  let route_a = [ [ "a"; "b" ] ] in
+  let route_b = [ [ "b"; "b1" ] ] in
+  let similarity = calculate_route_similarity ~route_a ~route_b in
+  printf
+    "Same routes (different hash but same neighbors) with same amount of \
+     points: %f"
+    similarity;
+  [%expect
+    {| Same routes (different hash but same neighbors) with same amount of points: 0.500000 |}];
+
+  let route_a = [ [ "a"; "a1" ]; [ "b"; "b1" ]; [ "c"; "c1" ] ] in
+  let route_b =
+    [ [ "a"; "a1" ]; [ "b"; "b1" ]; [ "b"; "b1" ]; [ "c"; "c1" ] ]
+  in
+  let similarity = calculate_route_similarity ~route_a ~route_b in
+  printf
+    "Same routes (same hash) with different amount of points (one point is \
+     duplicated): %f"
+    similarity;
+  [%expect
+    {| Same routes (same hash) with different amount of points (one point is duplicated): 0.000000 |}];
+
+  let route_a = [ [ "a"; "a1" ]; [ "b"; "b1" ]; [ "c"; "c1" ] ] in
+  let route_b =
+    [
+      [ "x"; "x1" ]; [ "a"; "a1" ]; [ "b"; "b1" ]; [ "c"; "c1" ]; [ "x"; "x1" ];
+    ]
+  in
+  let similarity = calculate_route_similarity ~route_a ~route_b in
+  printf
+    "Same routes (same hash) with different amount of points (noise points in \
+     the beginning and end of route): %f"
+    similarity;
+  [%expect
+    {| Same routes (same hash) with different amount of points (noise points in the beginning and end of route): 0.400000 |}];
+
+  let route_a =
+    [
+      [ "x"; "x1" ]; [ "a"; "a1" ]; [ "b"; "b1" ]; [ "c"; "c1" ]; [ "x"; "x1" ];
+    ]
+  in
+  let route_b = [ [ "a"; "a1" ]; [ "b"; "b1" ]; [ "c"; "c1" ] ] in
+  let similarity = calculate_route_similarity ~route_a ~route_b in
+  printf
+    "Same routes (same hash) with different amount of points (noise points in \
+     the beginning and end of route) - reversed: %f"
+    similarity;
+  [%expect
+    {| Same routes (same hash) with different amount of points (noise points in the beginning and end of route) - reversed: 0.400000 |}];
+
+  let route_a = [ [ "a"; "a1" ]; [ "b"; "b1" ]; [ "c"; "c1" ] ] in
+  let route_b = [ [ "c"; "c1" ]; [ "b"; "b1" ]; [ "a"; "a1" ] ] in
+  let similarity = calculate_route_similarity ~route_a ~route_b in
+  printf "Same routes (same hash) with same amount of points - reversed: %f"
+    similarity;
+  [%expect
+    {| Same routes (same hash) with same amount of points - reversed: 0.666667 |}];
+
+  let route_a = [ [ "a"; "a1" ]; [ "a"; "a1" ]; [ "a"; "a1" ] ] in
+  let route_b = [ [ "a"; "a1" ] ] in
+  let similarity = calculate_route_similarity ~route_a ~route_b in
+  printf
+    "Same routes (same hash) with different amount of points - repeated: %f"
+    similarity;
+  [%expect
+    {| Same routes (same hash) with different amount of points - repeated: 0.000000 |}];
+
+  let route_a = [ [ "a"; "a1" ] ] in
+  let route_b = [ [ "a"; "a1" ]; [ "a"; "a1" ]; [ "a"; "a1" ] ] in
+  let similarity = calculate_route_similarity ~route_a ~route_b in
+  printf
+    "Same routes (same hash) with different amount of points - repeated  \
+     (a<>b): %f"
+    similarity;
+  [%expect
+    {| Same routes (same hash) with different amount of points - repeated  (a<>b): 0.000000 |}];
+
+  let route_a =
+    [ [ "a"; "a1" ]; [ "b"; "b1" ]; [ "a"; "a1" ]; [ "b"; "b1" ] ]
+  in
+  let route_b =
+    [ [ "a"; "a1" ]; [ "a"; "a1" ]; [ "a"; "a1" ]; [ "a"; "a1" ] ]
+  in
+  let similarity = calculate_route_similarity ~route_a ~route_b in
+  printf "Alternating mismatch: %f" similarity;
+  [%expect {| Alternating mismatch: 0.500000 |}];
+
+  let route_a = [ [ "a"; "a1" ]; [ "b"; "b1" ] ] in
+  let route_b = [ [ "a"; "a1" ]; [ "x"; "x1" ]; [ "b"; "b1" ] ] in
+  let similarity = calculate_route_similarity ~route_a ~route_b in
+  printf "Same route with extra point in the middle: %f" similarity;
+  [%expect {| Same route with extra point in the middle: 0.333333 |}]
 
 let%expect_test "geohash_from_latlng" =
   let loop1_start = [ 54.70299; 25.317408 ] in
