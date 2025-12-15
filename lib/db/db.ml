@@ -39,6 +39,18 @@ let log_db_conn t =
   Turso.log_conn t (sprintf "\n\n\t>>>NEW CONN (%s) <<<\n\n" t.hostname);
   ()
 
+let to_int64_option (i : int option) =
+  match i with None -> None | Some value -> Some (Int64.of_int value)
+
+let to_int_option (i : Int64.t option) =
+  match i with None -> None | Some value -> Some (Int64.to_int_exn value)
+
+let to_loc_option (a : float option) (b : float option) =
+  match (a, b) with
+  | None, None -> None
+  | Some a, Some b -> Some (a, b)
+  | _ -> assert false
+
 let create_tables (handle : Turso.conn) =
   handle.immediate <- false;
   let _ = DB.create_athletes handle in
@@ -62,21 +74,9 @@ let add_test_activity handle id =
     DB.add_activity handle ~id ~athlete_id:1L
       ~name:(sprintf "run %d" (Int64.to_int_exn id))
       ~sport_type:"Run" ~start_date:"date" ~timezone:"EEST" ~map_id:"asasdsad"
-      ~map_summary_polyline:"asda1221"
+      ~map_summary_polyline:"asda1221" ~route_hash:None ~route_id:None
   in
   ()
-
-let to_int64_option (i : int option) =
-  match i with None -> None | Some value -> Some (Int64.of_int value)
-
-let to_int_option (i : Int64.t option) =
-  match i with None -> None | Some value -> Some (Int64.to_int_exn value)
-
-let to_loc_option (a : float option) (b : float option) =
-  match (a, b) with
-  | None, None -> None
-  | Some a, Some b -> Some (a, b)
-  | _ -> assert false
 
 let get_num_athletes handle = DB.num_athletes handle |> Int64.to_int_exn
 
@@ -117,6 +117,8 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       ~timezone
       ~map_id
       ~map_summary_polyline
+      ~route_hash
+      ~route_id
       ~moving_time
       ~elapsed_time
       ~distance
@@ -138,6 +140,8 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       ~average_power
       ~max_power
     ->
+      (* TODO: use these *)
+      let _ = (route_hash, route_id) in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -166,6 +170,7 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
           ~laps:(Models.Laps.Laps.empty ())
           ~splits:(Models.Splits.Splits.empty ())
           ~streams:(Models.Streams.Streams.empty ())
+          ~route_hash:None ~route_id:None
       in
       activities := activity :: !activities);
   !activities
@@ -310,6 +315,8 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~timezone
       ~map_id
       ~map_summary_polyline
+      ~route_hash
+      ~route_id
       ~moving_time
       ~elapsed_time
       ~distance
@@ -333,6 +340,8 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~data
       ~data_len
     ->
+      (* TODO: use these *)
+      let _ = (route_hash, route_id) in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -369,8 +378,9 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
           ~athlete_id:(Int64.to_int_exn athlete_id)
           ~name
           ~sport_type:(Models.Strava_models.sportType_of_string sport_type)
-          ~start_date ~timezone ~map_id ~map_summary_polyline ~stats ~laps
-          ~splits ~streams
+          ~start_date ~timezone ~map_id ~map_summary_polyline ~stats
+          ~laps (* TODO: add values to route_hash & route_id *)
+          ~splits ~streams ~route_hash:None ~route_id:None
       in
       activities := activity :: !activities);
   Turso.log_conn handle (sprintf "\t> End %d<\n\n" activity_id);
@@ -412,6 +422,9 @@ let add_activity_aux handle (activity : Models.Activity.t) (athlete_id : int) =
       ~start_date:activity.start_date ~timezone:activity.timezone
       ~map_id:activity.map_id
       ~map_summary_polyline:activity.map_summary_polyline
+        (* TODO: add values to route_hash here *)
+      ~route_hash:None
+      ~route_id:(to_int64_option activity.route_id)
   in
   ()
 
@@ -541,6 +554,8 @@ let test () =
       ~timezone
       ~map_id
       ~map_summary_polyline
+      ~route_hash
+      ~route_id
       ~moving_time
       ~elapsed_time
       ~distance
@@ -562,6 +577,7 @@ let test () =
       ~average_power
       ~max_power
     ->
+      let _ = (route_hash, route_id) in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -590,6 +606,7 @@ let test () =
           ~laps:(Models.Laps.Laps.empty ())
           ~splits:(Models.Splits.Splits.empty ())
           ~streams:(Models.Streams.Streams.empty ())
+          ~route_hash:None ~route_id:None (* TODO: use these? *)
       in
       (* printf "%s\n" (Models.Activity.show activity); *)
       activities := activity :: !activities);

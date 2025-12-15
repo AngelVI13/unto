@@ -2,6 +2,7 @@ open Core
 open Laps
 open Splits
 open Streams
+open Route
 open Strava_models
 open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 
@@ -25,6 +26,8 @@ type t = {
   laps : Laps.t;
   splits : Splits.t;
   streams : Streams.t; [@opaque]
+  route_hash : RouteHash.t option; [@opaque]
+  route_id : int option;
 }
 [@@deriving show { with_path = false }, fields, yojson_of]
 
@@ -42,6 +45,8 @@ let t_of_StravaActivity (activity : StravaActivity.t) : t =
     laps = [];
     splits = [];
     streams = [];
+    route_hash = None;
+    route_id = None;
   }
 
 let calculate_stats (t : t) (streams : Streams.t) (laps : Laps.t) : t =
@@ -68,4 +73,5 @@ let calculate_stats (t : t) (streams : Streams.t) (laps : Laps.t) : t =
             splits
         with _ -> [])
   in
-  { t with streams; stats; laps; splits }
+  let route_hash = RouteHash.of_streams streams in
+  { t with streams; stats; laps; splits; route_hash }
