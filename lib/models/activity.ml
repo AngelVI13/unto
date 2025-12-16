@@ -26,8 +26,7 @@ type t = {
   laps : Laps.t;
   splits : Splits.t;
   streams : Streams.t; [@opaque]
-  route_hash : RouteHash.t option; [@opaque]
-  route_id : int option;
+  route : Route.t option; [@opaque]
 }
 [@@deriving show { with_path = false }, fields, yojson_of]
 
@@ -45,8 +44,7 @@ let t_of_StravaActivity (activity : StravaActivity.t) : t =
     laps = [];
     splits = [];
     streams = [];
-    route_hash = None;
-    route_id = None;
+    route = None;
   }
 
 let calculate_stats (t : t) (streams : Streams.t) (laps : Laps.t) : t =
@@ -73,5 +71,5 @@ let calculate_stats (t : t) (streams : Streams.t) (laps : Laps.t) : t =
             splits
         with _ -> [])
   in
-  let route_hash = RouteHash.of_streams streams in
-  { t with streams; stats; laps; splits; route_hash }
+  let route = Route.of_streams streams in
+  { t with streams; stats; laps; splits; route }

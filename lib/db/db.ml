@@ -170,7 +170,7 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
           ~laps:(Models.Laps.Laps.empty ())
           ~splits:(Models.Splits.Splits.empty ())
           ~streams:(Models.Streams.Streams.empty ())
-          ~route_hash:None ~route_id:None
+          ~route:None
       in
       activities := activity :: !activities);
   !activities
@@ -380,7 +380,7 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
           ~sport_type:(Models.Strava_models.sportType_of_string sport_type)
           ~start_date ~timezone ~map_id ~map_summary_polyline ~stats
           ~laps (* TODO: add values to route_hash & route_id *)
-          ~splits ~streams ~route_hash:None ~route_id:None
+          ~splits ~streams ~route:None
       in
       activities := activity :: !activities);
   Turso.log_conn handle (sprintf "\t> End %d<\n\n" activity_id);
@@ -423,8 +423,7 @@ let add_activity_aux handle (activity : Models.Activity.t) (athlete_id : int) =
       ~map_id:activity.map_id
       ~map_summary_polyline:activity.map_summary_polyline
         (* TODO: add values to route_hash here *)
-      ~route_hash:None
-      ~route_id:(to_int64_option activity.route_id)
+      ~route_hash:None ~route_id:None
   in
   ()
 
@@ -606,7 +605,7 @@ let test () =
           ~laps:(Models.Laps.Laps.empty ())
           ~splits:(Models.Splits.Splits.empty ())
           ~streams:(Models.Streams.Streams.empty ())
-          ~route_hash:None ~route_id:None (* TODO: use these? *)
+          ~route:None
       in
       (* printf "%s\n" (Models.Activity.show activity); *)
       activities := activity :: !activities);
