@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS activities (
     map_summary_polyline TEXT NOT NULL,
     route_hash TEXT DEFAULT NULL,
     route_id INTEGER DEFAULT NULL,
+    route_start TEXT DEFAULT NULL,
     FOREIGN KEY (athlete_id) REFERENCES athletes (id) ON DELETE CASCADE
 );
 

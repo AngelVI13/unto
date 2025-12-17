@@ -75,6 +75,7 @@ let add_test_activity handle id =
       ~name:(sprintf "run %d" (Int64.to_int_exn id))
       ~sport_type:"Run" ~start_date:"date" ~timezone:"EEST" ~map_id:"asasdsad"
       ~map_summary_polyline:"asda1221" ~route_hash:None ~route_id:None
+      ~route_start:None
   in
   ()
 
@@ -119,6 +120,7 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       ~map_summary_polyline
       ~route_hash
       ~route_id
+      ~route_start
       ~moving_time
       ~elapsed_time
       ~distance
@@ -141,7 +143,7 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       ~max_power
     ->
       (* TODO: use these *)
-      let _ = (route_hash, route_id) in
+      let _ = (route_hash, route_id, route_start) in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -317,6 +319,7 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~map_summary_polyline
       ~route_hash
       ~route_id
+      ~route_start
       ~moving_time
       ~elapsed_time
       ~distance
@@ -341,7 +344,7 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~data_len
     ->
       (* TODO: use these *)
-      let _ = (route_hash, route_id) in
+      let _ = (route_hash, route_id, route_start) in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -423,7 +426,7 @@ let add_activity_aux handle (activity : Models.Activity.t) (athlete_id : int) =
       ~map_id:activity.map_id
       ~map_summary_polyline:activity.map_summary_polyline
         (* TODO: add values to route_hash here *)
-      ~route_hash:None ~route_id:None
+      ~route_hash:None ~route_id:None ~route_start:None
   in
   ()
 
@@ -555,6 +558,7 @@ let test () =
       ~map_summary_polyline
       ~route_hash
       ~route_id
+      ~route_start
       ~moving_time
       ~elapsed_time
       ~distance
@@ -576,7 +580,7 @@ let test () =
       ~average_power
       ~max_power
     ->
-      let _ = (route_hash, route_id) in
+      let _ = (route_hash, route_id, route_start) in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)

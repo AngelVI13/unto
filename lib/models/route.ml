@@ -306,6 +306,18 @@ module Route = struct
     let start_hash = geohash_from_latlng ~precision:7 (List.hd_exn points) in
     Some { hash; id = None; start_hash }
 
+  (** serialize route hash as base64 encoded text for db storage *)
+  let serialize_hash (t : t) : string =
+    let json = yojson_of_routeHash t.hash in
+    let data = Yojson.Safe.to_string json in
+    Base64.encode_exn ~pad:false data
+
+  (** deserialize base64 encoded text into route hash *)
+  let deserialize_hash (data : string) : routeHash =
+    let data = Base64.decode_exn ~pad:false data in
+    let json = Yojson.Safe.from_string data in
+    routeHash_of_yojson json
+
   let match_cost (hash_a : string list) (hash_b : string list) =
     let main_hash_a = List.hd_exn hash_a in
     let neighbors_a = List.tl_exn hash_a in
@@ -315,7 +327,7 @@ module Route = struct
 
     if String.(main_hash_a = main_hash_b) then 0.
     else if
-      (* if point A appears in B neightbors OR point B appears in A neightbors *)
+      (* if point A appears in B neighbors OR point B appears in A neightbors *)
       List.count ~f:(fun h -> String.(main_hash_a = h)) neighbors_b > 0
       || List.count ~f:(fun h -> String.(main_hash_b = h)) neighbors_a > 0
     then 0.5
