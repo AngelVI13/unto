@@ -284,11 +284,17 @@ let calculate_all_neighbors (hash : string) : string list =
   let south_west = calculate_adjacent south West in
   [ north; south; east; west; north_east; north_west; south_east; south_west ]
 
-type routeHash = string list list [@@deriving yojson]
+type routeHash = string list list
+[@@deriving yojson, show { with_path = false }]
 
 module Route = struct
-  type t = { hash : routeHash; id : int option; start_hash : string }
-  [@@deriving yojson]
+  type t = {
+    hash : routeHash;
+    id : int option;
+    start_hash : string;
+    coarse_hash : string list;
+  }
+  [@@deriving yojson, show { with_path = false }]
 
   let of_streams (streams : Streams.t) : t option =
     let open Option.Let_syntax in
@@ -304,7 +310,14 @@ module Route = struct
         points
     in
     let start_hash = geohash_from_latlng ~precision:7 (List.hd_exn points) in
-    Some { hash; id = None; start_hash }
+
+    (* TODO: maybe remove this if not needed later *)
+    let coarse_hash =
+      normalize_route ~threshold:0.1 latlng_points
+      |> List.rev
+      |> List.map ~f:(geohash_from_latlng ~precision:7)
+    in
+    Some { hash; id = None; start_hash; coarse_hash }
 
   (** serialize route hash as base64 encoded text for db storage *)
   let serialize_hash (t : t) : string =
@@ -418,7 +431,7 @@ let%expect_test "hash_route_precise" =
   let json = Route.yojson_of_t hash in
   printf "%s" (Yojson.Safe.to_string json);
   [%expect
-    {| {"hash":[["u9dp0n7s","u9dp0n7t","u9dp0n7e","u9dp0n7u","u9dp0n7k","u9dp0n7v","u9dp0n7m","u9dp0n7g","u9dp0n77"],["u9dp0n6q","u9dp0n6r","u9dp0n6m","u9dp0n6w","u9dp0n6n","u9dp0n6x","u9dp0n6p","u9dp0n6t","u9dp0n6j"],["u9dp0j2r","u9dp0j82","u9dp0j2q","u9dp0j2x","u9dp0j2p","u9dp0j88","u9dp0j80","u9dp0j2w","u9dp0j2n"],["u99zpvnw","u99zpvnx","u99zpvnt","u99zpvny","u99zpvnq","u99zpvnz","u99zpvnr","u99zpvnv","u99zpvnm"],["u99zpvh2","u99zpvh3","u99zpuur","u99zpvh8","u99zpvh0","u99zpvh9","u99zpvh1","u99zpuux","u99zpuup"],["u99zpudq","u99zpudr","u99zpudm","u99zpudw","u99zpudn","u99zpudx","u99zpudp","u99zpudt","u99zpudj"],["u99zpu9x","u99zpuc8","u99zpu9w","u99zpu9z","u99zpu9r","u99zpucb","u99zpuc2","u99zpu9y","u99zpu9q"],["u99zptnb","u99zptnc","u99zpsyz","u99zptp0","u99zptn8","u99zptp1","u99zptn9","u99zpszp","u99zpsyx"],["u99zptnw","u99zptnx","u99zptnt","u99zptny","u99zptnq","u99zptnz","u99zptnr","u99zptnv","u99zptnm"],["u99zptm1","u99zptm4","u99zptm0","u99zptm3","u99zptkc","u99zptm6","u99zptkf","u99zptm2","u99zptkb"],["u99zptep","u99zptg0","u99zpten","u99zpter","u99zptdz","u99zptg2","u99zptfb","u99zpteq","u99zptdy"],["u99zpqqw","u99zpqqx","u99zpqqt","u99zpqqy","u99zpqqq","u99zpqqz","u99zpqqr","u99zpqqv","u99zpqqm"],["u99zpqwc","u99zpqwf","u99zpqwb","u99zpqx1","u99zpqw9","u99zpqx4","u99zpqwd","u99zpqx0","u99zpqw8"],["u99zpw82","u99zpw83","u99zpw2r","u99zpw88","u99zpw80","u99zpw89","u99zpw81","u99zpw2x","u99zpw2p"],["u99zpybd","u99zpybe","u99zpyb9","u99zpybf","u99zpyb6","u99zpybg","u99zpyb7","u99zpybc","u99zpyb3"],["u99zpyfe","u99zpyfs","u99zpyfd","u99zpyfg","u99zpyf7","u99zpyfu","u99zpyfk","u99zpyff","u99zpyf6"],["u99zpyxv","u99zpyxy","u99zpyxu","u9dp0n8j","u99zpyxt","u9dp0n8n","u99zpyxw","u9dp0n8h","u99zpyxs"],["u9dp0n8y","u9dp0n8z","u9dp0n8v","u9dp0n9n","u9dp0n8w","u9dp0n9p","u9dp0n8x","u9dp0n9j","u9dp0n8t"],["u9dp0ndd","u9dp0nde","u9dp0nd9","u9dp0ndf","u9dp0nd6","u9dp0ndg","u9dp0nd7","u9dp0ndc","u9dp0nd3"],["u9dp0n6q","u9dp0n6r","u9dp0n6m","u9dp0n6w","u9dp0n6n","u9dp0n6x","u9dp0n6p","u9dp0n6t","u9dp0n6j"],["u9dp0n7e","u9dp0n7s","u9dp0n7d","u9dp0n7g","u9dp0n77","u9dp0n7u","u9dp0n7k","u9dp0n7f","u9dp0n76"]],"id":null,"start_hash":"u9dp0n7"} |}]
+    {| {"hash":[["u9dp0n7s","u9dp0n7t","u9dp0n7e","u9dp0n7u","u9dp0n7k","u9dp0n7v","u9dp0n7m","u9dp0n7g","u9dp0n77"],["u9dp0n6q","u9dp0n6r","u9dp0n6m","u9dp0n6w","u9dp0n6n","u9dp0n6x","u9dp0n6p","u9dp0n6t","u9dp0n6j"],["u9dp0j2r","u9dp0j82","u9dp0j2q","u9dp0j2x","u9dp0j2p","u9dp0j88","u9dp0j80","u9dp0j2w","u9dp0j2n"],["u99zpvnw","u99zpvnx","u99zpvnt","u99zpvny","u99zpvnq","u99zpvnz","u99zpvnr","u99zpvnv","u99zpvnm"],["u99zpvh2","u99zpvh3","u99zpuur","u99zpvh8","u99zpvh0","u99zpvh9","u99zpvh1","u99zpuux","u99zpuup"],["u99zpudq","u99zpudr","u99zpudm","u99zpudw","u99zpudn","u99zpudx","u99zpudp","u99zpudt","u99zpudj"],["u99zpu9x","u99zpuc8","u99zpu9w","u99zpu9z","u99zpu9r","u99zpucb","u99zpuc2","u99zpu9y","u99zpu9q"],["u99zptnb","u99zptnc","u99zpsyz","u99zptp0","u99zptn8","u99zptp1","u99zptn9","u99zpszp","u99zpsyx"],["u99zptnw","u99zptnx","u99zptnt","u99zptny","u99zptnq","u99zptnz","u99zptnr","u99zptnv","u99zptnm"],["u99zptm1","u99zptm4","u99zptm0","u99zptm3","u99zptkc","u99zptm6","u99zptkf","u99zptm2","u99zptkb"],["u99zptep","u99zptg0","u99zpten","u99zpter","u99zptdz","u99zptg2","u99zptfb","u99zpteq","u99zptdy"],["u99zpqqw","u99zpqqx","u99zpqqt","u99zpqqy","u99zpqqq","u99zpqqz","u99zpqqr","u99zpqqv","u99zpqqm"],["u99zpqwc","u99zpqwf","u99zpqwb","u99zpqx1","u99zpqw9","u99zpqx4","u99zpqwd","u99zpqx0","u99zpqw8"],["u99zpw82","u99zpw83","u99zpw2r","u99zpw88","u99zpw80","u99zpw89","u99zpw81","u99zpw2x","u99zpw2p"],["u99zpybd","u99zpybe","u99zpyb9","u99zpybf","u99zpyb6","u99zpybg","u99zpyb7","u99zpybc","u99zpyb3"],["u99zpyfe","u99zpyfs","u99zpyfd","u99zpyfg","u99zpyf7","u99zpyfu","u99zpyfk","u99zpyff","u99zpyf6"],["u99zpyxv","u99zpyxy","u99zpyxu","u9dp0n8j","u99zpyxt","u9dp0n8n","u99zpyxw","u9dp0n8h","u99zpyxs"],["u9dp0n8y","u9dp0n8z","u9dp0n8v","u9dp0n9n","u9dp0n8w","u9dp0n9p","u9dp0n8x","u9dp0n9j","u9dp0n8t"],["u9dp0ndd","u9dp0nde","u9dp0nd9","u9dp0ndf","u9dp0nd6","u9dp0ndg","u9dp0nd7","u9dp0ndc","u9dp0nd3"],["u9dp0n6q","u9dp0n6r","u9dp0n6m","u9dp0n6w","u9dp0n6n","u9dp0n6x","u9dp0n6p","u9dp0n6t","u9dp0n6j"],["u9dp0n7e","u9dp0n7s","u9dp0n7d","u9dp0n7g","u9dp0n77","u9dp0n7u","u9dp0n7k","u9dp0n7f","u9dp0n76"]],"id":null,"start_hash":"u9dp0n7","coarse_hash":["u9dp0n7","u9dp0n6","u9dp0j2","u99zpud","u99zptn","u99zpqw","u99zpyf","u9dp0n8","u9dp0n7"]} |}]
 
 let%expect_test "Route.calculate_similarity" =
   let json1 =
