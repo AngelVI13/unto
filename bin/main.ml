@@ -111,22 +111,54 @@ let command_zones auth_client =
        in
        Or_error.ok_exn (Strava.Api.process_zones auth.tokens.access_token))
 
-let command_test () =
+let command_test auth_client =
   Command.basic ~summary:"Test things"
-    (let%map_open.Command activity =
-       flag "-a"
-         (optional_with_default 15310528167 int)
-         ~doc:"activity id for test"
+    (let%map_open.Command n =
+       flag "-n"
+         (optional_with_default 10 int)
+         ~doc:"number of activities to pull"
+     and auth_filename =
+       flag "-t"
+         (optional_with_default "tokens.json" Filename_unix.arg_type)
+         ~doc:"Filename where to read access and refresh tokens from"
+     and start_page =
+       flag "-s"
+         (optional_with_default 1 int)
+         ~doc:
+           "Activity page to start from. This can be used to skip the first N \
+            pages of activities."
      in
      fun () ->
-       let test_db_hostname = Sys.getenv_exn "TURSO_TEST_DB_HOSTNAME" in
-       let test_db_token = Sys.getenv_exn "TURSO_TEST_DB_TOKEN" in
-       let db = Db.make ~hostname:test_db_hostname ~token:test_db_token in
-       Db.stream_for_activity db activity;
-       (* Unto.Db.add_test_activity db 123L; *)
-       (* Unto.Db.add_test_activity db 345L; *)
-       (* Unto.Db.add_test_activity db 567L; *)
-       let _ = Or_error.ok_exn (Db.close db) in
+       let auth =
+         Or_error.ok_exn
+           (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
+       in
+       let filename =
+         "/home/angel/Documents/ocaml/unto/route_activities.json"
+       in
+       let json = Yojson.Safe.from_file filename in
+       let acts =
+         Yojson.Safe.Util.to_list json
+         |> List.map ~f:Models.Activity.simple_deserialize
+       in
+       printf "Found activities: %d\n" (List.length acts);
+       let present_activity_ids = List.map ~f:(fun a -> a.id) acts in
+       let new_activities =
+         Or_error.ok_exn
+           (Strava.Api.fetch_activities ~token:auth.tokens.access_token
+              ~num_activities:n ~start_page ~max_pages:10
+              ~exclude:present_activity_ids ())
+       in
+       printf "New activities: %d\n" (List.length new_activities);
+       (* put all activities in one list  *)
+       let simple_activities = new_activities @ acts in
+       printf "All activities: %d\n" (List.length simple_activities);
+
+       let simple_activities =
+         List.map ~f:Models.Activity.simple_serialize simple_activities
+       in
+       let simple_activities = `List simple_activities in
+       Yojson.Safe.to_file filename simple_activities;
        ())
 
 let command_turso_testing () =
@@ -234,7 +266,7 @@ let command auth_client =
       ("download", command_download auth_client);
       ("user-info", command_user_info auth_client);
       ("zones", command_zones auth_client);
-      ("test", command_test ());
+      ("test", command_test auth_client);
       ("turso", command_turso_testing ());
       ("turso-create", command_turso_create_users ());
       ("update", command_update_db auth_client);
