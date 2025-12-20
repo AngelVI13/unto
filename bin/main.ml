@@ -136,29 +136,9 @@ let command_test auth_client =
        let filename =
          "/home/angel/Documents/ocaml/unto/route_activities.json"
        in
-       let json = Yojson.Safe.from_file filename in
-       let acts =
-         Yojson.Safe.Util.to_list json
-         |> List.map ~f:Models.Activity.simple_deserialize
-       in
-       printf "Found activities: %d\n" (List.length acts);
-       let present_activity_ids = List.map ~f:(fun a -> a.id) acts in
-       let new_activities =
-         Or_error.ok_exn
-           (Strava.Api.fetch_activities ~token:auth.tokens.access_token
-              ~num_activities:n ~start_page ~max_pages:10
-              ~exclude:present_activity_ids ())
-       in
-       printf "New activities: %d\n" (List.length new_activities);
-       (* put all activities in one list  *)
-       let simple_activities = new_activities @ acts in
-       printf "All activities: %d\n" (List.length simple_activities);
-
-       let simple_activities =
-         List.map ~f:Models.Activity.simple_serialize simple_activities
-       in
-       let simple_activities = `List simple_activities in
-       Yojson.Safe.to_file filename simple_activities;
+       (* Strava.Api.route_testing_download auth filename start_page n; *)
+       let _ = (start_page, auth, n) in
+       Strava.Api.route_testing_searching filename;
        ())
 
 let command_turso_testing () =

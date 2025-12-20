@@ -231,6 +231,63 @@ let fetch_activities ?(max_pages = 1) ~token ~num_activities ~start_page
   in
   Ok activities
 
+let route_testing_download (auth : Auth.Auth.t) (filename : string)
+    (start_page : int) (n : int) =
+  let json = Yojson.Safe.from_file filename in
+  let acts =
+    Yojson.Safe.Util.to_list json
+    |> List.map ~f:Models.Activity.simple_deserialize
+  in
+  printf "Found activities: %d\n" (List.length acts);
+  let present_activity_ids = List.map ~f:(fun a -> a.id) acts in
+  let new_activities =
+    Or_error.ok_exn
+      (fetch_activities ~token:auth.tokens.access_token ~num_activities:n
+         ~start_page ~max_pages:10 ~exclude:present_activity_ids ())
+  in
+  printf "New activities: %d\n" (List.length new_activities);
+  (* put all activities in one list  *)
+  let simple_activities = new_activities @ acts in
+  printf "All activities: %d\n" (List.length simple_activities);
+
+  let simple_activities =
+    List.map ~f:Models.Activity.simple_serialize simple_activities
+  in
+  let simple_activities = `List simple_activities in
+  Yojson.Safe.to_file filename simple_activities;
+  ()
+
+(* TODO: coarse hash is not working it does find some similar activities but very little (group 208) *)
+let route_testing_searching (filename : string) =
+  let json = Yojson.Safe.from_file filename in
+  let acts =
+    Yojson.Safe.Util.to_list json
+    |> List.map ~f:Models.Activity.simple_deserialize
+  in
+  let groups =
+    List.sort_and_group acts ~compare:(fun a b ->
+        match (a.route, b.route) with
+        | None, None -> 0
+        | Some a, Some b ->
+            if List.equal String.equal a.coarse_hash b.coarse_hash then 0 else 1
+        | _, _ -> 1)
+  in
+  List.iteri
+    ~f:(fun i group ->
+      if List.length group <= 1 then ()
+      else
+        let group_filename =
+          sprintf "/home/angel/Documents/ocaml/unto/route_groups/group_%d.json"
+            i
+        in
+        let simple_activities =
+          List.map ~f:Models.Activity.simple_serialize group
+        in
+        let simple_activities = `List simple_activities in
+        Yojson.Safe.to_file group_filename simple_activities)
+    groups;
+  ()
+
 (* let%expect_test "deserialize get_stream.json" = *)
 (*   let json = *)
 (*     Yojson.Safe.from_file *)
