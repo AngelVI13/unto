@@ -257,38 +257,69 @@ let route_testing_download (auth : Auth.Auth.t) (filename : string)
   Yojson.Safe.to_file filename simple_activities;
   ()
 
-(* TODO: coarse hash is not working it does find some similar activities but very little (group 208) *)
-let route_testing_filter_start_loc (filename : string) =
+let within_range base compare threshold =
+  let diff = base -. compare in
+  let diff = if Float.(diff < 0.) then diff *. -1. else diff in
+  Float.(diff <= base *. threshold)
+
+let%expect_test "within_range" =
+  let a = 5.0 in
+  let b = 4.50 in
+  let threshold = 0.10 in
+
+  printf "%b: %f in range %f (tolerance: %f)"
+    (within_range a b threshold)
+    a b threshold;
+  [%expect {| true: 5.000000 in range 4.500000 (tolerance: 0.100000) |}]
+
+let route_testing_filter (filename : string) (start_hash : string)
+    (distance : float) =
   let json = Yojson.Safe.from_file filename in
   let acts =
     Yojson.Safe.Util.to_list json
     |> List.map ~f:Models.Activity.simple_deserialize
+    |> List.filter ~f:(fun a -> Option.is_some a.route)
+    |> List.filter ~f:(fun a ->
+           let ra = Option.value_exn a.route in
+           within_range distance ra.distance 0.05
+           && String.(ra.start_hash = start_hash))
   in
-  let groups =
-    List.sort_and_group acts ~compare:(fun a b ->
-        match (a.route, b.route) with
-        | None, None -> 0
-        | Some a, Some b ->
-            if String.equal a.start_hash b.start_hash then 0 else 1
-        | _, _ -> 1)
+  let group_filename =
+    sprintf
+      "/home/angel/Documents/ocaml/unto/route_groups_filter/result_%s_%f.json"
+      start_hash distance
   in
-  List.iteri
-    ~f:(fun i group ->
-      let first = List.hd_exn group in
-      let first = first.route in
-      if List.length group <= 1 && Option.is_none first then ()
-      else
-        let group_filename =
-          sprintf
-            "/home/angel/Documents/ocaml/unto/route_groups_filter/group_%d.json"
-            i
-        in
-        let simple_activities =
-          List.map ~f:Models.Activity.simple_serialize group
-        in
-        let simple_activities = `List simple_activities in
-        Yojson.Safe.to_file group_filename simple_activities)
-    groups;
+  let simple_activities = List.map ~f:Models.Activity.simple_serialize acts in
+  let simple_activities = `List simple_activities in
+  Yojson.Safe.to_file group_filename simple_activities;
+  ()
+
+let route_testing_find_similar (results_filename : string)
+    (route_filename : string) =
+  let activity =
+    Yojson.Safe.from_file route_filename |> Models.Activity.simple_deserialize
+  in
+  let route = Option.value_exn activity.route in
+  let results_json = Yojson.Safe.from_file results_filename in
+  let acts =
+    Yojson.Safe.Util.to_list results_json
+    |> List.map ~f:Models.Activity.simple_deserialize
+    |> List.filter ~f:(fun a ->
+           let ra = Option.value_exn a.route in
+           let similarity =
+             Models.Route.Route.calculate_similarity ~route_a:route.hash
+               ~route_b:ra.hash
+           in
+           Float.(similarity > 0.60))
+  in
+  let group_filename =
+    sprintf
+      "/home/angel/Documents/ocaml/unto/route_groups_filter/similar_%s_%f.json"
+      route.start_hash route.distance
+  in
+  let simple_activities = List.map ~f:Models.Activity.simple_serialize acts in
+  let simple_activities = `List simple_activities in
+  Yojson.Safe.to_file group_filename simple_activities;
   ()
 
 (* let%expect_test "deserialize get_stream.json" = *)

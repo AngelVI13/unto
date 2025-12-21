@@ -134,11 +134,19 @@ let command_test auth_client =
            (Strava.Auth.load_and_refresh_tokens auth_client auth_filename)
        in
        let filename =
-         "/home/angel/Documents/ocaml/unto/route_activities.json"
+         "/home/angel/Documents/ocaml/unto/route_activities_new.json"
        in
+       let filtered =
+         "/home/angel/Documents/ocaml/unto/route_groups_filter/result_u9dp0n7_5130.000000.json"
+       in
+       let target =
+         "/home/angel/Documents/ocaml/unto/5km_loop_serialized.json"
+       in
+       let _ = (start_page, auth, n, filename) in
        (* Strava.Api.route_testing_download auth filename start_page n; *)
-       let _ = (start_page, auth, n) in
-       Strava.Api.route_testing_filter_start_loc filename;
+       (* Strava.Api.route_testing_filter_start_loc filename; *)
+       (* Strava.Api.route_testing_filter filename "u9dp0n7" 5130.0; *)
+       Strava.Api.route_testing_find_similar filtered target;
        ())
 
 let command_turso_testing () =
