@@ -71,7 +71,7 @@ let calculate_stats (t : t) (streams : Streams.t) (laps : Laps.t) : t =
             splits
         with _ -> [])
   in
-  let route = Route.of_streams streams in
+  let route = Route.of_streams streams stats.distance in
   { t with streams; stats; laps; splits; route }
 
 let empty () =
@@ -138,7 +138,7 @@ let%expect_test "simple_serialize" =
       "/home/angel/Documents/ocaml/unto/5kloop_streams_16575000264.json"
   in
   let streams = Streams.t_of_yojson_smoothed hash_json in
-  let route = Option.value_exn (Route.of_streams streams) in
+  let route = Option.value_exn (Route.of_streams streams (Some 1.0)) in
 
   let activity = empty () in
   let activity =
@@ -204,11 +204,7 @@ let%expect_test "simple_serialize" =
           ["u9dp0n7e"; "u9dp0n7s"; "u9dp0n7d"; "u9dp0n7g"; "u9dp0n77"; "u9dp0n7u";
             "u9dp0n7k"; "u9dp0n7f"; "u9dp0n76"]
           ];
-        id = None; start_hash = "u9dp0n7";
-        coarse_hash =
-        ["u9dp0n7"; "u9dp0n6"; "u9dp0j2"; "u99zpud"; "u99zptn"; "u99zpqw";
-          "u99zpyf"; "u9dp0n8"; "u9dp0n7"]
-        };
+        id = None; start_hash = "u9dp0n7"; distance = 1. };
       } |}];
   let deserialized = simple_deserialize json in
   printf "Activity after: %s" (simple_show deserialized);
@@ -262,9 +258,5 @@ let%expect_test "simple_serialize" =
           ["u9dp0n7e"; "u9dp0n7s"; "u9dp0n7d"; "u9dp0n7g"; "u9dp0n77"; "u9dp0n7u";
             "u9dp0n7k"; "u9dp0n7f"; "u9dp0n76"]
           ];
-        id = None; start_hash = "u9dp0n7";
-        coarse_hash =
-        ["u9dp0n7"; "u9dp0n6"; "u9dp0j2"; "u99zpud"; "u99zptn"; "u99zpqw";
-          "u99zpyf"; "u9dp0n8"; "u9dp0n7"]
-        };
+        id = None; start_hash = "u9dp0n7"; distance = 1. };
       } |}]

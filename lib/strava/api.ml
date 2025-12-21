@@ -258,7 +258,7 @@ let route_testing_download (auth : Auth.Auth.t) (filename : string)
   ()
 
 (* TODO: coarse hash is not working it does find some similar activities but very little (group 208) *)
-let route_testing_searching (filename : string) =
+let route_testing_filter_start_loc (filename : string) =
   let json = Yojson.Safe.from_file filename in
   let acts =
     Yojson.Safe.Util.to_list json
@@ -269,15 +269,18 @@ let route_testing_searching (filename : string) =
         match (a.route, b.route) with
         | None, None -> 0
         | Some a, Some b ->
-            if List.equal String.equal a.coarse_hash b.coarse_hash then 0 else 1
+            if String.equal a.start_hash b.start_hash then 0 else 1
         | _, _ -> 1)
   in
   List.iteri
     ~f:(fun i group ->
-      if List.length group <= 1 then ()
+      let first = List.hd_exn group in
+      let first = first.route in
+      if List.length group <= 1 && Option.is_none first then ()
       else
         let group_filename =
-          sprintf "/home/angel/Documents/ocaml/unto/route_groups/group_%d.json"
+          sprintf
+            "/home/angel/Documents/ocaml/unto/route_groups_filter/group_%d.json"
             i
         in
         let simple_activities =

@@ -138,7 +138,7 @@ let command_test auth_client =
        in
        (* Strava.Api.route_testing_download auth filename start_page n; *)
        let _ = (start_page, auth, n) in
-       Strava.Api.route_testing_searching filename;
+       Strava.Api.route_testing_filter_start_loc filename;
        ())
 
 let command_turso_testing () =
