@@ -13,13 +13,6 @@ type t = {
   sport_type : sportType;
   start_date : string;
   timezone : string;
-  map_id : string;
-  (* NOTE: Polyline values are string encodings of the latitude and longitude points
-     using the Google encoded polyline algorithm format. More info can be found
-     here:
-       https://developers.google.com/maps/documentation/utilities/polylinealgorithm
-       *)
-  map_summary_polyline : string;
   (* NOTE: these are calculated from the data streams of the
        activity and not taken from strava directly *)
   stats : Stats.t;
@@ -38,8 +31,6 @@ let t_of_StravaActivity (activity : StravaActivity.t) : t =
     sport_type = sportType_of_string activity.sport_type;
     start_date = activity.start_date_local;
     timezone = activity.timezone;
-    map_id = activity.map.id;
-    map_summary_polyline = activity.map.summary_polyline;
     stats = Stats.empty ();
     laps = [];
     splits = [];
@@ -82,8 +73,6 @@ let empty () =
     sport_type = Run;
     start_date = "";
     timezone = "";
-    map_id = "";
-    map_summary_polyline = "";
     stats = Stats.empty ();
     laps = [];
     splits = [];

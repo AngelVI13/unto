@@ -73,9 +73,7 @@ let add_test_activity handle id =
   let _ =
     DB.add_activity handle ~id ~athlete_id:1L
       ~name:(sprintf "run %d" (Int64.to_int_exn id))
-      ~sport_type:"Run" ~start_date:"date" ~timezone:"EEST" ~map_id:"asasdsad"
-      ~map_summary_polyline:"asda1221" ~route_hash:None ~route_id:None
-      ~route_start:None
+      ~sport_type:"Run" ~start_date:"date" ~timezone:"EEST" ~route_id:None
   in
   ()
 
@@ -116,11 +114,7 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       ~sport_type
       ~start_date
       ~timezone
-      ~map_id
-      ~map_summary_polyline
-      ~route_hash
       ~route_id
-      ~route_start
       ~moving_time
       ~elapsed_time
       ~distance
@@ -143,7 +137,7 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       ~max_power
     ->
       (* TODO: use these *)
-      let _ = (route_hash, route_id, route_start) in
+      let _ = route_id in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -168,7 +162,7 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
           ~athlete_id:(Int64.to_int_exn athlete_id)
           ~name
           ~sport_type:(Models.Strava_models.sportType_of_string sport_type)
-          ~start_date ~timezone ~map_id ~map_summary_polyline ~stats
+          ~start_date ~timezone ~stats
           ~laps:(Models.Laps.Laps.empty ())
           ~splits:(Models.Splits.Splits.empty ())
           ~streams:(Models.Streams.Streams.empty ())
@@ -315,11 +309,7 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~sport_type
       ~start_date
       ~timezone
-      ~map_id
-      ~map_summary_polyline
-      ~route_hash
       ~route_id
-      ~route_start
       ~moving_time
       ~elapsed_time
       ~distance
@@ -344,7 +334,7 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~data_len
     ->
       (* TODO: use these *)
-      let _ = (route_hash, route_id, route_start) in
+      let _ = route_id in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -381,7 +371,7 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
           ~athlete_id:(Int64.to_int_exn athlete_id)
           ~name
           ~sport_type:(Models.Strava_models.sportType_of_string sport_type)
-          ~start_date ~timezone ~map_id ~map_summary_polyline ~stats
+          ~start_date ~timezone ~stats
           ~laps (* TODO: add values to route_hash & route_id *)
           ~splits ~streams ~route:None
       in
@@ -422,11 +412,7 @@ let add_activity_aux handle (activity : Models.Activity.t) (athlete_id : int) =
     DB.add_activity handle ~id:(Int64.of_int activity.id)
       ~athlete_id:(Int64.of_int athlete_id) ~name:activity.name
       ~sport_type:(Models.Strava_models.show_sportType activity.sport_type)
-      ~start_date:activity.start_date ~timezone:activity.timezone
-      ~map_id:activity.map_id
-      ~map_summary_polyline:activity.map_summary_polyline
-        (* TODO: add values to route_hash here *)
-      ~route_hash:None ~route_id:None ~route_start:None
+      ~start_date:activity.start_date ~timezone:activity.timezone ~route_id:None
   in
   ()
 
@@ -554,11 +540,7 @@ let test () =
       ~sport_type
       ~start_date
       ~timezone
-      ~map_id
-      ~map_summary_polyline
-      ~route_hash
       ~route_id
-      ~route_start
       ~moving_time
       ~elapsed_time
       ~distance
@@ -580,7 +562,7 @@ let test () =
       ~average_power
       ~max_power
     ->
-      let _ = (route_hash, route_id, route_start) in
+      let _ = route_id in
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -605,7 +587,7 @@ let test () =
           ~athlete_id:(Int64.to_int_exn athlete_id)
           ~name
           ~sport_type:(Models.Strava_models.sportType_of_string sport_type)
-          ~start_date ~timezone ~map_id ~map_summary_polyline ~stats
+          ~start_date ~timezone ~stats
           ~laps:(Models.Laps.Laps.empty ())
           ~splits:(Models.Splits.Splits.empty ())
           ~streams:(Models.Streams.Streams.empty ())

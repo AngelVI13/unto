@@ -310,7 +310,8 @@ let route_testing_find_similar (results_filename : string)
              Models.Route.Route.calculate_similarity ~route_a:route.hash
                ~route_b:ra.hash
            in
-           Float.(similarity > 0.60))
+           (* printf "%d <%.2f> %d (%s)\n" a.id similarity activity.id a.start_date; *)
+           Float.(similarity >= 0.60))
   in
   let group_filename =
     sprintf

@@ -67,11 +67,7 @@ CREATE TABLE IF NOT EXISTS activities (
     sport_type TEXT NOT NULL,
     start_date TEXT NOT NULL,
     timezone TEXT NOT NULL,
-    map_id TEXT NOT NULL,
-    map_summary_polyline TEXT NOT NULL,
-    route_hash TEXT DEFAULT NULL,
     route_id INTEGER DEFAULT NULL,
-    route_start TEXT DEFAULT NULL,
     FOREIGN KEY (athlete_id) REFERENCES athletes (id) ON DELETE CASCADE
 );
 
@@ -109,6 +105,50 @@ WHERE a.start_date > @start_date
 -- @list_activities
 SELECT id FROM activities;
 
+-- @create_routes
+CREATE TABLE IF NOT EXISTS routes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    route_id INTEGER NOT NULL,
+    route_hash TEXT NOT NULL,
+    route_start TEXT NOT NULL,
+    route_distance FLOAT NOT NULL
+);
+
+-- @activities_on_route
+SELECT
+    a.*,
+    s.moving_time,
+    s.elapsed_time,
+    s.distance,
+    s.elev_gain,
+    s.elev_loss,
+    s.elev_high,
+    s.elev_low,
+    s.start_lat,
+    s.start_lng,
+    s.end_lat,
+    s.end_lng,
+    s.average_speed,
+    s.max_speed,
+    s.average_cadence,
+    s.max_cadence,
+    s.average_temp,
+    s.average_heartrate,
+    s.max_heartrate,
+    s.average_power,
+    s.max_power
+FROM activities a
+JOIN stats s ON s.activity_id = a.id AND s.lap_idx IS NULL AND s.split_idx IS NULL
+WHERE a.route_id IS NOT NULL AND a.route_id == @route_id
+ORDER BY a.start_date ASC;
+
+-- @add_route
+INSERT INTO routes VALUES;
+
+-- @list_similar_routes
+SELECT * FROM routes
+WHERE route_start == @start_hash
+    AND route_distance BETWEEN @distance * 0.90 AND @distance * 1.10;
 
 -- @create_laps
 CREATE TABLE IF NOT EXISTS laps (
