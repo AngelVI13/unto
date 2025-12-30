@@ -407,6 +407,56 @@ let add_stats ?(lap_idx = None) ?(split_idx = None) handle
   in
   ()
 
+let add_route handle (id : int) (route : Models.Route.Route.t) =
+  (* TODO: should this accept the Route.t directly? *)
+  ignore
+    (DB.add_route handle ~id:(Int64.of_int id)
+       ~hash:(Models.Route.Route.serialize_hash route)
+       ~start:route.start_hash ~distance:route.distance)
+
+let similar_routes handle (route : Models.Route.Route.t) =
+  (* TODO: should this accept the Route.t directly? *)
+  let routes = ref [] in
+
+  ignore
+    (DB.list_similar_routes handle ~start_hash:route.start_hash
+       ~distance:route.distance (fun ~id ~hash ~start ~distance ->
+         let hash = Models.Route.Route.deserialize_hash hash in
+         let similarity =
+           Models.Route.Route.calculate_similarity ~route_a:route.hash
+             ~route_b:hash
+         in
+         if Float.(similarity >= Models.Route.similarThreshold) then
+           routes :=
+             ( similarity,
+               Models.Route.Route.Fields.create ~hash
+                 ~id:(Some (Int64.to_int_exn id))
+                 ~start_hash:start ~distance )
+             :: !routes
+         else ()));
+
+  let routes =
+    List.sort
+      ~compare:(fun r1 r2 ->
+        let similarity1, _ = r1 in
+        let similarity2, _ = r2 in
+        Float.compare similarity1 similarity2)
+      !routes
+    |> List.rev (* biggest similarity at the start of the list *)
+  in
+
+  match routes with [] -> None | (_, route) :: _ -> Some route
+
+let find_or_create_route handle (activity : Models.Activity.t) =
+  match activity.route with
+  | None -> None
+  | Some route -> (
+      match similar_routes handle route with
+      | None ->
+          ignore (add_route handle activity.id route);
+          Some { route with id = Some activity.id }
+      | Some similar -> Some { route with id = similar.id })
+
 let add_activity_aux handle (activity : Models.Activity.t) (athlete_id : int) =
   let _ =
     DB.add_activity handle ~id:(Int64.of_int activity.id)
@@ -450,10 +500,16 @@ let add_streams handle (streams : Models.Streams.Streams.t) (activity_id : int)
        ~data
        ~data_len:(Int64.of_int @@ String.length streams))
 
+(* TODO: store sport_type in the routes table so that you can filter by that otherwise it might mix up running and cycling etc activities *)
+(* TODO: for each activity getting functions, parse the route data? *)
+(* TODO: test route inserting & fetching  *)
 let add_activity handle (activity : Models.Activity.t) (athlete_id : int) =
   Turso.log_conn handle (sprintf "\t> Add activity %d<\n" activity.id);
   (* Turso.log_conn handle *)
   (*   (sprintf "Activity:\n %s\n" (Models.Activity.show activity)); *)
+  let route = find_or_create_route handle activity in
+  let activity = { activity with route } in
+
   handle.immediate <- false;
   add_activity_aux handle activity athlete_id;
   add_stats handle activity.stats activity.id;

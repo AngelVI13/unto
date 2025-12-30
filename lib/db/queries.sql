@@ -67,8 +67,7 @@ CREATE TABLE IF NOT EXISTS activities (
     sport_type TEXT NOT NULL,
     start_date TEXT NOT NULL,
     timezone TEXT NOT NULL,
-    route_id INTEGER DEFAULT NULL,
-    FOREIGN KEY (athlete_id) REFERENCES athletes (id) ON DELETE CASCADE
+    route_id INTEGER DEFAULT NULL
 );
 
 -- @add_activity
@@ -107,11 +106,10 @@ SELECT id FROM activities;
 
 -- @create_routes
 CREATE TABLE IF NOT EXISTS routes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    route_id INTEGER NOT NULL,
-    route_hash TEXT NOT NULL,
-    route_start TEXT NOT NULL,
-    route_distance FLOAT NOT NULL
+    id INTEGER PRIMARY KEY,
+    hash TEXT NOT NULL,
+    start TEXT NOT NULL,
+    distance FLOAT NOT NULL
 );
 
 -- @activities_on_route
@@ -147,8 +145,8 @@ INSERT INTO routes VALUES;
 
 -- @list_similar_routes
 SELECT * FROM routes
-WHERE route_start == @start_hash
-    AND route_distance BETWEEN @distance * 0.90 AND @distance * 1.10;
+WHERE start == @start_hash
+    AND distance BETWEEN @distance * 0.90 AND @distance * 1.10;
 
 -- @create_laps
 CREATE TABLE IF NOT EXISTS laps (

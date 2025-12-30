@@ -287,6 +287,8 @@ let calculate_all_neighbors (hash : string) : string list =
 type routeHash = string list list
 [@@deriving yojson, show { with_path = false }]
 
+let similarThreshold = 0.60
+
 module Route = struct
   type t = {
     hash : routeHash;
@@ -294,7 +296,7 @@ module Route = struct
     start_hash : string;
     distance : float;
   }
-  [@@deriving yojson, show { with_path = false }]
+  [@@deriving yojson, show { with_path = false }, fields]
 
   let of_streams (streams : Streams.t) (distance : float option) : t option =
     let open Option.Let_syntax in
