@@ -659,9 +659,7 @@ module M = struct
       | None -> ()
     in
     let named_args =
-      List.fold2_exn ~init:[]
-        ~f:(fun acc name value -> (name, value) :: acc)
-        matches params
+      List.zip_exn matches params
       |> List.dedup_and_sort ~compare:(fun (name1, _) (name2, _) ->
              String.compare name1 name2)
       |> List.map ~f:(fun (name, value) -> Libsql.NamedArg.make ~name ~value)
