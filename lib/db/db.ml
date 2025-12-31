@@ -104,77 +104,110 @@ let get_athlete handle : StravaAthlete.t option =
       athletes := athlete :: !athletes);
   List.hd !athletes
 
+let add_route handle (id : int) (route : Models.Route.Route.t) =
+  ignore
+    (DB.add_route handle ~id:(Int64.of_int id)
+       ~hash:(Models.Route.Route.serialize_hash route)
+       ~start:route.start_hash ~distance:route.distance)
+
+let similar_routes handle (route : Models.Route.Route.t) =
+  let routes = ref [] in
+
+  ignore
+    (DB.list_similar_routes handle ~start_hash:route.start_hash
+       ~distance:route.distance (fun ~id ~hash ~start ~distance ->
+         let hash = Models.Route.Route.deserialize_hash hash in
+         let similarity =
+           Models.Route.Route.calculate_similarity ~route_a:route.hash
+             ~route_b:hash
+         in
+         if Float.(similarity >= Models.Route.similarThreshold) then
+           routes :=
+             ( similarity,
+               Models.Route.Route.Fields.create ~hash
+                 ~id:(Some (Int64.to_int_exn id))
+                 ~start_hash:start ~distance )
+             :: !routes
+         else ()));
+
+  let routes =
+    List.sort
+      ~compare:(fun r1 r2 ->
+        let similarity1, _ = r1 in
+        let similarity2, _ = r2 in
+        Float.compare similarity1 similarity2)
+      !routes
+    |> List.rev (* biggest similarity at the start of the list *)
+  in
+
+  match routes with [] -> None | (_, route) :: _ -> Some route
+
+let find_or_create_route handle (activity : Models.Activity.t) =
+  match activity.route with
+  | None -> None
+  | Some route -> (
+      match similar_routes handle route with
+      | None ->
+          ignore (add_route handle activity.id route);
+          Some { route with id = Some activity.id }
+      | Some similar -> Some { route with id = similar.id })
+
+let _process_db_activity (activities : Models.Activity.t list ref) ~id
+    ~athlete_id ~name ~sport_type ~start_date ~timezone ~route_id ~moving_time
+    ~elapsed_time ~distance ~elev_gain ~elev_loss ~elev_high ~elev_low
+    ~start_lat ~start_lng ~end_lat ~end_lng ~average_speed ~max_speed
+    ~average_cadence ~max_cadence ~average_temp ~average_heartrate
+    ~max_heartrate ~average_power ~max_power =
+  let route =
+    Option.bind
+      ~f:(fun id ->
+        Some (Models.Route.Route.make_id_holder (Int64.to_int_exn id)))
+      route_id
+  in
+
+  let stats =
+    Models.Stats.Fields.create ~data_points:(-1)
+      ~moving_time:(Int64.to_int_exn moving_time)
+      ~elapsed_time:(Int64.to_int_exn elapsed_time)
+      ~distance ~elev_gain:(to_int_option elev_gain)
+      ~elev_loss:(to_int_option elev_loss) ~elev_high:(to_int_option elev_high)
+      ~elev_low:(to_int_option elev_low)
+      ~start_latlng:(to_loc_option start_lat start_lng)
+      ~end_latlng:(to_loc_option end_lat end_lng)
+      ~average_speed ~max_speed
+      ~average_cadence:(to_int_option average_cadence)
+      ~max_cadence:(to_int_option max_cadence)
+      ~average_temp:(to_int_option average_temp)
+      ~average_heartrate:(to_int_option average_heartrate)
+      ~max_heartrate:(to_int_option max_heartrate)
+      ~average_power:(to_int_option average_power)
+      ~max_power:(to_int_option max_power)
+  in
+  let activity =
+    Models.Activity.Fields.create ~id:(Int64.to_int_exn id)
+      ~athlete_id:(Int64.to_int_exn athlete_id)
+      ~name
+      ~sport_type:(Models.Strava_models.sportType_of_string sport_type)
+      ~start_date ~timezone ~stats
+      ~laps:(Models.Laps.Laps.empty ())
+      ~splits:(Models.Splits.Splits.empty ())
+      ~streams:(Models.Streams.Streams.empty ())
+      ~route ~related:[]
+  in
+  activities := activity :: !activities;
+  ()
+
+let get_route_related_activities handle ~route_id ~sport_type =
+  let activities = ref [] in
+  DB.activities_on_route handle ~route_id ~sport_type
+    (_process_db_activity activities);
+  !activities
+
 let get_activities_between handle ~(start_date : string) ~(end_date : string) :
     Models.Activity.t list =
   let activities = ref [] in
   DB.activities_between handle ~start_date ~end_date
-    (fun
-      ~id
-      ~athlete_id
-      ~name
-      ~sport_type
-      ~start_date
-      ~timezone
-      ~route_id
-      ~moving_time
-      ~elapsed_time
-      ~distance
-      ~elev_gain
-      ~elev_loss
-      ~elev_high
-      ~elev_low
-      ~start_lat
-      ~start_lng
-      ~end_lat
-      ~end_lng
-      ~average_speed
-      ~max_speed
-      ~average_cadence
-      ~max_cadence
-      ~average_temp
-      ~average_heartrate
-      ~max_heartrate
-      ~average_power
-      ~max_power
-    ->
-      let route =
-        Option.bind
-          ~f:(fun id ->
-            Some (Models.Route.Route.make_id_holder (Int64.to_int_exn id)))
-          route_id
-      in
-
-      let stats =
-        Models.Stats.Fields.create ~data_points:(-1)
-          ~moving_time:(Int64.to_int_exn moving_time)
-          ~elapsed_time:(Int64.to_int_exn elapsed_time)
-          ~distance ~elev_gain:(to_int_option elev_gain)
-          ~elev_loss:(to_int_option elev_loss)
-          ~elev_high:(to_int_option elev_high)
-          ~elev_low:(to_int_option elev_low)
-          ~start_latlng:(to_loc_option start_lat start_lng)
-          ~end_latlng:(to_loc_option end_lat end_lng)
-          ~average_speed ~max_speed
-          ~average_cadence:(to_int_option average_cadence)
-          ~max_cadence:(to_int_option max_cadence)
-          ~average_temp:(to_int_option average_temp)
-          ~average_heartrate:(to_int_option average_heartrate)
-          ~max_heartrate:(to_int_option max_heartrate)
-          ~average_power:(to_int_option average_power)
-          ~max_power:(to_int_option max_power)
-      in
-      let activity =
-        Models.Activity.Fields.create ~id:(Int64.to_int_exn id)
-          ~athlete_id:(Int64.to_int_exn athlete_id)
-          ~name
-          ~sport_type:(Models.Strava_models.sportType_of_string sport_type)
-          ~start_date ~timezone ~stats
-          ~laps:(Models.Laps.Laps.empty ())
-          ~splits:(Models.Splits.Splits.empty ())
-          ~streams:(Models.Streams.Streams.empty ())
-          ~route
-      in
-      activities := activity :: !activities);
+    (_process_db_activity activities);
   !activities
 
 let get_weeks_activities handle ~(start_date : Date.t) : Models.Activity.t list
@@ -338,11 +371,17 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~data
       ~data_len
     ->
-      let route =
-        Option.bind
-          ~f:(fun id ->
-            Some (Models.Route.Route.make_id_holder (Int64.to_int_exn id)))
-          route_id
+      let route, related =
+        match route_id with
+        | None -> (None, [])
+        | Some id ->
+            let route =
+              Some (Models.Route.Route.make_id_holder (Int64.to_int_exn id))
+            in
+            let related =
+              get_route_related_activities handle ~route_id:id ~sport_type
+            in
+            (route, related)
       in
 
       let stats =
@@ -381,7 +420,7 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
           ~athlete_id:(Int64.to_int_exn athlete_id)
           ~name
           ~sport_type:(Models.Strava_models.sportType_of_string sport_type)
-          ~start_date ~timezone ~stats ~laps ~splits ~streams ~route
+          ~start_date ~timezone ~stats ~laps ~splits ~streams ~route ~related
       in
       activities := activity :: !activities);
   Turso.log_conn handle (sprintf "\t> End %d<\n\n" activity_id);
@@ -414,54 +453,6 @@ let add_stats ?(lap_idx = None) ?(split_idx = None) handle
       ~max_power:(to_int64_option stats.max_power)
   in
   ()
-
-let add_route handle (id : int) (route : Models.Route.Route.t) =
-  ignore
-    (DB.add_route handle ~id:(Int64.of_int id)
-       ~hash:(Models.Route.Route.serialize_hash route)
-       ~start:route.start_hash ~distance:route.distance)
-
-let similar_routes handle (route : Models.Route.Route.t) =
-  let routes = ref [] in
-
-  ignore
-    (DB.list_similar_routes handle ~start_hash:route.start_hash
-       ~distance:route.distance (fun ~id ~hash ~start ~distance ->
-         let hash = Models.Route.Route.deserialize_hash hash in
-         let similarity =
-           Models.Route.Route.calculate_similarity ~route_a:route.hash
-             ~route_b:hash
-         in
-         if Float.(similarity >= Models.Route.similarThreshold) then
-           routes :=
-             ( similarity,
-               Models.Route.Route.Fields.create ~hash
-                 ~id:(Some (Int64.to_int_exn id))
-                 ~start_hash:start ~distance )
-             :: !routes
-         else ()));
-
-  let routes =
-    List.sort
-      ~compare:(fun r1 r2 ->
-        let similarity1, _ = r1 in
-        let similarity2, _ = r2 in
-        Float.compare similarity1 similarity2)
-      !routes
-    |> List.rev (* biggest similarity at the start of the list *)
-  in
-
-  match routes with [] -> None | (_, route) :: _ -> Some route
-
-let find_or_create_route handle (activity : Models.Activity.t) =
-  match activity.route with
-  | None -> None
-  | Some route -> (
-      match similar_routes handle route with
-      | None ->
-          ignore (add_route handle activity.id route);
-          Some { route with id = Some activity.id }
-      | Some similar -> Some { route with id = similar.id })
 
 let add_activity_aux handle (activity : Models.Activity.t) (athlete_id : int) =
   let route_id =

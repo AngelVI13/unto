@@ -20,6 +20,7 @@ type t = {
   splits : Splits.t;
   streams : Streams.t; [@opaque]
   route : Route.t option; [@opaque]
+  related : t list; [@opaque]
 }
 [@@deriving show { with_path = false }, fields, yojson_of]
 
@@ -36,6 +37,7 @@ let t_of_StravaActivity (activity : StravaActivity.t) : t =
     splits = [];
     streams = [];
     route = None;
+    related = [];
   }
 
 let calculate_stats (t : t) (streams : Streams.t) (laps : Laps.t) : t =
@@ -78,6 +80,7 @@ let empty () =
     splits = [];
     streams = [];
     route = None;
+    related = [];
   }
 
 let simple_serialize (t : t) : Yojson.Safe.t =

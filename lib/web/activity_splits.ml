@@ -305,7 +305,7 @@ let split_stat_values ~(sport_type : Models.Strava_models.sportType)
   in
   tr [] values
 
-type splitLapSelector = Laps | Splits
+type splitLapSelector = Laps | Splits | OnRoute
 [@@deriving show { with_path = false }, sexp, eq]
 
 let splitLapSelector_of_string s = splitLapSelector_of_sexp (Sexp.of_string s)

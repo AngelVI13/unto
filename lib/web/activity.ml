@@ -101,6 +101,7 @@ let activity_laps_splits_card ~(activity : Models.Activity.t)
     match split_select with
     | Laps -> List.map ~f:(fun lap -> lap.stats) activity.laps
     | Splits -> List.map ~f:(fun split -> split.stats) activity.splits
+    | OnRoute -> assert false
   in
 
   let select_btn (select : Activity_splits.splitLapSelector) =

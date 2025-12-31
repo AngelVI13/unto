@@ -128,6 +128,10 @@ let handle_activity ~(user : User.t) request =
     match activity with
     | None -> Activity_splits.Splits
     | Some activity -> (
+        (* TODO: remove this *)
+        (* List.iter *)
+        (*   ~f:(fun a -> Dream.log "-> Related: %s\n" a.start_date) *)
+        (*   activity.related; *)
         match List.length activity.laps with
         | 0 | 1 -> Activity_splits.Splits
         | _ -> Activity_splits.Laps)
