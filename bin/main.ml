@@ -188,6 +188,7 @@ let command_update_db auth_client =
        let test_db_hostname = Sys.getenv_exn "TURSO_TEST_DB_HOSTNAME" in
        let test_db_token = Sys.getenv_exn "TURSO_TEST_DB_TOKEN" in
        let db = Db.make ~hostname:test_db_hostname ~token:test_db_token in
+       (* Db.create_tables db; *)
        let present_activities = Db.all_activities db in
        Fun.protect
          ~finally:(fun () ->

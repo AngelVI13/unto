@@ -660,8 +660,11 @@ module M = struct
     in
     let named_args =
       List.fold2_exn ~init:[]
-        ~f:(fun acc name value -> Libsql.NamedArg.make ~name ~value :: acc)
+        ~f:(fun acc name value -> (name, value) :: acc)
         matches params
+      |> List.dedup_and_sort ~compare:(fun (name1, _) (name2, _) ->
+             String.compare name1 name2)
+      |> List.map ~f:(fun (name, value) -> Libsql.NamedArg.make ~name ~value)
     in
     let stmt = Libsql.Stmt.make ~sql ~named_args in
     db.statements <- stmt :: db.statements;

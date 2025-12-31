@@ -316,6 +316,10 @@ module Route = struct
     let distance = Option.value_exn distance in
     Some { hash; id = None; start_hash; distance }
 
+  (** Make route record that just holds a route id without any other info *)
+  let make_id_holder id =
+    { id = Some id; hash = []; start_hash = ""; distance = 0.0 }
+
   (** serialize route hash as base64 encoded text for db storage *)
   let serialize_hash (t : t) : string =
     let json = yojson_of_routeHash t.hash in

@@ -58,6 +58,7 @@ let create_tables (handle : Turso.conn) =
   let _ = DB.create_stats handle in
   let _ = DB.create_laps handle in
   let _ = DB.create_splits handle in
+  let _ = DB.create_routes handle in
   handle.immediate <- true;
   let _ = DB.create_streams handle in
   ()
@@ -136,8 +137,13 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
       ~average_power
       ~max_power
     ->
-      (* TODO: use these *)
-      let _ = route_id in
+      let route =
+        Option.bind
+          ~f:(fun id ->
+            Some (Models.Route.Route.make_id_holder (Int64.to_int_exn id)))
+          route_id
+      in
+
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -166,7 +172,7 @@ let get_activities_between handle ~(start_date : string) ~(end_date : string) :
           ~laps:(Models.Laps.Laps.empty ())
           ~splits:(Models.Splits.Splits.empty ())
           ~streams:(Models.Streams.Streams.empty ())
-          ~route:None
+          ~route
       in
       activities := activity :: !activities);
   !activities
@@ -297,7 +303,6 @@ let get_splits_by_activity_id handle ~(activity_id : int) :
       splits := split :: !splits);
   List.rev !splits
 
-(* NOTE: currently this is the same as other activity methods but it will change with addition of laps and splits *)
 let get_activity handle ~(activity_id : int) : Models.Activity.t option =
   Turso.log_conn handle (sprintf "\t> Get activity %d<\n" activity_id);
   let activities = ref [] in
@@ -333,8 +338,13 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
       ~data
       ~data_len
     ->
-      (* TODO: use these *)
-      let _ = route_id in
+      let route =
+        Option.bind
+          ~f:(fun id ->
+            Some (Models.Route.Route.make_id_holder (Int64.to_int_exn id)))
+          route_id
+      in
+
       let stats =
         Models.Stats.Fields.create ~data_points:(-1)
           ~moving_time:(Int64.to_int_exn moving_time)
@@ -371,9 +381,7 @@ let get_activity handle ~(activity_id : int) : Models.Activity.t option =
           ~athlete_id:(Int64.to_int_exn athlete_id)
           ~name
           ~sport_type:(Models.Strava_models.sportType_of_string sport_type)
-          ~start_date ~timezone ~stats
-          ~laps (* TODO: add values to route_hash & route_id *)
-          ~splits ~streams ~route:None
+          ~start_date ~timezone ~stats ~laps ~splits ~streams ~route
       in
       activities := activity :: !activities);
   Turso.log_conn handle (sprintf "\t> End %d<\n\n" activity_id);
@@ -408,14 +416,12 @@ let add_stats ?(lap_idx = None) ?(split_idx = None) handle
   ()
 
 let add_route handle (id : int) (route : Models.Route.Route.t) =
-  (* TODO: should this accept the Route.t directly? *)
   ignore
     (DB.add_route handle ~id:(Int64.of_int id)
        ~hash:(Models.Route.Route.serialize_hash route)
        ~start:route.start_hash ~distance:route.distance)
 
 let similar_routes handle (route : Models.Route.Route.t) =
-  (* TODO: should this accept the Route.t directly? *)
   let routes = ref [] in
 
   ignore
@@ -458,11 +464,16 @@ let find_or_create_route handle (activity : Models.Activity.t) =
       | Some similar -> Some { route with id = similar.id })
 
 let add_activity_aux handle (activity : Models.Activity.t) (athlete_id : int) =
+  let route_id =
+    Option.bind
+      ~f:(fun route -> Some (Int64.of_int (Option.value_exn route.id)))
+      activity.route
+  in
   let _ =
     DB.add_activity handle ~id:(Int64.of_int activity.id)
       ~athlete_id:(Int64.of_int athlete_id) ~name:activity.name
       ~sport_type:(Models.Strava_models.show_sportType activity.sport_type)
-      ~start_date:activity.start_date ~timezone:activity.timezone ~route_id:None
+      ~start_date:activity.start_date ~timezone:activity.timezone ~route_id
   in
   ()
 
@@ -500,14 +511,12 @@ let add_streams handle (streams : Models.Streams.Streams.t) (activity_id : int)
        ~data
        ~data_len:(Int64.of_int @@ String.length streams))
 
-(* TODO: store sport_type in the routes table so that you can filter by that otherwise it might mix up running and cycling etc activities *)
-(* TODO: for each activity getting functions, parse the route data? *)
-(* TODO: test route inserting & fetching  *)
 let add_activity handle (activity : Models.Activity.t) (athlete_id : int) =
   Turso.log_conn handle (sprintf "\t> Add activity %d<\n" activity.id);
   (* Turso.log_conn handle *)
   (*   (sprintf "Activity:\n %s\n" (Models.Activity.show activity)); *)
   let route = find_or_create_route handle activity in
+  (* TODO: this looks a bit nasty to update fields like that ? *)
   let activity = { activity with route } in
 
   handle.immediate <- false;

@@ -137,7 +137,7 @@ SELECT
     s.max_power
 FROM activities a
 JOIN stats s ON s.activity_id = a.id AND s.lap_idx IS NULL AND s.split_idx IS NULL
-WHERE a.route_id IS NOT NULL AND a.route_id == @route_id
+WHERE a.route_id IS NOT NULL AND a.route_id == @route_id AND a.sport_type == @sport_type
 ORDER BY a.start_date ASC;
 
 -- @add_route
