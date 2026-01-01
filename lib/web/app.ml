@@ -1,11 +1,6 @@
 open Core
 module Time_ns = Time_ns_unix
 
-(* TODO: to calculate the similarities between routes we have to calculate the  *)
-(* hausdorf distance between 2 routes: https://en.wikipedia.org/wiki/Hausdorff_distance *)
-(* to calculate the distance between 2 points we can use the harvesine formula: *)
-(* from this recipe: https://ocaml.org/cookbook/calculate-geodistance-between-points/stdlib *)
-(* in our case, we already have the lat/lng in degrees (i think?) so we don't have to convert them *)
 module User = struct
   type t = {
     db : Db.t;
@@ -100,7 +95,6 @@ let group_activities ~(num_days : int) ~(start_date : Date.t)
       in
       day_activities)
 
-(* TODO: All activities from beginning until 2016-09-19  are completely wrong -> DELTE THEM *)
 let handle_training_log ~(user : User.t) request =
   let monday =
     match Dream.query request "monday" with
@@ -128,10 +122,6 @@ let handle_activity ~(user : User.t) request =
     match activity with
     | None -> Activity_splits.Splits
     | Some activity -> (
-        (* TODO: remove this *)
-        (* List.iter *)
-        (*   ~f:(fun a -> Dream.log "-> Related: %s\n" a.start_date) *)
-        (*   activity.related; *)
         match List.length activity.laps with
         | 0 | 1 -> Activity_splits.Splits
         | _ -> Activity_splits.Laps)

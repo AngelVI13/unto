@@ -95,50 +95,66 @@ let activity_graphs_card ?(full_load = true) (activity : Models.Activity.t) =
     [ class_ "card activityGraphs" ]
     [ div [ class_ "graphContainer" ] graph_elements ]
 
+let select_btn (activity_id : int) (select : Activity_splits.splitLapSelector) =
+  let href_path =
+    path_attr Hx.get Paths.activity_select_url activity_id
+      (Activity_splits.show_splitLapSelector select)
+  in
+  let htmx_target = Hx.target "#splitsTable" in
+  let htmx_trigger = Hx.trigger "click" in
+  let htmx_swap = Hx.swap "outerHTML" in
+  (* NOTE: the empty href is needed otherwise the `a` doesn't get any styling *)
+  [ href ""; href_path; htmx_target; htmx_trigger; htmx_swap ]
+
+let select_span_opt data activity_id split_select select_option =
+  match data with
+  | [] -> None
+  | _ ->
+      Some
+        (span
+           [
+             (if
+                Activity_splits.equal_splitLapSelector split_select
+                  select_option
+              then class_ "active"
+              else class_ "inactive");
+           ]
+           [
+             a
+               (select_btn activity_id select_option)
+               [
+                 txt "%s" (Activity_splits.show_splitLapSelector select_option);
+               ];
+           ])
+
 let activity_laps_splits_card ~(activity : Models.Activity.t)
     ~(split_select : Activity_splits.splitLapSelector) =
   let stats =
     match split_select with
     | Laps -> List.map ~f:(fun lap -> lap.stats) activity.laps
     | Splits -> List.map ~f:(fun split -> split.stats) activity.splits
-    | OnRoute -> assert false
+    | OnRoute -> List.map ~f:(fun activity -> activity.stats) activity.related
   in
 
-  let select_btn (select : Activity_splits.splitLapSelector) =
-    let href_path =
-      path_attr Hx.get Paths.activity_select_url activity.id
-        (Activity_splits.show_splitLapSelector select)
-    in
-    let htmx_target = Hx.target "#splitsTable" in
-    let htmx_trigger = Hx.trigger "click" in
-    let htmx_swap = Hx.swap "outerHTML" in
-    (* NOTE: the empty href is needed otherwise the `a` doesn't get any styling *)
-    [ href ""; href_path; htmx_target; htmx_trigger; htmx_swap ]
+  let on_route_tab =
+    select_span_opt activity.related activity.id split_select OnRoute
   in
+  let splits_tab =
+    select_span_opt activity.splits activity.id split_select Splits
+  in
+  (* TODO: don't show laps if only 1 lap is present - that is the whole activity as a lap *)
+  let laps_tab = select_span_opt activity.laps activity.id split_select Laps in
+
+  let select_tabs = [ splits_tab; laps_tab; on_route_tab ] |> List.filter_opt in
 
   div
     (* NOTE: the id is only needed for the htmx target, for some reason the
        class selector doesn't work *)
     [ class_ "card activitySplitsStats"; id "splitsTable" ]
     [
-      div
-        [ class_ "splitSelectBtns" ]
-        [
-          span
-            [
-              (if Activity_splits.equal_splitLapSelector split_select Splits
-               then class_ "active"
-               else class_ "inactive");
-            ]
-            [ a (select_btn Splits) [ txt "Splits" ] ];
-          span
-            [
-              (if Activity_splits.equal_splitLapSelector split_select Laps then
-                 class_ "active"
-               else class_ "inactive");
-            ]
-            [ a (select_btn Laps) [ txt "Laps" ] ];
-        ];
+      div [ class_ "splitSelectBtns" ] select_tabs;
+      (* TODO: write a different version of activity_splits_table for the onroute data *)
+      (* TODO: FIX THIS the top cards don't fill the full width *)
       Activity_splits.activity_splits_table ~activity ~split_select stats;
     ]
 
