@@ -142,21 +142,26 @@ let activity_laps_splits_card ~(activity : Models.Activity.t)
   let splits_tab =
     select_span_opt activity.splits activity.id split_select Splits
   in
-  (* TODO: don't show laps if only 1 lap is present - that is the whole activity as a lap *)
-  let laps_tab = select_span_opt activity.laps activity.id split_select Laps in
+  let laps_tab =
+    match activity.laps with
+    | [] | _ :: [] -> None
+    | _ -> select_span_opt activity.laps activity.id split_select Laps
+  in
 
   let select_tabs = [ splits_tab; laps_tab; on_route_tab ] |> List.filter_opt in
 
-  div
-    (* NOTE: the id is only needed for the htmx target, for some reason the
+  (* TODO: fix formatting for bigger screens when we have the empty splits div *)
+  if List.length select_tabs = 0 then div [] []
+  else
+    div
+      (* NOTE: the id is only needed for the htmx target, for some reason the
        class selector doesn't work *)
-    [ class_ "card activitySplitsStats"; id "splitsTable" ]
-    [
-      div [ class_ "splitSelectBtns" ] select_tabs;
-      (* TODO: write a different version of activity_splits_table for the onroute data *)
-      (* TODO: FIX THIS the top cards don't fill the full width *)
-      Activity_splits.activity_splits_table ~activity ~split_select stats;
-    ]
+      [ class_ "card activitySplitsStats"; id "splitsTable" ]
+      [
+        div [ class_ "splitSelectBtns" ] select_tabs;
+        (* TODO: FIX THIS the top cards don't fill the full width *)
+        Activity_splits.activity_splits_table ~activity ~split_select stats;
+      ]
 
 let activity_grid ~(athlete : Models.Strava_models.StravaAthlete.t option)
     ~(activity : Models.Activity.t option)
