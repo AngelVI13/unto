@@ -4,6 +4,7 @@ open HTML
 
 module SplitAvgRange = struct
   type t = {
+    idx_at_max_velocity : int option;
     min_velocity : float option;
     max_velocity : float option;
     min_heartrate : int option;
@@ -14,6 +15,7 @@ module SplitAvgRange = struct
 
   let empty () =
     {
+      idx_at_max_velocity = None;
       min_velocity = None;
       max_velocity = None;
       min_heartrate = None;
@@ -31,19 +33,30 @@ module SplitAvgRange = struct
   let percent_of_float ~min_ ~max_ value =
     Float.(to_int (round_nearest ((value - min_) / (max_ - min_) * 100.0)))
 
-  let add_stats (acc : t) (stats : Models.Stats.t) =
+  let add_stats (i : int) (acc : t) (stats : Models.Stats.t) =
     let acc =
       match stats.average_speed with
       | None -> acc
       | Some avg -> (
           match (acc.min_velocity, acc.max_velocity) with
           | None, None ->
-              { acc with min_velocity = Some avg; max_velocity = Some avg }
+              {
+                acc with
+                min_velocity = Some avg;
+                max_velocity = Some avg;
+                idx_at_max_velocity = Some i;
+              }
           | Some min_, Some max_ ->
+              let idx_at_max_velocity =
+                Some
+                  (if Float.(avg > max_) then i
+                   else Option.value_exn acc.idx_at_max_velocity)
+              in
               {
                 acc with
                 min_velocity = Some (Float.min min_ avg);
                 max_velocity = Some (Float.max max_ avg);
+                idx_at_max_velocity;
               }
           | _ -> assert false)
     in
@@ -209,16 +222,17 @@ let on_route_headers ~(sport_type : Models.Strava_models.sportType)
   in
   columns
 
+let compute_fill_color ~color ~opacity =
+  String.substr_replace_first ~pattern:")"
+    ~with_:(sprintf ", %.3f)" opacity)
+    color
+
 let make_bar_row ~color ~percent ~avg_percent value =
   let percent = Int.max percent 5 in
   let percent = Int.min percent 100 in
   (* NOTE: reduce the color alpha *)
-  let fill_color =
-    String.substr_replace_first ~pattern:")" ~with_:", 0.4)" color
-  in
-  let avg_line_color =
-    String.substr_replace_first ~pattern:")" ~with_:", 0.8)" color
-  in
+  let fill_color = compute_fill_color ~color ~opacity:0.4 in
+  let avg_line_color = compute_fill_color ~color ~opacity:0.8 in
   td []
     [
       div
@@ -240,9 +254,7 @@ let make_route_row ~color ~percent value =
   let percent = Int.max percent 5 in
   let percent = Int.min percent 100 in
   (* NOTE: reduce the color alpha *)
-  let fill_color =
-    String.substr_replace_first ~pattern:")" ~with_:", 0.4)" color
-  in
+  let fill_color = compute_fill_color ~color ~opacity:0.4 in
   td []
     [
       div
@@ -251,6 +263,13 @@ let make_route_row ~color ~percent value =
           style_ "width: %d%s; background: %s;" percent "%" fill_color;
         ]
         [];
+      span [] [ txt "%s" value ];
+    ]
+
+let make_best_route_row ~color value =
+  td []
+    [
+      div [ class_ "bar"; style_ "width:100%%; background: %s;" color ] [];
       span [] [ txt "%s" value ];
     ]
 
@@ -360,15 +379,37 @@ let split_stat_values ~(sport_type : Models.Strava_models.sportType)
 
 let on_route_values ~(activity : Models.Activity.t)
     ~(sport_type : Models.Strava_models.sportType)
-    ~(stats_ranges : SplitAvgRange.t) (index : int) (stats : Models.Stats.t) =
+    ~(stats_ranges : SplitAvgRange.t) (index : int) ~(best_idx : int option)
+    (stats : Models.Stats.t) =
   let make_txt_row value = td [] [ txt "%s" value ] in
 
-  let split_idx = Some (make_txt_row @@ sprintf "%d" (index + 1)) in
+  let is_best = Option.value_exn best_idx = index in
+  let split_idx = sprintf "%d" (index + 1) in
+
+  (* TODO: should this highlight the best route based on pace or on duration ??? *)
+  let split_idx =
+    Some
+      (if is_best then
+         make_best_route_row ~color:Activity_graph.GraphData.blue split_idx
+       else make_txt_row split_idx)
+  in
   let route_activity = List.nth_exn activity.related index in
   let start_date =
     Utils.iso8601_to_date route_activity.start_date |> Date.to_string
   in
-  let start_date = Some (make_txt_row @@ sprintf "%s" start_date) in
+  (* make start date clickable so it brings you to that activity *)
+  let start_date =
+    Some
+      (td []
+         [
+           a
+             [
+               path_attr href Paths.activity_url route_activity.id;
+               class_ "onRoute";
+             ]
+             [ txt "%s" start_date ];
+         ])
+  in
 
   let duration =
     Some (make_txt_row @@ Helpers.duration_stat_value stats.moving_time)
@@ -432,7 +473,11 @@ let on_route_values ~(activity : Models.Activity.t)
     [ split_idx; start_date; duration; speed_pace; heartrate; power; cadence ]
     |> List.filter_opt
   in
-  tr [] values
+  tr
+    [
+      (if Option.value_exn best_idx = index then class_ "bestOnRoute" else null_);
+    ]
+    values
 
 type splitLapSelector = Laps | Splits | OnRoute
 [@@deriving show { with_path = false }, sexp, eq]
@@ -447,7 +492,7 @@ let activity_splits_table ~(activity : Models.Activity.t)
   | 0 -> txt "No %s present" (show_splitLapSelector split_select)
   | _ ->
       let stats_ranges =
-        List.fold ~init:(SplitAvgRange.empty ()) ~f:SplitAvgRange.add_stats
+        List.foldi ~init:(SplitAvgRange.empty ()) ~f:SplitAvgRange.add_stats
           stats
         |> SplitAvgRange.expand_ranges ~percent:10
       in
@@ -461,7 +506,9 @@ let activity_splits_table ~(activity : Models.Activity.t)
             (* TODO: link for testing: http://localhost:8080/activity/16575000264 *)
             ( on_route_headers,
               List.mapi
-                ~f:(on_route_values ~activity ~sport_type ~stats_ranges)
+                ~f:
+                  (on_route_values ~activity ~sport_type ~stats_ranges
+                     ~best_idx:stats_ranges.idx_at_max_velocity)
                 stats )
         | _ ->
             ( split_stat_headers,
