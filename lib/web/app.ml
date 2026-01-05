@@ -20,8 +20,10 @@ module User = struct
     }
 
   let add_activity t (activity : Models.Activity.t) (athlete_id : int) =
-    Hashtbl.set t.activity_cache ~key:activity.id ~data:activity;
-    Db.add_activity t.db activity athlete_id
+    (* NOTE: At this point the activity is not complete because route information is added
+       during the Db.add_activity, therefore we update the hash afterwards *)
+    let activity = Db.add_activity t.db activity athlete_id in
+    Hashtbl.set t.activity_cache ~key:activity.id ~data:activity
 
   let get_activity t activity_id =
     match Hashtbl.find t.activity_cache activity_id with

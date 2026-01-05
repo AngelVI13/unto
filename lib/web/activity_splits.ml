@@ -525,7 +525,6 @@ let activity_splits_table ~(activity : Models.Activity.t)
       let headers_fn, nodes =
         match split_select with
         | OnRoute ->
-            (* TODO: highlight current time on route row *)
             (* TODO: link for testing: http://localhost:8080/activity/16575000264 *)
             ( on_route_headers,
               List.mapi

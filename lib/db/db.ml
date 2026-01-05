@@ -521,7 +521,8 @@ let add_activity handle (activity : Models.Activity.t) (athlete_id : int) =
        activity.splits);
   handle.immediate <- true;
   add_streams handle activity.streams activity.id;
-  Turso.log_conn handle (sprintf "\t> End %d<\n\n" activity.id)
+  Turso.log_conn handle (sprintf "\t> End %d<\n\n" activity.id);
+  activity
 
 let all_activities handle =
   let activities = ref [] in
