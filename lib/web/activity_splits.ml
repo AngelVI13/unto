@@ -273,6 +273,26 @@ let make_best_route_row ~color value =
       span [] [ txt "%s" value ];
     ]
 
+let make_best_today_row ~top_color ~bottom_color value =
+  let background_style =
+    sprintf
+      "background: -webkit-gradient(linear, left top, right bottom, \
+       color-stop(50%%, %s), color-stop(50%%, %s));"
+      top_color bottom_color
+    ^ sprintf "background: -webkit-linear-gradient(top left, %s 50%%, %s 50%%);"
+        top_color bottom_color
+      (* TODO: this line shows as invalid in firefox ? *)
+    ^ sprintf "background: -o-linear-gradient(top left, %s 50%%, %s 50%%);"
+        top_color bottom_color
+    ^ sprintf "background: linear-gradient(to bottom right, %s 50%%, %s 50%%);"
+        top_color bottom_color
+  in
+  td []
+    [
+      div [ class_ "bar"; style_ "width:100%%; %s" background_style ] [];
+      span [] [ txt "%s" value ];
+    ]
+
 let split_stat_values ~(sport_type : Models.Strava_models.sportType)
     ~(avg_stats : Models.Stats.t) ~(stats_ranges : SplitAvgRange.t)
     (index : int) (stats : Models.Stats.t) =
@@ -384,18 +404,27 @@ let on_route_values ~(activity : Models.Activity.t)
   let make_txt_row value = td [] [ txt "%s" value ] in
 
   let is_best = Option.value_exn best_idx = index in
-  let split_idx = sprintf "%d" (index + 1) in
 
-  (* TODO: should this highlight the best route based on pace or on duration ??? *)
-  let split_idx =
-    Some
-      (if is_best then
-         make_best_route_row ~color:Activity_graph.GraphData.blue split_idx
-       else make_txt_row split_idx)
-  in
   let route_activity = List.nth_exn activity.related index in
   let start_date =
     Utils.iso8601_to_date route_activity.start_date |> Date.to_string
+  in
+
+  let is_current = String.(activity.start_date = route_activity.start_date) in
+
+  let split_idx = sprintf "%d" (index + 1) in
+
+  let split_idx =
+    Some
+      (match (is_best, is_current) with
+      | true, true ->
+          make_best_today_row ~top_color:Activity_graph.GraphData.gray
+            ~bottom_color:Activity_graph.GraphData.blue split_idx
+      | true, false ->
+          make_best_route_row ~color:Activity_graph.GraphData.blue split_idx
+      | false, true ->
+          make_best_route_row ~color:Activity_graph.GraphData.gray split_idx
+      | false, false -> make_txt_row split_idx)
   in
   (* make start date clickable so it brings you to that activity *)
   let start_date =
@@ -473,11 +502,7 @@ let on_route_values ~(activity : Models.Activity.t)
     [ split_idx; start_date; duration; speed_pace; heartrate; power; cadence ]
     |> List.filter_opt
   in
-  tr
-    [
-      (if Option.value_exn best_idx = index then class_ "bestOnRoute" else null_);
-    ]
-    values
+  tr [ (if is_best || is_current then class_ "bestOnRoute" else null_) ] values
 
 type splitLapSelector = Laps | Splits | OnRoute
 [@@deriving show { with_path = false }, sexp, eq]
@@ -500,9 +525,7 @@ let activity_splits_table ~(activity : Models.Activity.t)
       let headers_fn, nodes =
         match split_select with
         | OnRoute ->
-            (* TODO: highlight fastest time on route row *)
             (* TODO: highlight current time on route row *)
-            (* TODO: make each activity row clickable that brings you to the respective activity *)
             (* TODO: link for testing: http://localhost:8080/activity/16575000264 *)
             ( on_route_headers,
               List.mapi
